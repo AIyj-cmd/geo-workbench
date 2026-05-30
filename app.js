@@ -531,19 +531,17 @@ function renderQuestions() {
 
   // Stats
   const all = state.questions;
-  const tested = all.filter(q => q.tested === '✓').length;
-  const mentioned = all.filter(q => q.mentioned === '是').length;
+  const highCount = all.filter(q => q.priority === '高').length;
+  const mediumCount = all.filter(q => q.priority === '中').length;
+  const inProgress = all.filter(q => q.status === '进行中').length;
   const published = all.filter(q => q.status === '已发布').length;
-  const highP = all.filter(q => q.priority === '高').length;
-  const highMentioned = all.filter(q => q.priority === '高' && q.mentioned === '是').length;
-  const rate = highP > 0 ? Math.round(highMentioned / highP * 100) : 0;
 
   document.getElementById('questionStats').innerHTML = `
     <div class="stat-card blue"><div class="stat-label">总问题数</div><div class="stat-value">${all.length}</div></div>
-    <div class="stat-card green"><div class="stat-label">已测试AI</div><div class="stat-value">${tested}</div></div>
-    <div class="stat-card purple"><div class="stat-label">AI已提及</div><div class="stat-value">${mentioned}</div></div>
-    <div class="stat-card orange"><div class="stat-label">已发布</div><div class="stat-value">${published}</div></div>
-    <div class="stat-card red"><div class="stat-label">高优AI提及率</div><div class="stat-value">${rate}%</div></div>
+    <div class="stat-card red"><div class="stat-label">高优先级</div><div class="stat-value">${highCount}</div></div>
+    <div class="stat-card orange"><div class="stat-label">中优先级</div><div class="stat-value">${mediumCount}</div></div>
+    <div class="stat-card green"><div class="stat-label">进行中</div><div class="stat-value">${inProgress}</div></div>
+    <div class="stat-card purple"><div class="stat-label">已发布</div><div class="stat-value">${published}</div></div>
   `;
 
   // Update cluster filter options
