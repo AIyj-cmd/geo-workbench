@@ -1223,6 +1223,7 @@ function viewArticle(articleId) {
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  overlay.classList.add('show');
 
   // Set content via JS to avoid template literal breakage from backticks
   document.getElementById('articleEditTextarea').value = article.content || '';
@@ -1240,7 +1241,10 @@ function viewArticle(articleId) {
 
 function closeArticleModal() {
   const modal = document.getElementById('articleViewModal');
-  if (modal) modal.remove();
+  if (modal) {
+    modal.classList.remove('show');
+    setTimeout(() => modal.remove(), 200);
+  }
 }
 
 function saveArticleEdit(articleId) {
