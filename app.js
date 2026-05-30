@@ -1645,51 +1645,83 @@ function renderDashboard() {
   const all = state.questions;
   const articles = state.articles || [];
 
-  // Stats
-  const total = all.length;
-  const pending = all.filter(q => !q.status || q.status === '未开始').length;
-  const inProgress = all.filter(q => q.status === '进行中').length;
-  const published = all.filter(q => q.status === '已发布').length;
-  const articleCount = articles.length;
+  // === 有意义的数据指标 ===
+  
+  // 1. 已生成母稿的问题数（去重）
+  const questionsWithArticles = new Set(articles.map(a => a.questionId));
+  const generatedCount = questionsWithArticles.size;
+  
+  // 2. 角度覆盖（已使用的不同角度数）
+  const usedAngles = new Set(articles.filter(a => a.angle).map(a => a.angle));
+  const angleCount = usedAngles.size;
+  
+  // 3. 平台版本数（所有文章的平台版本总数）
+  let platformVersions = 0;
+  articles.forEach(a => {
+    if (a.platforms) platformVersions += Object.keys(a.platforms).length;
+  });
+  
+  // 4. 选题簇数
+  const clusters = new Set(all.map(q => q.cluster).filter(Boolean));
+  const clusterCount = clusters.size;
 
   const statsEl = document.getElementById('dashboardStats');
   if (statsEl) {
     statsEl.innerHTML = `
-      <div class="dash-stat"><div class="dash-stat-value blue">${total}</div><div class="dash-stat-label">总问题</div></div>
-      <div class="dash-stat"><div class="dash-stat-value gray">${pending}</div><div class="dash-stat-label">待处理</div></div>
-      <div class="dash-stat"><div class="dash-stat-value orange">${inProgress}</div><div class="dash-stat-label">进行中</div></div>
-      <div class="dash-stat"><div class="dash-stat-value green">${published}</div><div class="dash-stat-label">已发布</div></div>
-      <div class="dash-stat"><div class="dash-stat-value purple">${articleCount}</div><div class="dash-stat-label">已生成文章</div></div>
+      <div class="dash-stat"><div class="dash-stat-value blue">${all.length}</div><div class="dash-stat-label">总问题数</div></div>
+      <div class="dash-stat"><div class="dash-stat-value green">${generatedCount}</div><div class="dash-stat-label">已生成母稿</div></div>
+      <div class="dash-stat"><div class="dash-stat-value purple">${angleCount}</div><div class="dash-stat-label">角度覆盖</div></div>
+      <div class="dash-stat"><div class="dash-stat-value orange">${platformVersions}</div><div class="dash-stat-label">平台版本</div></div>
+      <div class="dash-stat"><div class="dash-stat-value gray">${clusterCount}</div><div class="dash-stat-label">选题簇</div></div>
     `;
   }
 
-  // Charts
+  // === 图表 ===
   const chartsEl = document.getElementById('dashboardCharts');
   if (!chartsEl) return;
 
-  // By priority
+  // 优先级分布
   const priorities = { '高': 0, '中': 0, '低': 0 };
   all.forEach(q => { priorities[q.priority] = (priorities[q.priority] || 0) + 1; });
   const maxP = Math.max(...Object.values(priorities), 1);
 
-  // By status
-  const statuses = { '未开始': pending, '进行中': inProgress, '已发布': published };
-  const maxS = Math.max(...Object.values(statuses), 1);
-
-  // By industry
+  // 行业分布
   const industries = {};
   all.forEach(q => { industries[q.industry] = (industries[q.industry] || 0) + 1; });
   const maxI = Math.max(...Object.values(industries), 1);
 
-  // By cluster (top 6)
-  const clusters = {};
-  all.forEach(q => { if (q.cluster) clusters[q.cluster] = (clusters[q.cluster] || 0) + 1; });
-  const sortedClusters = Object.entries(clusters).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  // 选题簇分布 Top 6
+  const clusterMap = {};
+  all.forEach(q => { if (q.cluster) clusterMap[q.cluster] = (clusterMap[q.cluster] || 0) + 1; });
+  const sortedClusters = Object.entries(clusterMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const maxC = sortedClusters.length > 0 ? sortedClusters[0][1] : 1;
+
+  // 内容生产进度（已生成 vs 未生成）
+  const notGenerated = all.length - generatedCount;
+  const progressMax = Math.max(generatedCount, notGenerated, 1);
+
+  // 角度使用分布
+  const angleMap = {};
+  articles.forEach(a => {
+    if (a.angleName) angleMap[a.angleName] = (angleMap[a.angleName] || 0) + 1;
+  });
+  const sortedAngles = Object.entries(angleMap).sort((a, b) => b[1] - a[1]);
+  const maxA = sortedAngles.length > 0 ? sortedAngles[0][1] : 1;
+
+  // 平台覆盖统计
+  const platformMap = {};
+  articles.forEach(a => {
+    if (a.platforms) {
+      Object.keys(a.platforms).forEach(p => {
+        if (a.platforms[p]) platformMap[p] = (platformMap[p] || 0) + 1;
+      });
+    }
+  });
+  const maxPlat = Math.max(...Object.values(platformMap), 1);
 
   chartsEl.innerHTML = `
     <div class="dash-chart-card">
-      <h4>优先级分布</h4>
+      <h4>📊 优先级分布</h4>
       ${Object.entries(priorities).map(([k, v]) => `
         <div class="bar-chart-row">
           <div class="bar-label">${k}</div>
@@ -1699,17 +1731,7 @@ function renderDashboard() {
       `).join('')}
     </div>
     <div class="dash-chart-card">
-      <h4>内容状态</h4>
-      ${Object.entries(statuses).map(([k, v]) => `
-        <div class="bar-chart-row">
-          <div class="bar-label">${k}</div>
-          <div class="bar-track"><div class="bar-fill bar-${k === '已发布' ? 'green' : k === '进行中' ? 'blue' : 'gray'}" style="width:${Math.round(v / maxS * 100)}%"></div></div>
-          <div class="bar-value">${v}</div>
-        </div>
-      `).join('')}
-    </div>
-    <div class="dash-chart-card">
-      <h4>行业分布</h4>
+      <h4>🏭 行业分布</h4>
       ${Object.entries(industries).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
         <div class="bar-chart-row">
           <div class="bar-label">${k}</div>
@@ -1719,7 +1741,23 @@ function renderDashboard() {
       `).join('')}
     </div>
     <div class="dash-chart-card">
-      <h4>选题簇分布 Top 6</h4>
+      <h4>📝 内容生产进度</h4>
+      <div class="bar-chart-row">
+        <div class="bar-label">已生成</div>
+        <div class="bar-track"><div class="bar-fill bar-green" style="width:${Math.round(generatedCount / progressMax * 100)}%"></div></div>
+        <div class="bar-value">${generatedCount}</div>
+      </div>
+      <div class="bar-chart-row">
+        <div class="bar-label">未生成</div>
+        <div class="bar-track"><div class="bar-fill bar-gray" style="width:${Math.round(notGenerated / progressMax * 100)}%"></div></div>
+        <div class="bar-value">${notGenerated}</div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text-muted);">
+        覆盖率：${all.length > 0 ? Math.round(generatedCount / all.length * 100) : 0}%
+      </div>
+    </div>
+    <div class="dash-chart-card">
+      <h4>🎯 选题簇分布 Top 6</h4>
       ${sortedClusters.map(([k, v]) => `
         <div class="bar-chart-row">
           <div class="bar-label" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${k}">${k}</div>
@@ -1728,6 +1766,30 @@ function renderDashboard() {
         </div>
       `).join('')}
     </div>
+    ${sortedAngles.length > 0 ? `
+    <div class="dash-chart-card">
+      <h4>📐 角度使用分布</h4>
+      ${sortedAngles.map(([k, v]) => `
+        <div class="bar-chart-row">
+          <div class="bar-label">${k}</div>
+          <div class="bar-track"><div class="bar-fill bar-orange" style="width:${Math.round(v / maxA * 100)}%"></div></div>
+          <div class="bar-value">${v}</div>
+        </div>
+      `).join('')}
+    </div>
+    ` : ''}
+    ${Object.keys(platformMap).length > 0 ? `
+    <div class="dash-chart-card">
+      <h4>📡 平台覆盖</h4>
+      ${Object.entries(platformMap).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
+        <div class="bar-chart-row">
+          <div class="bar-label">${k}</div>
+          <div class="bar-track"><div class="bar-fill bar-green" style="width:${Math.round(v / maxPlat * 100)}%"></div></div>
+          <div class="bar-value">${v}</div>
+        </div>
+      `).join('')}
+    </div>
+    ` : ''}
   `;
 }
 
