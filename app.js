@@ -2842,6 +2842,20 @@ function debounceFilter(key, fn, delay = 300) {
 // ===== Changelog =====
 const CHANGELOG = [
   {
+    version: 'v1.9.0',
+    date: '2026-05-30',
+    title: '数据看板全面升级 + UI优化',
+    icon: '📊',
+    changes: [
+      { type: 'feature', text: '数据看板全面升级 — 6项核心指标卡片（总问题数、已生成母稿、角度覆盖、平台版本、已测试、AI提及率）' },
+      { type: 'feature', text: '10种可视化图表 — 优先级/搜索意图/内容状态/行业/选题簇分布、内容生产进度环形图、测试摘要、热门卖点Top5、角度分布、平台覆盖' },
+      { type: 'feature', text: '问题×角度覆盖矩阵 — 展示每个角度覆盖了哪些问题，识别内容空白区' },
+      { type: 'feature', text: '3列响应式网格布局 — 支持宽屏/中屏/窄屏自适应' },
+      { type: 'improve', text: '文稿管理数量标签优化 — 从灰色文字改为蓝色胶囊徽章，更醒目易识别' },
+      { type: 'improve', text: '数据看板设为首页默认页 — 进站即可看到全局工作概览' },
+    ]
+  },
+  {
     version: 'v1.8.0',
     date: '2026-05-30',
     title: '多角度生成 + Excel导入修复',
