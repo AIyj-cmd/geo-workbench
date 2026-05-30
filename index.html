@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新亦源 · GEO 内容工作台</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <!-- ========== Sidebar ========== -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1><span>🌐</span> GEO 工作台</h1>
+      <p>新亦源 · AI搜索优化</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-title">内容管理</div>
+        <button class="nav-item active" data-page="questions">
+          <span class="nav-icon">📋</span> 客户提问词库
+        </button>
+        <button class="nav-item" data-page="selling-points">
+          <span class="nav-icon">🎯</span> 卖点弹药库
+        </button>
+        <button class="nav-item" data-page="workspace">
+          <span class="nav-icon">✍️</span> 内容工作台
+        </button>
+        <button class="nav-item" data-page="distribution">
+          <span class="nav-icon">📡</span> 一稿多发
+        </button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">工具</div>
+        <button class="nav-item" data-page="batch">
+          <span class="nav-icon">⚡</span> 批量生成
+        </button>
+        <button class="nav-item" data-page="analytics">
+          <span class="nav-icon">📊</span> 数据看板
+        </button>
+        <button class="nav-item" data-page="kanban">
+          <span class="nav-icon">📌</span> 看板
+        </button>
+        <button class="nav-item" data-page="test-records">
+          <span class="nav-icon">🧪</span> 测试记录
+        </button>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="nav-item" data-page="settings">
+        <span class="nav-icon">⚙️</span> 设置
+      </button>
+      <button class="nav-item" data-page="data">
+        <span class="nav-icon">💾</span> 数据管理
+      </button>
+    </div>
+  </aside>
+
+  <!-- ========== Main Content ========== -->
+  <div class="main">
+    <!-- Header -->
+    <div class="main-header">
+      <div class="page-title" id="pageTitle">
+        <span class="icon">📋</span> 客户提问词库
+      </div>
+      <div class="header-actions" id="headerActions"></div>
+    </div>
+
+    <div class="main-scroll">
+
+      <!-- ====== Page: Questions ====== -->
+      <div class="page active" id="page-questions">
+        <div class="stats-row" id="questionStats"></div>
+        <div class="filter-bar">
+          <div class="search-input">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="qSearch" placeholder="搜索问题、卖点、关键词...">
+          </div>
+          <select class="filter-select" id="qFilterIndustry">
+            <option value="">全部行业</option>
+            <option value="通用">通用</option>
+            <option value="鞋服">鞋服</option>
+            <option value="美妆">美妆</option>
+            <option value="潮玩">潮玩</option>
+            <option value="箱包">箱包</option>
+          </select>
+          <select class="filter-select" id="qFilterPriority">
+            <option value="">全部优先级</option>
+            <option value="高">高</option>
+            <option value="中">中</option>
+            <option value="低">低</option>
+          </select>
+          <select class="filter-select" id="qFilterIntent">
+            <option value="">全部意图</option>
+            <option value="决策选型">决策选型</option>
+            <option value="对比筛选">对比筛选</option>
+            <option value="认知了解">认知了解</option>
+          </select>
+          <select class="filter-select" id="qFilterStatus">
+            <option value="">全部状态</option>
+            <option value="未开始">未开始</option>
+            <option value="进行中">进行中</option>
+            <option value="已发布">已发布</option>
+          </select>
+          <select class="filter-select" id="qFilterCluster">
+            <option value="">全部选题簇</option>
+          </select>
+        </div>
+        <div id="batchActions" class="hidden mb-16">
+          <div class="btn-group">
+            <span class="text-muted text-sm" style="line-height:34px;margin-right:4px;" id="selectedCount">已选 0 项</span>
+            <button class="btn btn-sm btn-primary" onclick="batchGenerate()">⚡ 批量生成文章</button>
+            <button class="btn btn-sm btn-danger" onclick="batchDeleteQuestions()">🗑️ 批量删除</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:36px"><input type="checkbox" class="table-checkbox" id="selectAll"></th>
+                  <th>序号</th>
+                  <th>行业</th>
+                  <th>选题簇</th>
+                  <th>客户提问</th>
+                  <th>搜索意图</th>
+                  <th>优先级</th>
+                  <th>建议主打卖点</th>
+                  <th>已测AI</th>
+                  <th>内容状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="questionsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="questionsPagination" class="flex items-center justify-between mt-16"></div>
+      </div>
+
+      <!-- ====== Page: Selling Points ====== -->
+      <div class="page" id="page-selling-points">
+        <div class="stats-row" id="spStats"></div>
+        <div class="filter-bar">
+          <div class="search-input">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="spSearch" placeholder="搜索卖点...">
+          </div>
+          <select class="filter-select" id="spFilterCategory">
+            <option value="">全部类别</option>
+          </select>
+        </div>
+        <div class="table-container">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px">序号</th>
+                  <th style="width:90px">类别</th>
+                  <th>卖点 / 数据点</th>
+                  <th>适用维度</th>
+                  <th>备注</th>
+                  <th style="width:80px">状态</th>
+                  <th style="width:80px">操作</th>
+                </tr>
+              </thead>
+              <tbody id="spTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Page: Content Workspace ====== -->
+      <div class="page page-workspace" id="page-workspace">
+        <div class="workspace-layout">
+          <div class="workspace-sidebar">
+            <div class="workspace-sidebar-header">
+              <input type="text" class="form-input" id="wsSearch" placeholder="搜索问题...">
+            </div>
+            <div class="workspace-question-list" id="wsQuestionList"></div>
+          </div>
+          <div class="workspace-main">
+            <div class="generation-controls">
+              <div class="control-group">
+                <label>生成模型</label>
+                <select class="filter-select" id="wsModel" style="min-width:160px">
+                  <option value="mimo-v2.5-pro">mimo-v2.5-pro ⭐</option>
+                  <option value="mimo-v2.5">mimo-v2.5</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" id="btnGenerate" onclick="generateArticle()">
+                ✨ 生成文章
+              </button>
+              <button class="btn btn-danger hidden" id="btnStopGenerate" onclick="stopGeneration()">
+                ⏹ 停止
+              </button>
+              <button class="btn" id="btnSaveArticle" onclick="saveArticle()" style="display:none">
+                💾 保存
+              </button>
+              <button class="btn" id="btnExportArticle" onclick="exportCurrentArticle()" style="display:none">
+                📄 导出Word
+              </button>
+            </div>
+            <div class="article-editor">
+              <div class="article-editor-header">
+                <span class="text-muted text-sm" id="wsSelectedQuestion">← 从左侧选择一个问题开始</span>
+                <span class="text-muted text-sm" id="wsWordCount"></span>
+              </div>
+              <div class="article-content" id="wsArticleContent">
+                <div class="article-placeholder">
+                  <div class="icon">✍️</div>
+                  <p>选择一个问题，然后点击「生成文章」</p>
+                  <p class="text-sm text-muted mt-8">AI 将根据 GEO 模板结构自动生成内容</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Page: Distribution ====== -->
+      <div class="page" id="page-distribution">
+        <div class="filter-bar mb-16">
+          <select class="filter-select" id="distArticleSelect" style="min-width:300px">
+            <option value="">选择一篇已生成的文章...</option>
+          </select>
+          <button class="btn btn-primary" onclick="generateDistribution()">📡 生成各平台版本</button>
+          <button class="btn btn-warning" onclick="generateDistribution(true)" id="btnRegenDist" style="display:none">🔄 重新生成</button>
+          <button class="btn" onclick="exportAllDistribution()" id="btnExportDist" style="display:none">📥 全部导出Word</button>
+        </div>
+        <div id="distMatrixInfo" class="mb-16">
+          <div class="card" style="padding:24px;text-align:center;color:var(--text-muted);">
+            <p style="font-size:32px;margin-bottom:12px;opacity:0.3;">📡</p>
+            <p style="font-weight:600;margin-bottom:8px;">选择一篇文章后，一键生成 6 个平台版本</p>
+            <p style="font-size:13px;">📘 知乎 → 📰 百家号 → 🌐 官网 → 📱 公众号 → 📕 小红书 → 🎬 抖音/视频号</p>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">每个平台使用专属改写 Prompt，内容自动保存，刷新不丢失</p>
+          </div>
+        </div>
+        <div id="distPlatforms"></div>
+      </div>
+
+      <!-- ====== Page: Batch Generation ====== -->
+      <div class="page" id="page-batch">
+        <div class="settings-section mb-16">
+          <h3>⚡ 批量生成配置</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">生成模型</label>
+              <select class="form-select" id="batchModel">
+                <option value="mimo-v2.5-pro">mimo-v2.5-pro ⭐</option>
+                <option value="mimo-v2.5">mimo-v2.5</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">批量范围</label>
+              <select class="form-select" id="batchScope">
+                <option value="selected">已勾选的问题</option>
+                <option value="high">所有高优先级</option>
+                <option value="all">全部问题</option>
+                <option value="unstarted">未开始的问题</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">生成间隔（秒）</label>
+              <input type="number" class="form-input" id="batchDelay" value="2" min="1" max="30">
+            </div>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="startBatchGeneration()">🚀 开始批量生成</button>
+            <button class="btn btn-danger hidden" id="btnStopBatch" onclick="stopBatchGeneration()">⏹ 停止</button>
+          </div>
+        </div>
+        <div id="batchProgressSection" class="hidden">
+          <div class="batch-progress">
+            <h4 style="font-size:14px;font-weight:600;">生成进度</h4>
+            <div class="progress-bar-container">
+              <div class="progress-bar" id="batchProgressBar" style="width:0%"></div>
+            </div>
+            <div class="progress-text">
+              <span id="batchProgressLabel">准备中...</span>
+              <span id="batchProgressCount">0/0</span>
+            </div>
+          </div>
+        </div>
+        <div id="batchResults"></div>
+      </div>
+
+      <!-- ====== Page: Analytics ====== -->
+      <div class="page" id="page-analytics">
+        <div class="stats-row" id="analyticsStats"></div>
+        <div class="analytics-grid" id="analyticsGrid"></div>
+      </div>
+
+      <!-- ====== Page: Kanban ====== -->
+      <div class="page" id="page-kanban">
+        <div class="filter-bar mb-16">
+          <select class="filter-select" id="kbFilterIndustry">
+            <option value="">全部行业</option>
+            <option value="通用">通用</option>
+            <option value="鞋服">鞋服</option>
+            <option value="美妆">美妆</option>
+            <option value="潮玩">潮玩</option>
+            <option value="箱包">箱包</option>
+          </select>
+          <select class="filter-select" id="kbFilterPriority">
+            <option value="">全部优先级</option>
+            <option value="高">高</option>
+            <option value="中">中</option>
+            <option value="低">低</option>
+          </select>
+        </div>
+        <div class="kanban-board" id="kanbanBoard"></div>
+      </div>
+
+      <!-- ====== Page: Test Records ====== -->
+      <div class="page" id="page-test-records">
+        <div class="stats-row" id="trStats"></div>
+        <div class="filter-bar">
+          <div class="search-input">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="trSearch" placeholder="搜索问题、竞品名称...">
+          </div>
+          <select class="filter-select" id="trFilterMentioned">
+            <option value="">全部提及状态</option>
+            <option value="是">AI已提及</option>
+            <option value="否">AI未提及</option>
+          </select>
+          <select class="filter-select" id="trFilterPlatform">
+            <option value="">全部平台</option>
+            <option value="豆包">豆包</option>
+            <option value="DeepSeek">DeepSeek</option>
+            <option value="百度AI">百度AI</option>
+            <option value="小红书点点">小红书点点</option>
+            <option value="其他">其他</option>
+          </select>
+          <select class="filter-select" id="trFilterQuestion">
+            <option value="">全部问题</option>
+          </select>
+        </div>
+        <div class="table-container">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:50px">序号</th>
+                  <th>测试日期</th>
+                  <th>客户提问</th>
+                  <th>测试平台</th>
+                  <th>AI引用了谁(竞品)</th>
+                  <th>AI是否提及新亦源</th>
+                  <th>复测日期</th>
+                  <th>备注</th>
+                  <th style="width:80px">操作</th>
+                </tr>
+              </thead>
+              <tbody id="trTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="trPagination" class="flex items-center justify-between mt-16"></div>
+      </div>
+
+      <!-- Test Record Modal -->
+      <div class="modal-overlay" id="trModal">
+        <div class="modal modal-lg">
+          <div class="modal-header">
+            <h3 id="trModalTitle">添加测试记录</h3>
+            <button class="modal-close" onclick="closeModal('trModal')">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">关联问题</label>
+              <select class="form-select" id="trmQuestionId"></select>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">测试日期</label>
+                <input type="date" class="form-input" id="trmTestDate">
+              </div>
+              <div class="form-group">
+                <label class="form-label">测试平台</label>
+                <select class="form-select" id="trmPlatform">
+                  <option value="豆包">豆包</option>
+                  <option value="DeepSeek">DeepSeek</option>
+                  <option value="百度AI">百度AI</option>
+                  <option value="小红书点点">小红书点点</option>
+                  <option value="其他">其他</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">AI是否提及新亦源</label>
+                <select class="form-select" id="trmMentioned">
+                  <option value="否">否</option>
+                  <option value="是">是</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">复测日期</label>
+                <input type="date" class="form-input" id="trmRetestDate">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">AI当前引用了谁（竞品情报）</label>
+              <textarea class="form-textarea" id="trmCompetitors" rows="3" placeholder="记录 AI 回答中引用/推荐了哪些竞品公司或来源"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">链接/截图地址</label>
+              <input type="text" class="form-input" id="trmLink" placeholder="可选，填截图路径或链接">
+            </div>
+            <div class="form-group">
+              <label class="form-label">备注</label>
+              <textarea class="form-textarea" id="trmNotes" rows="2" placeholder="其他观察"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn" onclick="closeModal('trModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveTestRecord()">保存</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Page: Settings ====== -->
+      <div class="page" id="page-settings">
+        <div class="settings-section">
+          <h3>🔑 API 连接</h3>
+          <p class="text-sm text-muted mb-16">API Key 已安全存储在服务端，前端不暴露密钥。</p>
+          <div class="form-group">
+            <label class="form-label">连接状态</label>
+            <div id="apiStatus">
+              <span class="api-status"><span class="dot" style="background:var(--orange)"></span> 检测中...</span>
+            </div>
+          </div>
+          <div class="btn-group">
+            <button class="btn" onclick="testApiConnection()">🔌 测试连接</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>🤖 可用模型</h3>
+          <div id="modelList"></div>
+        </div>
+        <div class="settings-section">
+          <h3>📝 文章生成设置</h3>
+          <div class="form-group">
+            <label class="form-label">System Prompt（AI 角色设定）</label>
+            <textarea class="form-textarea" id="settingsSystemPrompt" rows="4" placeholder="自定义 AI 的角色和写作要求..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">每篇文章最大 Token 数</label>
+            <input type="number" class="form-input" id="settingsMaxTokens" value="8000" min="500" max="32000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Temperature (0-2)</label>
+            <input type="number" class="form-input" id="settingsTemperature" value="0.7" min="0" max="2" step="0.1">
+          </div>
+          <button class="btn btn-primary" onclick="saveGenSettings()">💾 保存设置</button>
+        </div>
+      </div>
+
+      <!-- ====== Page: Data Management ====== -->
+      <div class="page" id="page-data">
+        <div class="settings-section">
+          <h3>💾 数据导入导出</h3>
+          <div class="data-actions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+            <div class="data-card">
+              <div class="icon">📥</div>
+              <h4>导入 JSON</h4>
+              <p>从备份文件恢复数据</p>
+              <button class="btn btn-sm" onclick="importJSON()">选择文件</button>
+              <input type="file" id="importJsonInput" accept=".json" style="display:none">
+            </div>
+            <div class="data-card">
+              <div class="icon">📤</div>
+              <h4>导出 JSON</h4>
+              <p>备份所有数据</p>
+              <button class="btn btn-sm btn-primary" onclick="exportJSON()">导出</button>
+            </div>
+            <div class="data-card">
+              <div class="icon">📊</div>
+              <h4>导出 Excel</h4>
+              <p>导出为 .xlsx 文件</p>
+              <button class="btn btn-sm btn-success" onclick="exportExcel()">导出</button>
+            </div>
+            <div class="data-card">
+              <div class="icon">📄</div>
+              <h4>导出全部文章</h4>
+              <p>导出所有已生成文章为 Word</p>
+              <button class="btn btn-sm" onclick="exportAllArticlesWord()">导出</button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>⚠️ 危险操作</h3>
+          <div class="btn-group">
+            <button class="btn btn-danger" onclick="resetAllData()">🗑️ 重置所有数据</button>
+            <button class="btn" onclick="loadDefaultData()">📋 重新加载默认数据</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end main-scroll -->
+  </div><!-- end main -->
+</div><!-- end app -->
+
+<!-- ========== Modals ========== -->
+
+<!-- Question Modal -->
+<div class="modal-overlay" id="questionModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 id="questionModalTitle">添加问题</h3>
+      <button class="modal-close" onclick="closeModal('questionModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">行业</label>
+          <select class="form-select" id="qmIndustry">
+            <option value="通用">通用</option>
+            <option value="鞋服">鞋服</option>
+            <option value="美妆">美妆</option>
+            <option value="潮玩">潮玩</option>
+            <option value="箱包">箱包</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">选题簇</label>
+          <input type="text" class="form-input" id="qmCluster" placeholder="例如：C1 选服务商">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">客户提问（长尾关键词）</label>
+        <input type="text" class="form-input" id="qmQuestion" placeholder="输入客户的实际搜索问题">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">优化维度</label>
+          <input type="text" class="form-input" id="qmDimension" placeholder="例如：选型/找服务商">
+        </div>
+        <div class="form-group">
+          <label class="form-label">搜索意图</label>
+          <select class="form-select" id="qmIntent">
+            <option value="认知了解">认知了解</option>
+            <option value="对比筛选">对比筛选</option>
+            <option value="决策选型">决策选型</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">优先级</label>
+          <select class="form-select" id="qmPriority">
+            <option value="高">高</option>
+            <option value="中">中</option>
+            <option value="低">低</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">内容状态</label>
+          <select class="form-select" id="qmStatus">
+            <option value="未开始">未开始</option>
+            <option value="进行中">进行中</option>
+            <option value="已发布">已发布</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">建议主打卖点</label>
+        <textarea class="form-textarea" id="qmSellingPoint" rows="2" placeholder="回答该问题时重点突出的优势"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <textarea class="form-textarea" id="qmNotes" rows="2" placeholder="可选备注"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('questionModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveQuestion()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Selling Point Modal -->
+<div class="modal-overlay" id="spModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="spModalTitle">添加卖点</h3>
+      <button class="modal-close" onclick="closeModal('spModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">类别</label>
+        <input type="text" class="form-input" id="spmCategory" placeholder="例如：规模、团队、网络">
+      </div>
+      <div class="form-group">
+        <label class="form-label">卖点 / 数据点</label>
+        <textarea class="form-textarea" id="spmPoint" rows="3" placeholder="具体的卖点描述"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">适用的提问维度</label>
+        <input type="text" class="form-input" id="spmDimension" placeholder="例如：选型 / 成本 / 产能">
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <input type="text" class="form-input" id="spmNotes" placeholder="数据来源等">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('spModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveSellingPoint()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Article View Modal -->
+<div class="modal-overlay" id="articleModal">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <h3>📄 文章详情</h3>
+      <button class="modal-close" onclick="closeModal('articleModal')">✕</button>
+    </div>
+    <div class="modal-body" id="articleModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('articleModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
