@@ -427,7 +427,6 @@ function navigateTo(page) {
     distribution: ['📡', '一稿多发'],
     articles: ['📄', '文稿管理'],
     batch: ['⚡', '批量生成'],
-    analytics: ['📊', '数据看板'],
     kanban: ['📌', '看板'],
     'test-records': ['🧪', '测试记录'],
     changelog: ['📜', '更新日志'],
@@ -496,7 +495,6 @@ function renderPage(page) {
     case 'workspace': renderWorkspace(); break;
     case 'distribution': renderDistribution(); break;
     case 'articles': renderArticles(); break;
-    case 'analytics': renderAnalytics(); break;
     case 'kanban': renderKanban(); break;
     case 'test-records': renderTestRecords(); break;
     case 'changelog': renderChangelog(); break;
@@ -1639,133 +1637,100 @@ function stopBatchGeneration() {
   }
 }
 
-// ===== Analytics Page =====
-function renderAnalytics() {
+// ===== Dashboard Banner =====
+let dashboardCollapsed = false;
+
+function toggleDashboard() {
+  dashboardCollapsed = !dashboardCollapsed;
+  const body = document.getElementById('dashboardBody');
+  const btn = document.getElementById('dashboardToggle');
+  if (body) body.style.display = dashboardCollapsed ? 'none' : '';
+  if (btn) btn.textContent = dashboardCollapsed ? '展开 ▼' : '收起 ▲';
+}
+
+function renderDashboard() {
   const all = state.questions;
+  const articles = state.articles || [];
+
+  // Stats
   const total = all.length;
-  const tested = all.filter(q => q.tested === '✓').length;
-  const mentioned = all.filter(q => q.mentioned === '是').length;
+  const pending = all.filter(q => !q.status || q.status === '未开始').length;
+  const inProgress = all.filter(q => q.status === '进行中').length;
   const published = all.filter(q => q.status === '已发布').length;
+  const articleCount = articles.length;
 
-  document.getElementById('analyticsStats').innerHTML = `
-    <div class="stat-card blue"><div class="stat-label">总问题</div><div class="stat-value">${total}</div></div>
-    <div class="stat-card green"><div class="stat-label">已测试</div><div class="stat-value">${tested}</div></div>
-    <div class="stat-card purple"><div class="stat-label">AI提及</div><div class="stat-value">${mentioned}</div></div>
-    <div class="stat-card orange"><div class="stat-label">已发布</div><div class="stat-value">${published}</div></div>
-    <div class="stat-card"><div class="stat-label">文章数</div><div class="stat-value">${state.articles.length}</div></div>
-  `;
+  const statsEl = document.getElementById('dashboardStats');
+  if (statsEl) {
+    statsEl.innerHTML = `
+      <div class="dash-stat"><div class="dash-stat-value blue">${total}</div><div class="dash-stat-label">总问题</div></div>
+      <div class="dash-stat"><div class="dash-stat-value gray">${pending}</div><div class="dash-stat-label">待处理</div></div>
+      <div class="dash-stat"><div class="dash-stat-value orange">${inProgress}</div><div class="dash-stat-label">进行中</div></div>
+      <div class="dash-stat"><div class="dash-stat-value green">${published}</div><div class="dash-stat-label">已发布</div></div>
+      <div class="dash-stat"><div class="dash-stat-value purple">${articleCount}</div><div class="dash-stat-label">已生成文章</div></div>
+    `;
+  }
 
-  const grid = document.getElementById('analyticsGrid');
-
-  // By industry
-  const industries = {};
-  all.forEach(q => { industries[q.industry] = (industries[q.industry] || 0) + 1; });
-  const maxIndustry = Math.max(...Object.values(industries), 1);
+  // Charts
+  const chartsEl = document.getElementById('dashboardCharts');
+  if (!chartsEl) return;
 
   // By priority
   const priorities = { '高': 0, '中': 0, '低': 0 };
   all.forEach(q => { priorities[q.priority] = (priorities[q.priority] || 0) + 1; });
-  const maxPriority = Math.max(...Object.values(priorities), 1);
+  const maxP = Math.max(...Object.values(priorities), 1);
 
   // By status
-  const statuses = { '未开始': 0, '进行中': 0, '已发布': 0 };
-  all.forEach(q => { statuses[q.status || '未开始'] = (statuses[q.status || '未开始'] || 0) + 1; });
-  const maxStatus = Math.max(...Object.values(statuses), 1);
+  const statuses = { '未开始': pending, '进行中': inProgress, '已发布': published };
+  const maxS = Math.max(...Object.values(statuses), 1);
 
-  // By intent
-  const intents = {};
-  all.forEach(q => { intents[q.intent] = (intents[q.intent] || 0) + 1; });
-  const maxIntent = Math.max(...Object.values(intents), 1);
+  // By industry
+  const industries = {};
+  all.forEach(q => { industries[q.industry] = (industries[q.industry] || 0) + 1; });
+  const maxI = Math.max(...Object.values(industries), 1);
 
-  // By cluster
+  // By cluster (top 6)
   const clusters = {};
   all.forEach(q => { if (q.cluster) clusters[q.cluster] = (clusters[q.cluster] || 0) + 1; });
-  const maxCluster = Math.max(...Object.values(clusters), 1);
+  const sortedClusters = Object.entries(clusters).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const maxC = sortedClusters.length > 0 ? sortedClusters[0][1] : 1;
 
-  // AI mention rate by industry
-  const mentionByIndustry = {};
-  all.forEach(q => {
-    if (!mentionByIndustry[q.industry]) mentionByIndustry[q.industry] = { total: 0, mentioned: 0 };
-    mentionByIndustry[q.industry].total++;
-    if (q.mentioned === '是') mentionByIndustry[q.industry].mentioned++;
-  });
-
-  grid.innerHTML = `
-    <div class="card analytics-card">
-      <h4 style="margin-bottom:16px;font-size:14px;font-weight:600;">行业分布</h4>
-      ${Object.entries(industries).map(([k, v]) => `
-        <div class="bar-chart-row">
-          <div class="bar-label">${k}</div>
-          <div class="bar-track">
-            <div class="bar-fill bar-blue" style="width:${Math.round(v / maxIndustry * 100)}%"></div>
-          </div>
-          <div class="bar-value">${v}</div>
-        </div>
-      `).join('')}
-    </div>
-
-    <div class="card analytics-card">
-      <h4 style="margin-bottom:16px;font-size:14px;font-weight:600;">优先级分布</h4>
+  chartsEl.innerHTML = `
+    <div class="dash-chart-card">
+      <h4>优先级分布</h4>
       ${Object.entries(priorities).map(([k, v]) => `
         <div class="bar-chart-row">
           <div class="bar-label">${k}</div>
-          <div class="bar-track">
-            <div class="bar-fill bar-${k === '高' ? 'red' : k === '中' ? 'orange' : 'gray'}" style="width:${Math.round(v / maxPriority * 100)}%"></div>
-          </div>
+          <div class="bar-track"><div class="bar-fill bar-${k === '高' ? 'red' : k === '中' ? 'orange' : 'gray'}" style="width:${Math.round(v / maxP * 100)}%"></div></div>
           <div class="bar-value">${v}</div>
         </div>
       `).join('')}
     </div>
-
-    <div class="card analytics-card">
-      <h4 style="margin-bottom:16px;font-size:14px;font-weight:600;">内容状态</h4>
+    <div class="dash-chart-card">
+      <h4>内容状态</h4>
       ${Object.entries(statuses).map(([k, v]) => `
         <div class="bar-chart-row">
           <div class="bar-label">${k}</div>
-          <div class="bar-track">
-            <div class="bar-fill bar-${k === '已发布' ? 'green' : k === '进行中' ? 'blue' : 'gray'}" style="width:${Math.round(v / maxStatus * 100)}%"></div>
-          </div>
+          <div class="bar-track"><div class="bar-fill bar-${k === '已发布' ? 'green' : k === '进行中' ? 'blue' : 'gray'}" style="width:${Math.round(v / maxS * 100)}%"></div></div>
           <div class="bar-value">${v}</div>
         </div>
       `).join('')}
     </div>
-
-    <div class="card analytics-card">
-      <h4 style="margin-bottom:16px;font-size:14px;font-weight:600;">搜索意图</h4>
-      ${Object.entries(intents).map(([k, v]) => `
+    <div class="dash-chart-card">
+      <h4>行业分布</h4>
+      ${Object.entries(industries).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
         <div class="bar-chart-row">
           <div class="bar-label">${k}</div>
-          <div class="bar-track">
-            <div class="bar-fill bar-purple" style="width:${Math.round(v / maxIntent * 100)}%"></div>
-          </div>
+          <div class="bar-track"><div class="bar-fill bar-blue" style="width:${Math.round(v / maxI * 100)}%"></div></div>
           <div class="bar-value">${v}</div>
         </div>
       `).join('')}
     </div>
-
-    <div class="card analytics-card">
-      <h4 style="margin-bottom:16px;font-size:14px;font-weight:600;">AI提及率（按行业）</h4>
-      ${Object.entries(mentionByIndustry).map(([k, v]) => {
-        const rate = v.total > 0 ? Math.round(v.mentioned / v.total * 100) : 0;
-        return `
-          <div class="bar-chart-row">
-            <div class="bar-label">${k}</div>
-            <div class="bar-track">
-              <div class="bar-fill bar-green" style="width:${rate}%"></div>
-            </div>
-            <div class="bar-value">${rate}%</div>
-          </div>`;
-      }).join('')}
-    </div>
-
-    <div class="card analytics-card">
-      <h4 style="margin-bottom:16px;font-size:14px;font-weight:600;">选题簇分布</h4>
-      ${Object.entries(clusters).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
+    <div class="dash-chart-card">
+      <h4>选题簇分布 Top 6</h4>
+      ${sortedClusters.map(([k, v]) => `
         <div class="bar-chart-row">
-          <div class="bar-label" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${k}">${k}</div>
-          <div class="bar-track">
-            <div class="bar-fill bar-blue" style="width:${Math.round(v / maxCluster * 100)}%"></div>
-          </div>
+          <div class="bar-label" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${k}">${k}</div>
+          <div class="bar-track"><div class="bar-fill bar-purple" style="width:${Math.round(v / maxC * 100)}%"></div></div>
           <div class="bar-value">${v}</div>
         </div>
       `).join('')}
@@ -2976,5 +2941,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Initial render
+  renderDashboard();
   navigateTo('questions');
 });

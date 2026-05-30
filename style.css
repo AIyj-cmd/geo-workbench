@@ -1185,6 +1185,76 @@ tr:last-child td { border-bottom: none; }
   font-size: 13px;
 }
 
+/* === Dashboard Banner === */
+.dashboard-banner {
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.dashboard-banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+.dashboard-banner-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dashboard-banner-body {
+  padding: 16px 20px;
+}
+.dashboard-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.dash-stat {
+  flex: 1;
+  min-width: 100px;
+  text-align: center;
+  padding: 12px 8px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+.dash-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.dash-stat-value.blue { color: var(--blue); }
+.dash-stat-value.green { color: var(--green); }
+.dash-stat-value.orange { color: var(--orange); }
+.dash-stat-value.purple { color: var(--purple); }
+.dash-stat-value.red { color: var(--red); }
+.dash-stat-value.gray { color: var(--text-muted); }
+.dash-stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.dashboard-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+.dash-chart-card {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 16px;
+}
+.dash-chart-card h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
 /* === Changelog Page === */
 .changelog-header {
   text-align: center;
