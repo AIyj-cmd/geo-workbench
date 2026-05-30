@@ -18,9 +18,12 @@
       <p>GEO 内容工作台</p>
     </div>
     <nav class="sidebar-nav">
+      <button class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">📊</span> 数据看板
+      </button>
       <div class="nav-section">
         <div class="nav-section-title">内容管理</div>
-        <button class="nav-item active" data-page="questions">
+        <button class="nav-item" data-page="questions">
           <span class="nav-icon">📋</span> 客户提问词库
         </button>
         <button class="nav-item" data-page="selling-points">
@@ -77,20 +80,14 @@
 
     <div class="main-scroll">
 
-      <!-- ====== Dashboard Banner ====== -->
-      <div class="dashboard-banner" id="dashboardBanner">
-        <div class="dashboard-banner-header">
-          <span class="dashboard-banner-title">📊 工作进度总览</span>
-          <button class="btn btn-ghost btn-sm" onclick="toggleDashboard()" id="dashboardToggle">收起 ▲</button>
-        </div>
-        <div class="dashboard-banner-body" id="dashboardBody">
-          <div class="dashboard-stats" id="dashboardStats"></div>
-          <div class="dashboard-charts" id="dashboardCharts"></div>
-        </div>
+      <!-- ====== Page: Dashboard ====== -->
+      <div class="page active" id="page-dashboard">
+        <div class="dashboard-stats" id="dashboardStats"></div>
+        <div class="dashboard-charts" id="dashboardCharts"></div>
       </div>
 
       <!-- ====== Page: Questions ====== -->
-      <div class="page active" id="page-questions">
+      <div class="page" id="page-questions">
         <div class="stats-row" id="questionStats"></div>
         <div class="filter-bar">
           <div class="search-input">

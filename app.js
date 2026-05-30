@@ -421,6 +421,7 @@ function navigateTo(page) {
 
   // Update title
   const titles = {
+    dashboard: ['📊', '数据看板'],
     questions: ['📋', '客户提问词库'],
     'selling-points': ['🎯', '卖点弹药库'],
     workspace: ['✍️', '内容工作台'],
@@ -438,6 +439,7 @@ function navigateTo(page) {
 
   // Page descriptions
   const descriptions = {
+    dashboard: '一览全局工作进度：问题处理状态、优先级分布、行业覆盖、选题簇热度。',
     questions: '管理客户搜索的长尾关键词，跟踪AI搜索测试状态，是整个GEO内容策略的起点。',
     'selling-points': '汇总产品核心卖点和差异化优势，为内容生成提供「弹药」支撑。',
     workspace: '选一个问题，调用AI生成符合母稿规范的GEO文章，支持多角度切入。',
@@ -490,6 +492,7 @@ function updateHeaderActions(page) {
 
 function renderPage(page) {
   switch (page) {
+    case 'dashboard': renderDashboard(); break;
     case 'questions': renderQuestions(); break;
     case 'selling-points': renderSellingPoints(); break;
     case 'workspace': renderWorkspace(); break;
@@ -1637,17 +1640,7 @@ function stopBatchGeneration() {
   }
 }
 
-// ===== Dashboard Banner =====
-let dashboardCollapsed = false;
-
-function toggleDashboard() {
-  dashboardCollapsed = !dashboardCollapsed;
-  const body = document.getElementById('dashboardBody');
-  const btn = document.getElementById('dashboardToggle');
-  if (body) body.style.display = dashboardCollapsed ? 'none' : '';
-  if (btn) btn.textContent = dashboardCollapsed ? '展开 ▼' : '收起 ▲';
-}
-
+// ===== Dashboard Page =====
 function renderDashboard() {
   const all = state.questions;
   const articles = state.articles || [];
@@ -2942,5 +2935,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial render
   renderDashboard();
-  navigateTo('questions');
+  navigateTo('dashboard');
 });

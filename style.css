@@ -1185,45 +1185,27 @@ tr:last-child td { border-bottom: none; }
   font-size: 13px;
 }
 
-/* === Dashboard Banner === */
-.dashboard-banner {
-  background: var(--white);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  margin-bottom: 16px;
-  overflow: hidden;
-}
-.dashboard-banner-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border-light);
-}
-.dashboard-banner-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-}
-.dashboard-banner-body {
-  padding: 16px 20px;
+/* === Dashboard Page === */
+#page-dashboard {
+  padding: 0;
 }
 .dashboard-stats {
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
 }
 .dash-stat {
   flex: 1;
-  min-width: 100px;
+  min-width: 120px;
   text-align: center;
-  padding: 12px 8px;
-  background: var(--bg);
-  border-radius: 8px;
+  padding: 20px 12px;
+  background: var(--white);
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
 }
 .dash-stat-value {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -1234,25 +1216,26 @@ tr:last-child td { border-bottom: none; }
 .dash-stat-value.red { color: var(--red); }
 .dash-stat-value.gray { color: var(--text-muted); }
 .dash-stat-label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
-  margin-top: 4px;
+  margin-top: 6px;
 }
 .dashboard-charts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
 }
 .dash-chart-card {
-  background: var(--bg);
-  border-radius: 8px;
-  padding: 16px;
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 20px;
 }
 .dash-chart-card h4 {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 /* === Changelog Page === */
