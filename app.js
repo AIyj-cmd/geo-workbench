@@ -425,6 +425,7 @@ function navigateTo(page) {
     'selling-points': ['🎯', '卖点弹药库'],
     workspace: ['✍️', '内容工作台'],
     distribution: ['📡', '一稿多发'],
+    articles: ['📄', '文稿管理'],
     batch: ['⚡', '批量生成'],
     analytics: ['📊', '数据看板'],
     kanban: ['📌', '看板'],
@@ -435,6 +436,24 @@ function navigateTo(page) {
   };
   const [icon, title] = titles[page] || ['📄', page];
   document.getElementById('pageTitle').innerHTML = `<span class="icon">${icon}</span> ${title}`;
+
+  // Page descriptions
+  const descriptions = {
+    questions: '管理客户搜索的长尾关键词，跟踪AI搜索测试状态，是整个GEO内容策略的起点。',
+    'selling-points': '汇总产品核心卖点和差异化优势，为内容生成提供「弹药」支撑。',
+    workspace: '选一个问题，调用AI生成符合母稿规范的GEO文章，支持多角度切入。',
+    distribution: '将母稿一键改写为知乎、百家号、官网、公众号、小红书、抖音6个平台版本。',
+    articles: '统一管理所有已生成的文章，查看各平台版本、编辑内容、导出Word。',
+    batch: '批量选择多个问题，自动排队生成文章，适合大规模内容生产场景。',
+    analytics: '可视化展示词库覆盖率、AI提及率、发布进度等核心运营指标。',
+    kanban: '拖拽式看板管理文章生产流程：未开始 → 进行中 → 已发布。',
+    'test-records': '记录每次AI搜索实测结果，追踪竞品情报和新亦源提及情况。',
+    changelog: '查看工作台的版本迭代记录，了解每次更新的功能和优化。',
+    settings: '配置AI模型连接、调整生成参数、管理系统设置。',
+    data: '数据备份与恢复，支持JSON格式的导入导出。',
+  };
+  const subtitleEl = document.getElementById('pageSubtitle');
+  if (subtitleEl) subtitleEl.textContent = descriptions[page] || '';
 
   // Update header actions
   updateHeaderActions(page);
@@ -2841,5 +2860,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Initial render
-  renderQuestions();
+  navigateTo('questions');
 });

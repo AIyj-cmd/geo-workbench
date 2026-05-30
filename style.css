@@ -160,6 +160,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   gap: 8px;
 }
 .page-title .icon { font-size: 22px; }
+.page-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.5;
+}
 .header-actions { display: flex; gap: 8px; align-items: center; }
 
 /* === Buttons === */
