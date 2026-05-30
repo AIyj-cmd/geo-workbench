@@ -2095,7 +2095,7 @@ function exportExcel() {
     '序号': q.id,
     '行业': q.industry,
     '选题簇': q.cluster,
-    '客户提问': q.question,
+    '客户提问（长尾关键词）': q.question,
     '优化维度': q.dimension,
     '搜索意图': q.intent,
     '优先级': q.priority,
@@ -2187,7 +2187,7 @@ function handleQExcelImport(e) {
 
       let imported = 0;
       data.forEach(row => {
-        const question = row['客户提问'] || row['question'] || row['问题'] || '';
+        const question = row['客户提问（长尾关键词）'] || row['客户提问'] || row['question'] || row['问题'] || '';
         if (!question) return;
         state.questions.push({
           id: state.nextQuestionId++,
@@ -2262,7 +2262,7 @@ function handleSPExcelImport(e) {
 function downloadQTemplate() {
   if (typeof XLSX === 'undefined') { showToast('XLSX 库未加载', 'error'); return; }
   const wb = XLSX.utils.book_new();
-  const data = [{ '行业': '通用', '选题簇': 'C1 选服务商', '客户提问': '示例问题', '优化维度': '选型/找服务商', '搜索意图': '认知了解', '优先级': '中', '建议主打卖点': '示例卖点', '内容状态': '未开始', '备注': '' }];
+  const data = [{ '行业': '通用', '选题簇': 'C1 选服务商', '客户提问（长尾关键词）': '示例问题', '优化维度': '选型/找服务商', '搜索意图': '认知了解', '优先级': '中', '建议主打卖点': '示例卖点', '内容状态': '未开始', '备注': '' }];
   const ws = XLSX.utils.json_to_sheet(data);
   XLSX.utils.book_append_sheet(wb, ws, '问题模板');
   XLSX.writeFile(wb, '问题导入模板.xlsx');
