@@ -429,6 +429,7 @@ function navigateTo(page) {
     analytics: ['📊', '数据看板'],
     kanban: ['📌', '看板'],
     'test-records': ['🧪', '测试记录'],
+    changelog: ['📜', '更新日志'],
     settings: ['⚙️', '设置'],
     data: ['💾', '数据管理'],
   };
@@ -479,6 +480,7 @@ function renderPage(page) {
     case 'analytics': renderAnalytics(); break;
     case 'kanban': renderKanban(); break;
     case 'test-records': renderTestRecords(); break;
+    case 'changelog': renderChangelog(); break;
     case 'settings': renderModelList(); break;
   }
 }
@@ -2576,6 +2578,185 @@ let filterTimers = {};
 function debounceFilter(key, fn, delay = 300) {
   clearTimeout(filterTimers[key]);
   filterTimers[key] = setTimeout(fn, delay);
+}
+
+// ===== Changelog =====
+const CHANGELOG = [
+  {
+    version: 'v1.8.0',
+    date: '2026-05-30',
+    title: '多角度生成 + Excel导入修复',
+    icon: '🎯',
+    changes: [
+      { type: 'feature', text: '多角度生成功能 — 同一问题可从5个不同切入角度生成母稿，减少内容重复度' },
+      { type: 'feature', text: '5个核心角度：FAQ问答、成本拆解、避坑指南、案例故事、对比选型' },
+      { type: 'feature', text: '角度筛选器 — 文稿管理支持按角度筛选文章' },
+      { type: 'feature', text: '批量生成支持选择角度' },
+      { type: 'feature', text: '问题列表显示已生成角度数量标签' },
+      { type: 'fix', text: 'Excel导入列名匹配 — 修复「客户提问（长尾关键词）」列名无法识别的问题' },
+      { type: 'fix', text: '导出模板列名同步更新' },
+    ]
+  },
+  {
+    version: 'v1.7.0',
+    date: '2026-05-30',
+    title: '文稿管理 + 字数统计修复',
+    icon: '📄',
+    changes: [
+      { type: 'feature', text: '文稿管理页面 — 列表展示所有已生成文章' },
+      { type: 'feature', text: '6平台状态标签（知乎/百家号/官网/公众号/小红书/抖音）' },
+      { type: 'feature', text: '搜索筛选功能 — 按关键词、平台、状态筛选文章' },
+      { type: 'feature', text: '查看编辑弹窗 — 母稿 + 6平台版本完整展示' },
+      { type: 'feature', text: 'Word导出 — 正确处理Markdown格式转换' },
+      { type: 'fix', text: '字数统计修复 — 从只统计母稿改为母稿+总计字数（含6平台版本）' },
+      { type: 'fix', text: 'escapeHtml反引号转义修复' },
+      { type: 'fix', text: '弹窗.show类缺失修复' },
+      { type: 'improve', text: 'max_tokens从4000提到16000，避免文章截断' },
+    ]
+  },
+  {
+    version: 'v1.6.0',
+    date: '2026-05-29',
+    title: '一稿多发6平台',
+    icon: '📡',
+    changes: [
+      { type: 'feature', text: '一稿多发功能 — 母稿一键改写为6个平台版本' },
+      { type: 'feature', text: '6平台独立Prompt：知乎、百家号、官网、公众号、小红书、抖音' },
+      { type: 'feature', text: '各平台版本独立存储，刷新不丢失' },
+      { type: 'feature', text: '重新生成按钮 — 已有内容时可强制重新生成' },
+      { type: 'fix', text: 'style变量残留导致内容错乱 — 已清除4处' },
+      { type: 'improve', text: '建议发布顺序：知乎→百家号→官网→公众号→小红书→抖音' },
+    ]
+  },
+  {
+    version: 'v1.5.0',
+    date: '2026-05-29',
+    title: '模型优化 + 写作规范固化',
+    icon: '🤖',
+    changes: [
+      { type: 'feature', text: '母稿写作规范作为唯一System Prompt固化' },
+      { type: 'feature', text: '7段式母稿模板：结论先行→原因→场景→数据→风险→建议→引导' },
+      { type: 'improve', text: '清除v2模型，只保留v2.5系列（v2.5-pro默认、v2.5、v2.5-tts系列）' },
+      { type: 'improve', text: 'max_tokens默认值从4000提升到16000' },
+      { type: 'improve', text: '设置页max_tokens上限从32000提升到65536' },
+      { type: 'remove', text: '移除写作风格选择器（风格已固化为母稿规范）' },
+    ]
+  },
+  {
+    version: 'v1.4.0',
+    date: '2026-05-28',
+    title: '测试记录 + Excel导入',
+    icon: '🧪',
+    changes: [
+      { type: 'feature', text: '测试记录页面 — AI搜索实测数据记录' },
+      { type: 'feature', text: '词库与测试记录双向同步' },
+      { type: 'feature', text: 'Excel导入功能 — 词库和卖点页面支持批量导入' },
+      { type: 'feature', text: '模板下载 — 提供标准导入模板' },
+      { type: 'improve', text: '测试记录支持关联问题、记录AI回答、竞品情报' },
+    ]
+  },
+  {
+    version: 'v1.3.0',
+    date: '2026-05-27',
+    title: '看板 + 拖拽',
+    icon: '📌',
+    changes: [
+      { type: 'feature', text: '看板页面 — 未开始/进行中/已发布三列视图' },
+      { type: 'feature', text: '任务卡片拖拽功能 — 跨列拖拽更新状态' },
+      { type: 'feature', text: '数据看板页面 — 统计指标可视化' },
+      { type: 'improve', text: '看板卡片显示问题摘要、优先级、行业标签' },
+    ]
+  },
+  {
+    version: 'v1.2.0',
+    date: '2026-05-26',
+    title: '卖点布局重构',
+    icon: '🎯',
+    changes: [
+      { type: 'improve', text: '卖点弹药库从卡片布局改为列表/表格布局' },
+      { type: 'improve', text: '表格支持排序、筛选、搜索' },
+      { type: 'improve', text: '卖点分类标签化展示' },
+      { type: 'fix', text: '卡片布局在数据量大时浏览效率低的问题' },
+    ]
+  },
+  {
+    version: 'v1.1.0',
+    date: '2026-05-25',
+    title: '内容工作台 + AI生成',
+    icon: '✍️',
+    changes: [
+      { type: 'feature', text: '内容工作台页面 — 选问题→生成文章的核心工作流' },
+      { type: 'feature', text: '小米MiMo模型API接入（兼容OpenAI格式）' },
+      { type: 'feature', text: '后端API代理 — API Key存储在服务端，前端不暴露密钥' },
+      { type: 'feature', text: '生成参数可调：模型、Temperature、Max Tokens' },
+      { type: 'feature', text: 'Word导出功能 — Markdown转.docx格式' },
+      { type: 'improve', text: '生成模板内置：行业分析、FAQ、成本拆解等多风格' },
+    ]
+  },
+  {
+    version: 'v1.0.0',
+    date: '2026-05-24',
+    title: '初始版本上线',
+    icon: '🚀',
+    changes: [
+      { type: 'feature', text: '客户提问词库页面 — 增删改查、筛选、搜索、分页' },
+      { type: 'feature', text: '卖点弹药库页面 — 卖点数据管理' },
+      { type: 'feature', text: 'localStorage数据持久化' },
+      { type: 'feature', text: 'JSON导入导出 — 数据备份与恢复' },
+      { type: 'feature', text: '侧边栏导航 — 内容管理/工具/设置三大分区' },
+      { type: 'feature', text: 'Node.js后端服务器搭建（端口3010）' },
+      { type: 'feature', text: 'GitHub仓库初始化' },
+    ]
+  },
+];
+
+const CHANGE_TYPE_MAP = {
+  feature: { label: '新功能', color: '#10b981', icon: '✨' },
+  fix: { label: '修复', color: '#f59e0b', icon: '🔧' },
+  improve: { label: '优化', color: '#6366f1', icon: '⚡' },
+  remove: { label: '移除', color: '#ef4444', icon: '🗑️' },
+};
+
+function renderChangelog() {
+  const container = document.getElementById('changelogContent');
+  if (!container) return;
+
+  let html = '<div class="changelog-header">';
+  html += '<h2>📜 更新日志</h2>';
+  html += '<p class="text-muted">GEO 内容工作台的功能迭代记录</p>';
+  html += '<div class="changelog-stats">';
+  html += `<span class="changelog-stat">📦 ${CHANGELOG.length} 个版本</span>`;
+  const totalFeatures = CHANGELOG.reduce((sum, v) => sum + v.changes.filter(c => c.type === 'feature').length, 0);
+  const totalFixes = CHANGELOG.reduce((sum, v) => sum + v.changes.filter(c => c.type === 'fix').length, 0);
+  const totalImproves = CHANGELOG.reduce((sum, v) => sum + v.changes.filter(c => c.type === 'improve').length, 0);
+  html += `<span class="changelog-stat">✨ ${totalFeatures} 项新功能</span>`;
+  html += `<span class="changelog-stat">🔧 ${totalFixes} 项修复</span>`;
+  html += `<span class="changelog-stat">⚡ ${totalImproves} 项优化</span>`;
+  html += '</div></div>';
+
+  html += '<div class="changelog-timeline">';
+  CHANGELOG.forEach((release, idx) => {
+    const isLatest = idx === 0;
+    html += `<div class="changelog-release${isLatest ? ' changelog-latest' : ''}">`;
+    html += '<div class="changelog-dot"></div>';
+    html += '<div class="changelog-card">';
+    html += '<div class="changelog-card-header">';
+    html += `<span class="changelog-version">${release.version}</span>`;
+    if (isLatest) html += '<span class="changelog-badge">最新</span>';
+    html += `<span class="changelog-date">${release.date}</span>`;
+    html += '</div>';
+    html += `<h3 class="changelog-title">${release.icon} ${release.title}</h3>`;
+    html += '<ul class="changelog-list">';
+    release.changes.forEach(c => {
+      const t = CHANGE_TYPE_MAP[c.type];
+      html += `<li><span class="change-tag" style="background:${t.color}">${t.icon} ${t.label}</span>${c.text}</li>`;
+    });
+    html += '</ul>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+
+  container.innerHTML = html;
 }
 
 // ===== Init =====
