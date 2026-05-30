@@ -353,6 +353,7 @@ tr:last-child td { border-bottom: none; }
 .tag-pending { background: var(--bg-hover); color: var(--text-muted); }
 .tag-progress { background: var(--blue-light); color: var(--blue); }
 .tag-done { background: var(--green-light); color: var(--green); }
+.tag-complete { background: var(--green-light); color: var(--green); }
 
 /* === Cards Grid === */
 .cards-grid {

@@ -408,6 +408,7 @@ function renderPage(page) {
     case 'selling-points': renderSellingPoints(); break;
     case 'workspace': renderWorkspace(); break;
     case 'distribution': renderDistribution(); break;
+    case 'articles': renderArticles(); break;
     case 'analytics': renderAnalytics(); break;
     case 'kanban': renderKanban(); break;
     case 'test-records': renderTestRecords(); break;
@@ -1099,6 +1100,188 @@ function exportAllDistribution() {
     }
   });
   exportToWord('一稿多发-全平台版本', allContent.trim());
+}
+
+// ===== Article Management Page =====
+function renderArticles() {
+  const search = (document.getElementById('articleSearch').value || '').toLowerCase();
+  const filterStatus = document.getElementById('articleFilterStatus').value;
+
+  let articles = [...state.articles];
+
+  // Filter by search
+  if (search) {
+    articles = articles.filter(a => {
+      const q = state.questions.find(q => q.id === a.questionId);
+      const qText = q ? q.question : '';
+      return qText.toLowerCase().includes(search) || (a.content || '').toLowerCase().includes(search);
+    });
+  }
+
+  // Filter by platform status
+  if (filterStatus === 'has-platforms') {
+    articles = articles.filter(a => a.platforms && Object.keys(a.platforms).length > 0);
+  } else if (filterStatus === 'no-platforms') {
+    articles = articles.filter(a => !a.platforms || Object.keys(a.platforms).length === 0);
+  }
+
+  // Sort by most recent first
+  articles.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+
+  document.getElementById('articleCount').textContent = `共 ${articles.length} 篇`;
+
+  if (articles.length === 0) {
+    document.getElementById('articlesTable').innerHTML = `
+      <div class="card" style="padding:48px;text-align:center;color:var(--text-muted);">
+        <p style="font-size:32px;margin-bottom:12px;opacity:0.3;">📄</p>
+        <p>暂无文稿，去<a href="#" onclick="event.preventDefault();navigateTo('workspace')" style="color:var(--blue)">内容工作台</a>生成第一篇</p>
+      </div>`;
+    return;
+  }
+
+  const platformNames = ['知乎', '百家号', '官网', '公众号', '小红书', '抖音/视频号'];
+
+  let html = `<table class="table"><thead><tr>
+    <th><input type="checkbox" onchange="toggleAllArticleCheckboxes(this.checked)"></th>
+    <th>序号</th>
+    <th>客户提问</th>
+    <th>模型</th>
+    <th>字数</th>
+    <th>多平台状态</th>
+    <th>更新时间</th>
+    <th>操作</th>
+  </tr></thead><tbody>`;
+
+  articles.forEach((a, idx) => {
+    const q = state.questions.find(q => q.id === a.questionId);
+    const qText = q ? q.question : `#${a.questionId}`;
+    const wordCount = (a.content || '').length;
+    const platforms = a.platforms || {};
+    const platformCount = Object.values(platforms).filter(v => v && v.trim()).length;
+    const platformTags = platformNames.map(name => {
+      const has = platforms[name] && platforms[name].trim();
+      return `<span class="tag ${has ? 'tag-complete' : 'tag-low'}" style="font-size:11px;padding:1px 5px;">${name.replace('/视频号', '')}</span>`;
+    }).join(' ');
+    const updatedAt = a.updatedAt ? new Date(a.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+
+    html += `<tr>
+      <td><input type="checkbox" class="article-checkbox" data-id="${a.id}"></td>
+      <td>${idx + 1}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(qText)}">${escapeHtml(qText)}</td>
+      <td><span class="tag tag-blue">${a.model || '-'}</span></td>
+      <td>${wordCount.toLocaleString()}</td>
+      <td>${platformTags} <span class="text-sm text-muted">${platformCount}/6</span></td>
+      <td class="text-sm text-muted">${updatedAt}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="viewArticle(${a.id})" title="查看/编辑">👁️</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportArticleWord(${a.id})" title="导出Word">📥</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteArticle(${a.id})" title="删除">🗑️</button>
+      </td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('articlesTable').innerHTML = html;
+}
+
+function viewArticle(articleId) {
+  const article = state.articles.find(a => a.id === articleId);
+  if (!article) return;
+
+  const q = state.questions.find(q => q.id === article.questionId);
+  const qText = q ? q.question : `文章 #${article.id}`;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'articleViewModal';
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:900px;max-height:90vh;">
+      <div class="modal-header">
+        <h3 class="modal-title">📄 ${escapeHtml(qText)}</h3>
+        <button class="modal-close" onclick="closeArticleModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:0;">
+        <div style="padding:12px 24px;background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;">
+          <span class="tag tag-blue">${article.model || '未知模型'}</span>
+          <span class="text-sm text-muted">${(article.content || '').length.toLocaleString()} 字</span>
+          <span class="text-sm text-muted">更新: ${article.updatedAt ? new Date(article.updatedAt).toLocaleString('zh-CN') : '-'}</span>
+          <span style="flex:1"></span>
+          <button class="btn btn-sm btn-primary" onclick="saveArticleEdit(${article.id})">💾 保存修改</button>
+        </div>
+        <textarea id="articleEditTextarea" style="width:100%;min-height:400px;padding:16px 24px;border:none;outline:none;font-family:inherit;font-size:14px;line-height:1.7;resize:vertical;">${escapeHtml(article.content || '')}</textarea>
+        ${article.platforms && Object.keys(article.platforms).length > 0 ? `
+          <div style="padding:16px 24px;border-top:1px solid var(--border);">
+            <h4 style="margin-bottom:12px;">📡 各平台版本</h4>
+            ${Object.entries(article.platforms).map(([platform, content]) => `
+              <details style="margin-bottom:8px;">
+                <summary style="cursor:pointer;padding:8px 0;font-weight:600;">${platform} <span class="text-sm text-muted">(${(content || '').length} 字)</span></summary>
+                <div style="padding:12px;background:var(--bg-secondary);border-radius:8px;white-space:pre-wrap;font-size:13px;line-height:1.6;max-height:300px;overflow-y:auto;">${escapeHtml(content || '')}</div>
+              </details>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeArticleModal(); });
+}
+
+function closeArticleModal() {
+  const modal = document.getElementById('articleViewModal');
+  if (modal) modal.remove();
+}
+
+function saveArticleEdit(articleId) {
+  const article = state.articles.find(a => a.id === articleId);
+  if (!article) return;
+  const textarea = document.getElementById('articleEditTextarea');
+  if (!textarea) return;
+  article.content = textarea.value;
+  article.updatedAt = new Date().toISOString();
+  saveState();
+  showToast('文章已保存', 'success');
+  closeArticleModal();
+  renderArticles();
+}
+
+function exportArticleWord(articleId) {
+  const article = state.articles.find(a => a.id === articleId);
+  if (!article) return;
+  const q = state.questions.find(q => q.id === article.questionId);
+  const title = q ? q.question : `文章${article.id}`;
+  let allContent = article.content || '';
+
+  if (article.platforms && Object.keys(article.platforms).length > 0) {
+    for (const [platform, content] of Object.entries(article.platforms)) {
+      if (content && content.trim()) {
+        allContent += `\n\n===== ${platform} =====\n\n${content}`;
+      }
+    }
+  }
+
+  exportToWord(title, allContent);
+}
+
+function deleteArticle(articleId) {
+  if (!confirm('确定删除这篇文稿？')) return;
+  state.articles = state.articles.filter(a => a.id !== articleId);
+  saveState();
+  showToast('已删除', 'success');
+  renderArticles();
+}
+
+function toggleAllArticleCheckboxes(checked) {
+  document.querySelectorAll('.article-checkbox').forEach(cb => cb.checked = checked);
+}
+
+function deleteSelectedArticles() {
+  const ids = [...document.querySelectorAll('.article-checkbox:checked')].map(cb => parseInt(cb.dataset.id));
+  if (ids.length === 0) { showToast('请先选择文稿', 'error'); return; }
+  if (!confirm(`确定删除选中的 ${ids.length} 篇文稿？`)) return;
+  state.articles = state.articles.filter(a => !ids.includes(a.id));
+  saveState();
+  showToast(`已删除 ${ids.length} 篇`, 'success');
+  renderArticles();
 }
 
 // Save platform edits when user manually edits textareas in 一稿多发

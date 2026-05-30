@@ -31,6 +31,9 @@
         <button class="nav-item" data-page="distribution">
           <span class="nav-icon">📡</span> 一稿多发
         </button>
+        <button class="nav-item" data-page="articles">
+          <span class="nav-icon">📄</span> 文稿管理
+        </button>
       </div>
       <div class="nav-section">
         <div class="nav-section-title">工具</div>
@@ -239,6 +242,28 @@
           </div>
         </div>
         <div id="distPlatforms"></div>
+      </div>
+
+      <!-- ====== Page: Article Management ====== -->
+      <div class="page" id="page-articles">
+        <div class="flex flex-between mb-16">
+          <div class="flex gap-8">
+            <div style="position:relative;">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);">🔍</span>
+              <input type="text" class="form-input" id="articleSearch" placeholder="搜索问题、内容..." style="padding-left:32px;width:260px;" oninput="renderArticles()">
+            </div>
+            <select class="filter-select" id="articleFilterStatus" onchange="renderArticles()">
+              <option value="">全部状态</option>
+              <option value="has-platforms">已生成多平台</option>
+              <option value="no-platforms">仅母稿</option>
+            </select>
+          </div>
+          <div class="flex gap-8">
+            <span class="text-sm text-muted" id="articleCount"></span>
+            <button class="btn btn-danger btn-sm" onclick="deleteSelectedArticles()">🗑️ 批量删除</button>
+          </div>
+        </div>
+        <div id="articlesTable"></div>
       </div>
 
       <!-- ====== Page: Batch Generation ====== -->
