@@ -298,7 +298,7 @@ function loadState() {
     if (settings) {
       const s = JSON.parse(settings);
       document.getElementById('settingsSystemPrompt').value = s.systemPrompt || '';
-      document.getElementById('settingsMaxTokens').value = s.maxTokens || 4000;
+      document.getElementById('settingsMaxTokens').value = s.maxTokens || 16000;
       document.getElementById('settingsTemperature').value = s.temperature || 0.7;
     }
   } catch (e) {
@@ -325,7 +325,7 @@ function saveState() {
 function getSettings() {
   return {
     systemPrompt: document.getElementById('settingsSystemPrompt').value,
-    maxTokens: parseInt(document.getElementById('settingsMaxTokens').value) || 4000,
+    maxTokens: parseInt(document.getElementById('settingsMaxTokens').value) || 16000,
     temperature: parseFloat(document.getElementById('settingsTemperature').value) || 0.7,
   };
 }
@@ -1155,7 +1155,9 @@ function renderArticles() {
   articles.forEach((a, idx) => {
     const q = state.questions.find(q => q.id === a.questionId);
     const qText = q ? q.question : `#${a.questionId}`;
-    const wordCount = (a.content || '').length;
+    const mainCount = (a.content || '').length;
+    const platformContentLen = a.platforms ? Object.values(a.platforms).reduce((sum, v) => sum + (v || '').length, 0) : 0;
+    const totalCount = mainCount + platformContentLen;
     const platforms = a.platforms || {};
     const platformCount = Object.values(platforms).filter(v => v && v.trim()).length;
     const platformTags = platformNames.map(name => {
@@ -1169,7 +1171,7 @@ function renderArticles() {
       <td>${idx + 1}</td>
       <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(qText)}">${escapeHtml(qText)}</td>
       <td><span class="tag tag-blue">${a.model || '-'}</span></td>
-      <td>${wordCount.toLocaleString()}</td>
+      <td>${mainCount.toLocaleString()}<br><span class="text-sm text-muted">总计 ${totalCount.toLocaleString()}</span></td>
       <td>${platformTags} <span class="text-sm text-muted">${platformCount}/6</span></td>
       <td class="text-sm text-muted">${updatedAt}</td>
       <td>
@@ -1866,7 +1868,7 @@ function renderModelList() {
 function saveGenSettings() {
   const settings = {
     systemPrompt: document.getElementById('settingsSystemPrompt').value,
-    maxTokens: parseInt(document.getElementById('settingsMaxTokens').value) || 4000,
+    maxTokens: parseInt(document.getElementById('settingsMaxTokens').value) || 16000,
     temperature: parseFloat(document.getElementById('settingsTemperature').value) || 0.7,
   };
   localStorage.setItem('geo_workbench_settings', JSON.stringify(settings));
