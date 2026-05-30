@@ -193,6 +193,12 @@
                   <option value="mimo-v2.5">mimo-v2.5</option>
                 </select>
               </div>
+              <div class="control-group">
+                <label>切入角度</label>
+                <select class="filter-select" id="wsAngle" style="min-width:140px" onchange="renderWorkspaceArticle()">
+                  <option value="">默认（母稿）</option>
+                </select>
+              </div>
               <button class="btn btn-primary" id="btnGenerate" onclick="generateArticle()">
                 ✨ 生成文章
               </button>
@@ -257,6 +263,9 @@
               <option value="has-platforms">已生成多平台</option>
               <option value="no-platforms">仅母稿</option>
             </select>
+            <select class="filter-select" id="articleFilterAngle" onchange="renderArticles()">
+              <option value="">全部角度</option>
+            </select>
           </div>
           <div class="flex gap-8">
             <span class="text-sm text-muted" id="articleCount"></span>
@@ -276,6 +285,12 @@
               <select class="form-select" id="batchModel">
                 <option value="mimo-v2.5-pro">mimo-v2.5-pro ⭐</option>
                 <option value="mimo-v2.5">mimo-v2.5</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">切入角度</label>
+              <select class="form-select" id="batchAngle">
+                <option value="">默认（母稿）</option>
               </select>
             </div>
           </div>

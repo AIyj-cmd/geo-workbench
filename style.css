@@ -354,6 +354,7 @@ tr:last-child td { border-bottom: none; }
 .tag-progress { background: var(--blue-light); color: var(--blue); }
 .tag-done { background: var(--green-light); color: var(--green); }
 .tag-complete { background: var(--green-light); color: var(--green); }
+.tag-purple { background: #f3e8ff; color: #7c3aed; }
 
 /* === Cards Grid === */
 .cards-grid {

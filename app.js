@@ -180,6 +180,73 @@ const DISTRIBUTION_MATRIX = [
   },
 ];
 
+// ===== Writing Angles =====
+const ANGLES = [
+  {
+    id: 'faq',
+    name: 'FAQ 问答',
+    icon: '❓',
+    color: '#6366f1',
+    desc: '纯问答对格式，AI 最爱抓取',
+    prompt: `额外要求——FAQ 视角：
+- 以"用户问 → 专家答"的问答对为核心结构，至少写 6 组 Q&A。
+- 每个回答简明扼要（50-120字），数据先行，一句话给结论。
+- 问题用客户真实搜索口语（如"代发一单多少钱""退货怎么处理"）。
+- FAQ 板块放在文章主体之后，用 Markdown 表格或清单呈现。
+- 适合百度AI、豆包等直接抓取引用。`
+  },
+  {
+    id: 'cost',
+    name: '成本拆解',
+    icon: '💰',
+    color: '#f59e0b',
+    desc: '价格结构、省钱逻辑、ROI',
+    prompt: `额外要求——成本视角：
+- 围绕"钱"展开：费用构成、计费方式、省钱逻辑、投入产出比。
+- 用具体数字拆解（如"自建月均X万 vs 外包月均Y万，省Z%"），数字必须来自事实库。
+- 给出不同体量（日单50/500/5000）的成本区间参考。
+- 适合搜索"代发多少钱""外包划算吗"等价格类意图。`
+  },
+  {
+    id: 'risk',
+    name: '避坑指南',
+    icon: '⚠️',
+    color: '#ef4444',
+    desc: '踩雷清单、风险提示、收藏率高',
+    prompt: `额外要求——避坑/风险视角：
+- 以"选错仓的代价"或"常见踩坑"为主线，写成避坑清单。
+- 每个坑配一个"正确做法"，形成对比。
+- 口吻像过来人提醒同行，不是广告，信息密度要高。
+- 适合知乎、小红书等收藏型平台，结尾可加"建议收藏"引导。
+- 不点名任何具体竞品公司。`
+  },
+  {
+    id: 'case',
+    name: '案例故事',
+    icon: '📋',
+    color: '#10b981',
+    desc: '真实场景、前后对比、信任感',
+    prompt: `额外要求——案例视角：
+- 以一个真实或典型场景为主线讲故事（如"某服饰品牌从自建仓切换到云仓后的90天"）。
+- 结构：痛点背景 → 方案选择 → 实施过程 → 量化结果。
+- 数字必须来自事实库，未授权客户名写"某品牌"。
+- 适合决策阶段用户，建立信任感。`
+  },
+  {
+    id: 'compare',
+    name: '对比选型',
+    icon: '⚖️',
+    color: '#8b5cf6',
+    desc: '选型框架、评估清单、决策辅助',
+    prompt: `额外要求——对比/选型视角：
+- 提供一个通用的"选仓评估框架"，帮用户建立判断标准。
+- 用表格对比"自建 vs 外包"或"不同类型云仓"的优劣。
+- 给出一份可直接用的"选仓检查清单"（10-15项）。
+- 适合搜索"怎么选""哪个好"等决策意图。
+- 不直接贬低竞品，用客观维度对比。`
+  },
+];
+
 // ===== Default Data =====
 const DEFAULT_QUESTIONS = [
   { id: 1, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商代发货找哪家第三方仓配公司靠谱', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
@@ -742,6 +809,18 @@ function deleteSP(id) {
 
 // ===== Workspace Page =====
 function renderWorkspace() {
+  // Populate angle dropdown
+  const angleSelect = document.getElementById('wsAngle');
+  if (angleSelect && angleSelect.options.length <= 1) {
+    ANGLES.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = `${a.icon} ${a.name}`;
+      opt.title = a.desc;
+      angleSelect.appendChild(opt);
+    });
+  }
+
   const list = document.getElementById('wsQuestionList');
   const search = (document.getElementById('wsSearch').value || '').toLowerCase();
   let qs = state.questions;
@@ -750,12 +829,14 @@ function renderWorkspace() {
   list.innerHTML = qs.map(q => {
     const selected = state.wsSelectedQuestionId === q.id ? 'selected' : '';
     const hasArticle = state.articles.some(a => a.questionId === q.id);
+    const articleCount = state.articles.filter(a => a.questionId === q.id).length;
+    const angleLabel = articleCount > 1 ? `<span class="tag tag-purple" style="font-size:10px">${articleCount}个角度</span>` : (hasArticle ? '<span class="tag tag-green" style="font-size:10px">已有文章</span>' : '');
     return `<div class="workspace-question-item ${selected}" onclick="selectWorkspaceQuestion(${q.id})">
       <div class="workspace-q-text">${q.question}</div>
       <div class="workspace-q-meta">
         <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
         <span class="tag tag-${q.priority === '高' ? 'high' : q.priority === '中' ? 'medium' : 'low'}" style="font-size:10px">${q.priority}</span>
-        ${hasArticle ? '<span class="tag tag-green" style="font-size:10px">已有文章</span>' : ''}
+        ${angleLabel}
       </div>
     </div>`;
   }).join('');
@@ -779,13 +860,31 @@ function selectWorkspaceQuestion(id) {
 }
 
 function renderWorkspaceArticle() {
-  const article = state.articles.find(a => a.questionId === state.wsSelectedQuestionId);
+  const angleId = document.getElementById('wsAngle').value;
+  const angleKey = angleId || '';
+
+  // Find article matching both question and angle
+  const article = state.articles.find(a =>
+    a.questionId === state.wsSelectedQuestionId && (a.angle || '') === angleKey
+  );
+
+  // Count all articles for this question (different angles)
+  const allArticles = state.articles.filter(a => a.questionId === state.wsSelectedQuestionId);
+
   if (!article) {
+    let angleHint = '';
+    if (allArticles.length > 0) {
+      const existingAngles = allArticles.map(a => {
+        const ag = ANGLES.find(x => x.id === a.angle);
+        return ag ? `${ag.icon} ${ag.name}` : '📝 母稿';
+      }).join('、');
+      angleHint = `<p class="text-sm text-muted mt-8">该问题已有版本：${existingAngles}</p>`;
+    }
     document.getElementById('wsArticleContent').innerHTML = `
       <div class="article-placeholder">
         <div class="icon">✍️</div>
         <p>点击「生成文章」为该问题生成内容</p>
-        <p class="text-sm text-muted mt-8">AI 将根据 GEO 模板结构自动生成内容</p>
+        ${angleHint}
       </div>`;
     document.getElementById('wsWordCount').textContent = '';
     state.wsCurrentArticle = null;
@@ -793,7 +892,11 @@ function renderWorkspaceArticle() {
   }
   state.wsCurrentArticle = article;
   // Show in edit mode with textarea
+  const angleLabel = article.angleName ? ` | 角度：${article.angleName}` : '';
   document.getElementById('wsArticleContent').innerHTML = `
+    <div style="padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted);">
+      模型：${article.model || '-'}${angleLabel} | 更新：${article.updatedAt ? new Date(article.updatedAt).toLocaleString('zh-CN') : '-'}
+    </div>
     <textarea class="article-textarea" id="wsArticleText" oninput="updateWordCount()">${escapeHtml(article.content || '')}</textarea>
   `;
   updateWordCount();
@@ -817,17 +920,24 @@ async function generateArticle() {
   if (!q) return;
 
   const model = document.getElementById('wsModel').value;
+  const angleId = document.getElementById('wsAngle').value;
+  const angle = angleId ? ANGLES.find(a => a.id === angleId) : null;
   const settings = getSettings();
 
   const sellingPoints = state.sellingPoints.map(sp => `- ${sp.category}：${sp.point}`).join('\n');
 
-  const userPrompt = `客户提问：${q.question}
+  let userPrompt = `客户提问：${q.question}
 行业：${q.industry}
 搜索意图：${q.intent}
 建议主打卖点：${q.sellingPoint || '未指定'}
 
 可用卖点弹药库：
 ${sellingPoints}`;
+
+  // Inject angle prompt if selected
+  if (angle) {
+    userPrompt += `\n\n${angle.prompt}`;
+  }
 
   state.wsIsGenerating = true;
   state.wsAbortController = new AbortController();
@@ -838,7 +948,7 @@ ${sellingPoints}`;
     <div class="generating-indicator">
       <div class="spinner"></div>
       <p>正在生成文章，请稍候...</p>
-      <p class="text-sm text-muted mt-8">模型：${model} | 按母稿写作规范生成</p>
+      <p class="text-sm text-muted mt-8">模型：${model} | 按母稿写作规范生成${angle ? ' | 角度：' + angle.icon + ' ' + angle.name : ''}</p>
     </div>`;
 
   try {
@@ -894,11 +1004,16 @@ ${sellingPoints}`;
       }
     }
 
-    // Save article
-    const existing = state.articles.find(a => a.questionId === state.wsSelectedQuestionId);
+    // Save article (match by questionId + angle)
+    const angleKey = angle ? angle.id : '';
+    const existing = state.articles.find(a =>
+      a.questionId === state.wsSelectedQuestionId && (a.angle || '') === angleKey
+    );
     if (existing) {
       existing.content = fullContent;
       existing.model = model;
+      existing.angle = angleKey;
+      existing.angleName = angle ? angle.name : '';
       existing.updatedAt = new Date().toISOString();
     } else {
       state.articles.push({
@@ -906,6 +1021,8 @@ ${sellingPoints}`;
         questionId: state.wsSelectedQuestionId,
         content: fullContent,
         model: model,
+        angle: angleKey,
+        angleName: angle ? angle.name : '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -1106,6 +1223,22 @@ function exportAllDistribution() {
 function renderArticles() {
   const search = (document.getElementById('articleSearch').value || '').toLowerCase();
   const filterStatus = document.getElementById('articleFilterStatus').value;
+  const filterAngle = document.getElementById('articleFilterAngle').value;
+
+  // Populate angle filter dropdown
+  const angleFilterEl = document.getElementById('articleFilterAngle');
+  if (angleFilterEl && angleFilterEl.options.length <= 1) {
+    ANGLES.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = `${a.icon} ${a.name}`;
+      angleFilterEl.appendChild(opt);
+    });
+    const defaultOpt = document.createElement('option');
+    defaultOpt.value = '_default';
+    defaultOpt.textContent = '📝 母稿';
+    angleFilterEl.appendChild(defaultOpt);
+  }
 
   let articles = [...state.articles];
 
@@ -1123,6 +1256,15 @@ function renderArticles() {
     articles = articles.filter(a => a.platforms && Object.keys(a.platforms).length > 0);
   } else if (filterStatus === 'no-platforms') {
     articles = articles.filter(a => !a.platforms || Object.keys(a.platforms).length === 0);
+  }
+
+  // Filter by angle
+  if (filterAngle) {
+    if (filterAngle === '_default') {
+      articles = articles.filter(a => !a.angle);
+    } else {
+      articles = articles.filter(a => a.angle === filterAngle);
+    }
   }
 
   // Sort by most recent first
@@ -1146,6 +1288,7 @@ function renderArticles() {
     <th>序号</th>
     <th>客户提问</th>
     <th>模型</th>
+    <th>角度</th>
     <th>字数</th>
     <th>多平台状态</th>
     <th>更新时间</th>
@@ -1171,6 +1314,7 @@ function renderArticles() {
       <td>${idx + 1}</td>
       <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(qText)}">${escapeHtml(qText)}</td>
       <td><span class="tag tag-blue">${a.model || '-'}</span></td>
+      <td>${a.angleName ? `<span class="tag tag-purple">${a.angleName}</span>` : '<span class="tag tag-low">母稿</span>'}</td>
       <td>${mainCount.toLocaleString()}<br><span class="text-sm text-muted">总计 ${totalCount.toLocaleString()}</span></td>
       <td>${platformTags} <span class="text-sm text-muted">${platformCount}/6</span></td>
       <td class="text-sm text-muted">${updatedAt}</td>
@@ -1320,6 +1464,8 @@ async function startBatchGeneration() {
 
   const scope = document.getElementById('batchScope').value;
   const model = document.getElementById('batchModel').value;
+  const angleId = document.getElementById('batchAngle').value;
+  const angle = angleId ? ANGLES.find(a => a.id === angleId) : null;
   const delay = parseInt(document.getElementById('batchDelay').value) || 2;
   const settings = getSettings();
 
@@ -1362,13 +1508,17 @@ async function startBatchGeneration() {
 
     try {
       const sellingPoints = state.sellingPoints.map(sp => `- ${sp.category}：${sp.point}`).join('\n');
-      const userPrompt = `客户提问：${q.question}
+      let userPrompt = `客户提问：${q.question}
 行业：${q.industry}
 搜索意图：${q.intent}
 建议主打卖点：${q.sellingPoint || '未指定'}
 
 可用卖点弹药库：
 ${sellingPoints}`;
+
+      if (angle) {
+        userPrompt += `\n\n${angle.prompt}`;
+      }
 
       const messages = [
         { role: 'system', content: GEO_SYSTEM_PROMPT },
@@ -1392,11 +1542,16 @@ ${sellingPoints}`;
       const data = await response.json();
       const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
 
-      // Save article
-      const existing = state.articles.find(a => a.questionId === q.id);
+      // Save article (match by questionId + angle)
+      const angleKey = angle ? angle.id : '';
+      const existing = state.articles.find(a =>
+        a.questionId === q.id && (a.angle || '') === angleKey
+      );
       if (existing) {
         existing.content = content;
         existing.model = model;
+        existing.angle = angleKey;
+        existing.angleName = angle ? angle.name : '';
         existing.updatedAt = new Date().toISOString();
       } else {
         state.articles.push({
@@ -1404,6 +1559,8 @@ ${sellingPoints}`;
           questionId: q.id,
           content: content,
           model: model,
+          angle: angleKey,
+          angleName: angle ? angle.name : '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
@@ -2425,6 +2582,18 @@ function debounceFilter(key, fn, delay = 300) {
 document.addEventListener('DOMContentLoaded', () => {
   loadState();
   initNav();
+
+  // Populate batch angle dropdown
+  const batchAngleEl = document.getElementById('batchAngle');
+  if (batchAngleEl) {
+    ANGLES.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = `${a.icon} ${a.name}`;
+      opt.title = a.desc;
+      batchAngleEl.appendChild(opt);
+    });
+  }
 
   // Wire up search/filter inputs for questions
   ['qSearch', 'qFilterIndustry', 'qFilterPriority', 'qFilterIntent', 'qFilterStatus', 'qFilterCluster'].forEach(id => {
