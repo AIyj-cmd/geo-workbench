@@ -1103,6 +1103,88 @@ tr:last-child td { border-bottom: none; }
   transition: all 0.2s;
 }
 
+/* Kanban Pending Panel */
+.kanban-pending-panel {
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.kb-pending-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--white);
+}
+.kb-pending-toolbar .form-input {
+  flex: 1;
+  min-width: 0;
+}
+.kb-select-all {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.kb-pending-list {
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kb-pending-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.kb-pending-item:hover {
+  border-color: var(--blue);
+  background: var(--blue-light);
+}
+.kb-pending-item .kb-check {
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.kb-pending-content {
+  flex: 1;
+  min-width: 0;
+}
+.kb-pending-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-light);
+  background: var(--white);
+}
+.kb-selected-count {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.kb-empty {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
 /* === Changelog Page === */
 .changelog-header {
   text-align: center;

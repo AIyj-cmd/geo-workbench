@@ -1776,6 +1776,22 @@ function renderAnalytics() {
 }
 
 // ===== Kanban Page =====
+let kbSearchTimer = null;
+function debounceKbSearch() {
+  clearTimeout(kbSearchTimer);
+  kbSearchTimer = setTimeout(() => {
+    const el = document.getElementById('kbPendingSearch');
+    const pos = el?.selectionStart;
+    renderKanban();
+    // Restore cursor position
+    const newEl = document.getElementById('kbPendingSearch');
+    if (newEl && pos !== null) {
+      newEl.focus();
+      newEl.setSelectionRange(pos, pos);
+    }
+  }, 200);
+}
+
 function renderKanban() {
   const industry = document.getElementById('kbFilterIndustry').value;
   const priority = document.getElementById('kbFilterPriority').value;
@@ -1784,40 +1800,142 @@ function renderKanban() {
   if (industry) qs = qs.filter(q => q.industry === industry);
   if (priority) qs = qs.filter(q => q.priority === priority);
 
-  const columns = {
-    '未开始': qs.filter(q => q.status === '未开始' || !q.status),
-    '进行中': qs.filter(q => q.status === '进行中'),
-    '已发布': qs.filter(q => q.status === '已发布'),
-  };
+  const pending = qs.filter(q => q.status === '未开始' || !q.status);
+  const inProgress = qs.filter(q => q.status === '进行中');
+  const published = qs.filter(q => q.status === '已发布');
+
+  // Search filter for pending
+  const searchVal = (document.getElementById('kbPendingSearch')?.value || '').toLowerCase();
+  const filteredPending = searchVal
+    ? pending.filter(q => q.question.toLowerCase().includes(searchVal) || (q.cluster || '').toLowerCase().includes(searchVal))
+    : pending;
 
   const board = document.getElementById('kanbanBoard');
-  board.innerHTML = Object.entries(columns).map(([status, items]) => `
-    <div class="kanban-column" data-status="${status}"
-         ondragover="event.preventDefault();this.classList.add('drag-over')"
-         ondragleave="this.classList.remove('drag-over')"
-         ondrop="handleKanbanDrop(event, '${status}')">
+  board.innerHTML = `
+    <div class="kanban-column kanban-pending-panel" data-status="未开始">
       <div class="kanban-column-header">
-        <span class="kanban-column-title">${status === '未开始' ? '📋' : status === '进行中' ? '🔄' : '✅'} ${status}</span>
-        <span class="kanban-count">${items.length}</span>
+        <span class="kanban-column-title">📋 待选任务</span>
+        <span class="kanban-count">${pending.length}</span>
       </div>
-      <div class="kanban-cards">
-        ${items.map(q => {
-          const priorityClass = q.priority === '高' ? 'tag-high' : q.priority === '中' ? 'tag-medium' : 'tag-low';
-          return `<div class="kanban-card" draggable="true" data-id="${q.id}"
-                       ondragstart="handleKanbanDragStart(event, ${q.id})"
-                       ondragend="handleKanbanDragEnd(event)"
-                       onclick="editQuestion(${q.id})">
-            <div class="kanban-card-question">${q.question}</div>
-            <div class="kanban-card-meta">
-              <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
-              <span class="tag ${priorityClass}" style="font-size:10px">${q.priority}</span>
-              <span class="text-xs text-muted">${q.cluster || ''}</span>
-            </div>
-          </div>`;
-        }).join('')}
+      <div class="kb-pending-toolbar">
+        <input type="text" class="form-input" id="kbPendingSearch" placeholder="搜索任务..." 
+               value="${searchVal}" oninput="debounceKbSearch()" style="font-size:13px;padding:6px 10px;">
+        <label class="kb-select-all">
+          <input type="checkbox" id="kbSelectAll" onchange="toggleKbSelectAll(this.checked)"> 全选
+        </label>
+      </div>
+      <div class="kanban-cards kb-pending-list">
+        ${filteredPending.length === 0 ? '<div class="kb-empty">暂无待选任务</div>' :
+          filteredPending.map(q => {
+            const priorityClass = q.priority === '高' ? 'tag-high' : q.priority === '中' ? 'tag-medium' : 'tag-low';
+            return `<label class="kanban-card kb-pending-item" data-id="${q.id}">
+              <input type="checkbox" class="kb-check" data-id="${q.id}">
+              <div class="kb-pending-content">
+                <div class="kanban-card-question">${q.question}</div>
+                <div class="kanban-card-meta">
+                  <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
+                  <span class="tag ${priorityClass}" style="font-size:10px">${q.priority}</span>
+                  <span class="text-xs text-muted">${q.cluster || ''}</span>
+                </div>
+              </div>
+            </label>`;
+          }).join('')}
+      </div>
+      <div class="kb-pending-footer">
+        <span class="kb-selected-count" id="kbSelectedCount">已选 0 项</span>
+        <button class="btn btn-primary btn-sm" onclick="submitKbSelected()" id="kbSubmitBtn" disabled>
+          提交到进行中 →
+        </button>
       </div>
     </div>
-  `).join('');
+    <div class="kanban-column" data-status="进行中"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleKanbanDrop(event, '进行中')">
+      <div class="kanban-column-header">
+        <span class="kanban-column-title">🔄 进行中</span>
+        <span class="kanban-count">${inProgress.length}</span>
+      </div>
+      <div class="kanban-cards">
+        ${inProgress.length === 0 ? '<div class="kb-empty">暂无进行中的任务</div>' :
+          inProgress.map(q => {
+            const priorityClass = q.priority === '高' ? 'tag-high' : q.priority === '中' ? 'tag-medium' : 'tag-low';
+            return `<div class="kanban-card" draggable="true" data-id="${q.id}"
+                         ondragstart="handleKanbanDragStart(event, ${q.id})"
+                         ondragend="handleKanbanDragEnd(event)"
+                         onclick="editQuestion(${q.id})">
+              <div class="kanban-card-question">${q.question}</div>
+              <div class="kanban-card-meta">
+                <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
+                <span class="tag ${priorityClass}" style="font-size:10px">${q.priority}</span>
+                <span class="text-xs text-muted">${q.cluster || ''}</span>
+              </div>
+            </div>`;
+          }).join('')}
+      </div>
+    </div>
+    <div class="kanban-column" data-status="已发布"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleKanbanDrop(event, '已发布')">
+      <div class="kanban-column-header">
+        <span class="kanban-column-title">✅ 已发布</span>
+        <span class="kanban-count">${published.length}</span>
+      </div>
+      <div class="kanban-cards">
+        ${published.length === 0 ? '<div class="kb-empty">暂无已发布的任务</div>' :
+          published.map(q => {
+            const priorityClass = q.priority === '高' ? 'tag-high' : q.priority === '中' ? 'tag-medium' : 'tag-low';
+            return `<div class="kanban-card" draggable="true" data-id="${q.id}"
+                         ondragstart="handleKanbanDragStart(event, ${q.id})"
+                         ondragend="handleKanbanDragEnd(event)"
+                         onclick="editQuestion(${q.id})">
+              <div class="kanban-card-question">${q.question}</div>
+              <div class="kanban-card-meta">
+                <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
+                <span class="tag ${priorityClass}" style="font-size:10px">${q.priority}</span>
+                <span class="text-xs text-muted">${q.cluster || ''}</span>
+              </div>
+            </div>`;
+          }).join('')}
+      </div>
+    </div>
+  `;
+
+  // Wire up checkbox change events
+  document.querySelectorAll('.kb-check').forEach(cb => {
+    cb.addEventListener('change', updateKbSelectedCount);
+  });
+}
+
+function toggleKbSelectAll(checked) {
+  document.querySelectorAll('.kb-check').forEach(cb => {
+    cb.checked = checked;
+  });
+  updateKbSelectedCount();
+}
+
+function updateKbSelectedCount() {
+  const checked = document.querySelectorAll('.kb-check:checked');
+  const count = checked.length;
+  const countEl = document.getElementById('kbSelectedCount');
+  const btnEl = document.getElementById('kbSubmitBtn');
+  if (countEl) countEl.textContent = `已选 ${count} 项`;
+  if (btnEl) btnEl.disabled = count === 0;
+}
+
+function submitKbSelected() {
+  const checkedIds = Array.from(document.querySelectorAll('.kb-check:checked')).map(cb => parseInt(cb.dataset.id));
+  if (checkedIds.length === 0) return;
+
+  checkedIds.forEach(id => {
+    const q = state.questions.find(q => q.id === id);
+    if (q) q.status = '进行中';
+  });
+
+  saveState();
+  renderKanban();
+  showToast(`已提交 ${checkedIds.length} 项到进行中`, 'success');
 }
 
 function handleKanbanDragStart(e, id) {
