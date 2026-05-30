@@ -1191,6 +1191,16 @@ function viewArticle(articleId) {
   const q = state.questions.find(q => q.id === article.questionId);
   const qText = q ? q.question : `文章 #${article.id}`;
 
+  const platformEntries = article.platforms && Object.keys(article.platforms).length > 0
+    ? Object.entries(article.platforms).map(([platform, content]) => {
+        const len = (content || '').length;
+        return `<details style="margin-bottom:8px;">
+          <summary style="cursor:pointer;padding:8px 0;font-weight:600;">${escapeHtml(platform)} <span class="text-sm text-muted">(${len} 字)</span></summary>
+          <div class="platform-content-box" data-platform="${escapeHtml(platform)}" style="padding:12px;background:var(--bg-secondary);border-radius:8px;white-space:pre-wrap;font-size:13px;line-height:1.6;max-height:300px;overflow-y:auto;"></div>
+        </details>`;
+      }).join('')
+    : '';
+
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.id = 'articleViewModal';
@@ -1202,27 +1212,29 @@ function viewArticle(articleId) {
       </div>
       <div class="modal-body" style="padding:0;">
         <div style="padding:12px 24px;background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;">
-          <span class="tag tag-blue">${article.model || '未知模型'}</span>
+          <span class="tag tag-blue">${escapeHtml(article.model || '未知模型')}</span>
           <span class="text-sm text-muted">${(article.content || '').length.toLocaleString()} 字</span>
           <span class="text-sm text-muted">更新: ${article.updatedAt ? new Date(article.updatedAt).toLocaleString('zh-CN') : '-'}</span>
           <span style="flex:1"></span>
           <button class="btn btn-sm btn-primary" onclick="saveArticleEdit(${article.id})">💾 保存修改</button>
         </div>
-        <textarea id="articleEditTextarea" style="width:100%;min-height:400px;padding:16px 24px;border:none;outline:none;font-family:inherit;font-size:14px;line-height:1.7;resize:vertical;">${escapeHtml(article.content || '')}</textarea>
-        ${article.platforms && Object.keys(article.platforms).length > 0 ? `
-          <div style="padding:16px 24px;border-top:1px solid var(--border);">
-            <h4 style="margin-bottom:12px;">📡 各平台版本</h4>
-            ${Object.entries(article.platforms).map(([platform, content]) => `
-              <details style="margin-bottom:8px;">
-                <summary style="cursor:pointer;padding:8px 0;font-weight:600;">${platform} <span class="text-sm text-muted">(${(content || '').length} 字)</span></summary>
-                <div style="padding:12px;background:var(--bg-secondary);border-radius:8px;white-space:pre-wrap;font-size:13px;line-height:1.6;max-height:300px;overflow-y:auto;">${escapeHtml(content || '')}</div>
-              </details>
-            `).join('')}
-          </div>
-        ` : ''}
+        <textarea id="articleEditTextarea" style="width:100%;min-height:400px;padding:16px 24px;border:none;outline:none;font-family:inherit;font-size:14px;line-height:1.7;resize:vertical;"></textarea>
+        ${platformEntries ? `<div style="padding:16px 24px;border-top:1px solid var(--border);"><h4 style="margin-bottom:12px;">📡 各平台版本</h4>${platformEntries}</div>` : ''}
       </div>
     </div>`;
   document.body.appendChild(overlay);
+
+  // Set content via JS to avoid template literal breakage from backticks
+  document.getElementById('articleEditTextarea').value = article.content || '';
+
+  // Set platform content
+  if (article.platforms) {
+    overlay.querySelectorAll('.platform-content-box').forEach(box => {
+      const platform = box.dataset.platform;
+      box.textContent = (article.platforms[platform] || '');
+    });
+  }
+
   overlay.addEventListener('click', e => { if (e.target === overlay) closeArticleModal(); });
 }
 
@@ -2392,8 +2404,8 @@ function showToast(message, type = 'info') {
 // ===== Utility =====
 function escapeHtml(text) {
   if (!text) return '';
-  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-  return text.replace(/[&<>"']/g, m => map[m]);
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;', '`': '&#96;' };
+  return text.replace(/[&<>"'`]/g, m => map[m]);
 }
 
 // ===== Filter Debounce =====
