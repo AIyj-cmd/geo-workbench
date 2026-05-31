@@ -94,10 +94,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 }
 .sidebar-header h1 span { font-size: 20px; }
 .sidebar-header p {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 4px;
-  letter-spacing: 0.3px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-top: 8px;
+  letter-spacing: 1px;
+  text-align: center;
 }
 .sidebar-logo {
   width: 100%;
