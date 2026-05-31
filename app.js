@@ -1192,16 +1192,16 @@ function buildDistCard(dm, content, articleId) {
   const statusTag = hasContent
     ? '<span class="tag tag-complete">已保存</span>'
     : '<span class="tag tag-medium">未生成</span>';
-  
+
   return `
     <div class="dist-card">
       <div class="dist-card-header">
-        <span class="dist-card-icon">${dm.icon}</span>
+        <span class="dist-card-icon" style="background:${dm.color}">${dm.icon}</span>
         <span class="dist-card-platform" style="color:${dm.color}">${dm.platform}</span>
         <span class="dist-card-form">${dm.form}</span>
+        <span class="dist-card-note">${dm.geoValue}</span>
         <span class="dist-card-status">${statusTag}</span>
       </div>
-      <div class="dist-card-note">${dm.geoValue}</div>
       <div class="dist-card-body">
         <textarea id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(content)}</textarea>
       </div>
@@ -1266,8 +1266,9 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
       html += `
         <div class="dist-card" style="border-color:var(--red);">
           <div class="dist-card-header">
-            <span class="dist-card-icon">${dm.icon}</span>
-            <span class="dist-card-platform">${dm.platform}</span>
+            <span class="dist-card-icon" style="background:${dm.color}">${dm.icon}</span>
+            <span class="dist-card-platform" style="color:${dm.color}">${dm.platform}</span>
+            <span class="dist-card-form">${dm.form}</span>
             <span class="dist-card-status"><span class="tag tag-medium">生成失败</span></span>
           </div>
           <p class="text-sm text-muted" style="padding:12px 18px;margin:0;">${e.message}</p>
