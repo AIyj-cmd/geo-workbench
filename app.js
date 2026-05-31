@@ -53,7 +53,15 @@ const GEO_SYSTEM_PROMPT = `你是新亦源鞋服云仓的 GEO 内容专家。请
 - 联系方式：官网 56xyy.com｜400-686-5156｜微信 vip-56xyy｜公众号"新亦源鞋服云仓"
 
 ## 输出要求
-只输出母稿（Markdown，1500-3000字，7段完整），不要输出任何平台变体版本。
+只输出母稿（纯文本，1500-3000字，7段完整），不要输出任何平台变体版本。
+
+## 格式要求（纯文本，不用Markdown）
+- 标题：直接写标题文字，不用 # 号
+- 小标题：用"一、""二、""三、"或"（一）""（二）"等中文序号
+- 列表：用"1.""2.""3."或"●""◆"等符号
+- 表格：用文字描述对比关系，或用"→""vs""对比"等符号分隔
+- 强调：用引号「」或【】标注重点，不用 ** 加粗
+- 分段：每段之间空一行，保持清晰
 `;
 
 // ===== Distribution Matrix =====
@@ -69,7 +77,8 @@ const DISTRIBUTION_MATRIX = [
 - 保留母稿的深度：分点、对比表、数据、推理过程都留着。
 - 新亦源的提及要非常自然、克制，作为"符合标准的例子"一笔带过，绝不通篇推销。
 - 标题用问答式、含目标长尾关键词。
-- 长度 1500–3000 字，Markdown，小标题清晰，保留表格和 FAQ。
+- 长度 1500–3000 字，纯文本格式，小标题清晰，保留对比和FAQ。
+- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题、不用 ** 加粗、不用 | 做表格、不用 - 做列表。用中文序号（一、二、三）做小标题，用「」【】标注重点，用"1.""2."做列表。
 
 硬规则：数字与案例完全以母稿为准，不新增、不修改、不编；不使用"最/第一/100%/0失误/唯一"等绝对化用语；未授权的客户名一律写"某品牌"。
 
@@ -89,7 +98,8 @@ const DISTRIBUTION_MATRIX = [
 - 资讯 / 科普式口吻，清晰、正式、不煽情。
 - 必须保留 FAQ 板块（百度AI 爱抓问答对），问题用用户真实问法。
 - 多用小标题、清单、表格，让结构一目了然。
-- 长度 1000–2000 字，Markdown。
+- 长度 1000–2000 字，纯文本格式。
+- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题、不用 ** 加粗、不用 | 做表格、不用 - 做列表。用中文序号（一、二、三）做小标题，用「」【】标注重点，用"1.""2."做列表。
 
 硬规则：数字与案例完全以母稿为准，不新增、不修改、不编；不使用绝对化用语；未授权客户名写"某品牌"。
 
@@ -109,7 +119,8 @@ const DISTRIBUTION_MATRIX = [
 - 正式、权威的官方口吻，但依然清晰、有据、不空话。
 - 结构化：痛点 / 解决方案 / 核心能力 / 服务流程 / 案例 / FAQ 分块清晰，带小标题。
 - FAQ 板块必备（便于 AI 抽取；建议技术上加 FAQ Schema 结构化标记）。
-- 长度 1000–2000 字，Markdown，结构清晰。
+- 长度 1000–2000 字，纯文本格式，结构清晰。
+- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题、不用 ** 加粗、不用 | 做表格、不用 - 做列表。用中文序号（一、二、三）做小标题，用「」【】标注重点，用"1.""2."做列表。
 
 硬规则：数字必须用确认口径、与母稿一致；不用绝对化用语；未授权客户名写"某品牌"。
 
@@ -125,9 +136,10 @@ const DISTRIBUTION_MATRIX = [
 
 公众号要求：
 - 这是品牌私域主场，可以带一点品牌温度和情绪，标题可以更有吸引力。
-- 排版友好：短段落、重点句加粗、适合配图（在合适位置用【配图建议：xxx】标注）。
+- 排版友好：短段落、重点句用「」【】标注（不要用 ** 加粗）、适合配图（在合适位置用【配图建议：xxx】标注）。
 - 结尾放明确的行动引导（关注公众号 / 获取资料包 / 联系方式，用母稿里的统一联系方式）。
-- 长度 1500–2500 字。
+- 长度 1500–2500 字，纯文本格式。
+- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题、不用 ** 加粗、不用 | 做表格、不用 - 做列表。用中文序号（一、二、三）做小标题，用「」【】标注重点，用"1.""2."做列表。
 
 硬规则：数字与客户名以母稿为准，不新增、不修改；即便是私域，也不用绝对化用语（广告法对所有渠道都适用）；未授权客户名写"某品牌"。
 
@@ -147,7 +159,8 @@ const DISTRIBUTION_MATRIX = [
 - 结构：痛点开头（一句话戳中）→ 带 emoji 序号的分点清单 → 一句行业提醒 → 结尾话题标签。
 - ⚠️ 小红书对硬广和导流极其敏感会限流。品牌提及要软到几乎没有，重点是"有用"，最多结尾轻轻带一句。
 - 封面标题要吸睛但真实。
-- 长度 300–800 字，结尾给 5–8 个相关话题标签 #。
+- 长度 300–800 字，纯文本格式，结尾给 5–8 个相关话题标签 #。
+- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题（话题标签 # 除外）、不用 ** 加粗、不用 | 做表格、不用 - 做列表。用 emoji 序号做清单，用「」【】标注重点。
 
 硬规则：数字以母稿为准、不夸大；不点名未授权客户；不用绝对化用语。
 
@@ -168,6 +181,7 @@ const DISTRIBUTION_MATRIX = [
 - 结尾给行动引导（如"评论区扣『自查』发你完整清单"）。
 - 长度 150–350 字（约 30–60 秒）。在关键句标注 [字幕] 或 [镜头] 提示。
 - 另给 3 个备选短视频标题（含关键词，适合豆包搜索）。
+- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题、不用 ** 加粗、不用 - 做列表。用纯文本，用「」【】标注重点。
 
 硬规则：数字以母稿为准、不夸大；不点名未授权客户；不用绝对化用语。
 
@@ -564,7 +578,6 @@ function renderQuestions() {
       <td><span class="text-sm">${q.intent}</span></td>
       <td><span class="tag ${priorityClass}">${q.priority}</span></td>
       <td class="text-sm" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${q.sellingPoint || ''}">${q.sellingPoint || '-'}</td>
-      <td>${q.tested === '✓' ? '<span class="tag tag-green">✓</span>' : '<span class="tag tag-pending">-</span>'}</td>
       <td><span class="tag ${statusClass}">${q.status || '未开始'}</span></td>
       <td>
         <div class="card-actions">
@@ -1114,10 +1127,10 @@ function renderDistribution() {
   select.onchange = onDistributionArticleSelect;
 }
 
-function onDistributionArticleSelect() {
+async function onDistributionArticleSelect() {
   const articleId = parseInt(document.getElementById('distArticleSelect').value);
   const platformsDiv = document.getElementById('distPlatforms');
-  
+
   if (!articleId) {
     platformsDiv.innerHTML = '';
     document.getElementById('btnGenDist').style.display = '';
@@ -1133,13 +1146,19 @@ function onDistributionArticleSelect() {
 
   if (article.platforms && Object.keys(article.platforms).length > 0) {
     renderDistributionCards(article, platformsDiv, articleId);
-    
+
     const hasMissing = DISTRIBUTION_MATRIX.some(dm => !article.platforms[dm.platform]);
     document.getElementById('btnGenDist').style.display = 'none';
     document.getElementById('btnContinueDist').style.display = hasMissing ? '' : 'none';
     document.getElementById('btnRegenDist').style.display = '';
     document.getElementById('btnExportDist').style.display = '';
     document.getElementById('distMatrixInfo').classList.add('hidden');
+
+    // Auto-continue if there are missing platforms
+    if (hasMissing) {
+      showToast('检测到缺失的平台版本，自动开始生成...', 'info');
+      await continueDistribution();
+    }
   } else {
     platformsDiv.innerHTML = '';
     document.getElementById('btnGenDist').style.display = '';
@@ -1190,20 +1209,20 @@ function renderDistributionCards(article, platformsDiv, articleId) {
 function buildDistCard(dm, content, articleId) {
   const hasContent = !!content;
   const statusTag = hasContent
-    ? '<span class="tag tag-complete">已保存</span>'
-    : '<span class="tag tag-medium">未生成</span>';
+    ? '<span class="badge badge-success">✓ 已保存</span>'
+    : '<span class="badge badge-muted">未生成</span>';
 
   return `
     <div class="dist-card">
       <div class="dist-card-header">
         <span class="dist-card-icon" style="background:${dm.color}">${dm.icon}</span>
-        <span class="dist-card-platform" style="color:${dm.color}">${dm.platform}</span>
+        <span class="dist-card-platform">${dm.platform}</span>
         <span class="dist-card-form">${dm.form}</span>
         <span class="dist-card-note">${dm.geoValue}</span>
         <span class="dist-card-status">${statusTag}</span>
       </div>
       <div class="dist-card-body">
-        <textarea id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(content)}</textarea>
+        <textarea id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(stripMarkdown(content))}</textarea>
       </div>
     </div>`;
 }
@@ -1230,61 +1249,112 @@ async function continueDistribution() {
 
 // Generate platform versions (core logic)
 async function generatePlatformVersions(article, platformsDiv, articleId, platformsToGenerate) {
-  platformsDiv.innerHTML = '<div class="generating-indicator"><div class="spinner"></div><p>正在生成各平台版本...</p></div>';
+  // Show loading state with progress
+  platformsDiv.innerHTML = `
+    <div class="generating-indicator">
+      <div class="spinner"></div>
+      <p>正在生成各平台版本...</p>
+      <div class="generation-progress" id="generationProgress">
+        ${platformsToGenerate.map((dm, i) => `
+          <span class="progress-item" id="progress-${i}">
+            ${dm.icon} ${dm.platform}：待生成
+          </span>
+        `).join('')}
+      </div>
+    </div>
+  `;
 
   // Initialize platforms object if not exists
   if (!article.platforms) article.platforms = {};
 
+  // Batch parallel: generate 2 at a time to avoid API overload
+  const BATCH_SIZE = 2;
+  const results = [];
+
+  for (let batchStart = 0; batchStart < platformsToGenerate.length; batchStart += BATCH_SIZE) {
+    const batch = platformsToGenerate.slice(batchStart, batchStart + BATCH_SIZE);
+
+    const batchPromises = batch.map(async (dm, batchIndex) => {
+      const i = batchStart + batchIndex;
+      const progressEl = document.getElementById(`progress-${i}`);
+
+      try {
+        // Update progress: generating
+        if (progressEl) {
+          progressEl.className = 'progress-item generating';
+          progressEl.textContent = `${dm.icon} ${dm.platform}：生成中...`;
+        }
+
+        const prompt = dm.prompt.replace('{{母稿}}', article.content);
+        const settings = getSettings();
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: settings.maxTokens,
+            temperature: settings.temperature,
+            stream: false,
+          }),
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
+
+        // Save to article.platforms immediately
+        article.platforms[dm.platform] = stripMarkdown(content);
+
+        // Update progress: completed
+        if (progressEl) {
+          progressEl.className = 'progress-item completed';
+          progressEl.textContent = `${dm.icon} ${dm.platform}：✓ 完成`;
+        }
+
+        return { dm, content, error: null };
+      } catch (e) {
+        // Update progress: failed
+        if (progressEl) {
+          progressEl.className = 'progress-item failed';
+          progressEl.textContent = `${dm.icon} ${dm.platform}：✗ 失败`;
+        }
+
+        return { dm, content: null, error: e.message };
+      }
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    results.push(...batchResults);
+  }
+
+  // Build HTML from results
   let html = '';
 
-  for (const dm of platformsToGenerate) {
-    try {
-      const prompt = dm.prompt.replace('{{母稿}}', article.content);
+  // Add existing platforms first
+  for (const dm of DISTRIBUTION_MATRIX) {
+    if (article.platforms[dm.platform] && !platformsToGenerate.find(p => p.platform === dm.platform)) {
+      html += buildDistCard(dm, article.platforms[dm.platform], articleId);
+    }
+  }
 
-      const settings = getSettings();
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: settings.maxTokens,
-          temperature: settings.temperature,
-          stream: false,
-        }),
-      });
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
-
-      // Save to article.platforms immediately
-      article.platforms[dm.platform] = content;
-
-      html += buildDistCard(dm, content, articleId);
-    } catch (e) {
+  // Add newly generated platforms
+  for (const { dm, content, error } of results) {
+    if (error) {
       html += `
         <div class="dist-card" style="border-color:var(--red);">
           <div class="dist-card-header">
             <span class="dist-card-icon" style="background:${dm.color}">${dm.icon}</span>
-            <span class="dist-card-platform" style="color:${dm.color}">${dm.platform}</span>
+            <span class="dist-card-platform">${dm.platform}</span>
             <span class="dist-card-form">${dm.form}</span>
-            <span class="dist-card-status"><span class="tag tag-medium">生成失败</span></span>
+            <span class="dist-card-status"><span class="badge badge-muted">生成失败</span></span>
           </div>
-          <p class="text-sm text-muted" style="padding:12px 18px;margin:0;">${e.message}</p>
+          <p class="text-sm text-muted" style="padding:12px 18px;margin:0;">${error}</p>
         </div>`;
+    } else {
+      html += buildDistCard(dm, content, articleId);
     }
-  }
-
-  // If there are existing platforms, render them too
-  if (Object.keys(article.platforms).length > platformsToGenerate.length) {
-    let existingHtml = '';
-    for (const dm of DISTRIBUTION_MATRIX) {
-      if (article.platforms[dm.platform] && !platformsToGenerate.find(p => p.platform === dm.platform)) {
-        existingHtml += buildDistCard(dm, article.platforms[dm.platform], articleId);
-      }
-    }
-    html = existingHtml + html;
   }
 
   platformsDiv.innerHTML = html;
@@ -1525,6 +1595,7 @@ function deleteArticle(articleId) {
   saveState();
   showToast('已删除', 'success');
   renderArticles();
+  renderDistribution();
 }
 
 function toggleAllArticleCheckboxes(checked) {
@@ -1539,6 +1610,7 @@ function deleteSelectedArticles() {
   saveState();
   showToast(`已删除 ${ids.length} 篇`, 'success');
   renderArticles();
+  renderDistribution();
 }
 
 // Save platform edits when user manually edits textareas in 一稿多发
@@ -2210,6 +2282,18 @@ function renderTestRecords() {
   tbody.innerHTML = paged.map((r, i) => {
     const q = state.questions.find(q => q.id === r.questionId);
     const qText = q ? q.question : '未知问题';
+
+    // Render screenshot cell
+    let screenshotCell = '-';
+    if (r.screenshots && r.screenshots.length > 0) {
+      screenshotCell = `
+        <div style="display:flex;align-items:center;gap:4px;">
+          <img class="screenshot-thumb" src="${r.screenshots[0]}" onclick="showScreenshotPreview(${JSON.stringify(r.screenshots).replace(/"/g, '&quot;')}, 0)">
+          ${r.screenshots.length > 1 ? `<span class="screenshot-count">+${r.screenshots.length - 1}</span>` : ''}
+        </div>
+      `;
+    }
+
     return `<tr>
       <td>${start + i + 1}</td>
       <td class="text-sm">${r.testDate || '-'}</td>
@@ -2217,6 +2301,7 @@ function renderTestRecords() {
       <td><span class="tag tag-blue">${r.platform || '-'}</span></td>
       <td class="text-sm" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.competitors || ''}">${r.competitors || '-'}</td>
       <td>${r.mentioned === '是' ? '<span class="tag tag-green">是</span>' : '<span class="tag tag-pending">否</span>'}</td>
+      <td>${screenshotCell}</td>
       <td class="text-sm">${r.retestDate || '-'}</td>
       <td class="text-sm text-muted" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.notes || ''}">${r.notes || '-'}</td>
       <td>
@@ -2257,7 +2342,13 @@ function openAddTR() {
   document.getElementById('trmLink').value = '';
   document.getElementById('trmNotes').value = '';
   document.getElementById('trModal').dataset.editId = '';
+
+  // Reset screenshots
+  currentScreenshots = [];
+  renderScreenshotList();
+
   openModal('trModal');
+  initScreenshotUpload();
 }
 
 function editTR(id) {
@@ -2274,7 +2365,13 @@ function editTR(id) {
   document.getElementById('trmLink').value = r.link || '';
   document.getElementById('trmNotes').value = r.notes || '';
   document.getElementById('trModal').dataset.editId = id;
+
+  // Load existing screenshots
+  currentScreenshots = r.screenshots || [];
+  renderScreenshotList();
+
   openModal('trModal');
+  initScreenshotUpload();
 }
 
 function saveTestRecord() {
@@ -2288,6 +2385,7 @@ function saveTestRecord() {
     competitors: document.getElementById('trmCompetitors').value.trim(),
     link: document.getElementById('trmLink').value.trim(),
     notes: document.getElementById('trmNotes').value.trim(),
+    screenshots: [...currentScreenshots], // Save screenshots array
   };
 
   if (editId) {
@@ -2321,6 +2419,167 @@ function deleteTR(id) {
   saveState();
   renderTestRecords();
   showToast('测试记录已删除', 'success');
+}
+
+// ===== Screenshot Upload =====
+let currentScreenshots = []; // Array of base64 strings
+let screenshotUploadInitialized = false;
+let pasteHandler = null;
+
+function initScreenshotUpload() {
+  const input = document.getElementById('trmScreenshotInput');
+  const list = document.getElementById('trmScreenshots');
+  const modal = document.getElementById('trModal');
+
+  if (!input) return;
+
+  // File input change (only bind once)
+  if (!input._bound) {
+    input.addEventListener('change', (e) => {
+      handleScreenshotFiles(e.target.files);
+      input.value = ''; // Reset to allow re-selecting same file
+    });
+    input._bound = true;
+  }
+
+  // Paste support (Ctrl+V) - only bind once
+  if (!screenshotUploadInitialized) {
+    // Remove old handler if exists
+    if (pasteHandler) {
+      modal.removeEventListener('paste', pasteHandler);
+    }
+
+    pasteHandler = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) handleScreenshotFiles([file]);
+          break;
+        }
+      }
+    };
+
+    modal.addEventListener('paste', pasteHandler);
+    screenshotUploadInitialized = true;
+  }
+}
+
+function handleScreenshotFiles(files) {
+  if (currentScreenshots.length >= 5) {
+    showToast('最多只能上传 5 张截图', 'error');
+    return;
+  }
+
+  const remaining = 5 - currentScreenshots.length;
+  const filesToProcess = Array.from(files).slice(0, remaining);
+
+  filesToProcess.forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      // Compress image before storing
+      compressImage(e.target.result, 800, 0.7).then(compressed => {
+        currentScreenshots.push(compressed);
+        renderScreenshotList();
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function compressImage(base64, maxWidth, quality) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = (maxWidth / width) * height;
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = base64;
+  });
+}
+
+function renderScreenshotList() {
+  const list = document.getElementById('trmScreenshots');
+  if (!list) return;
+
+  list.innerHTML = currentScreenshots.map((src, i) => `
+    <div class="screenshot-item" onclick="previewScreenshot(${i})">
+      <img src="${src}" alt="截图 ${i + 1}">
+      <button class="screenshot-delete" onclick="event.stopPropagation(); removeScreenshot(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeScreenshot(index) {
+  currentScreenshots.splice(index, 1);
+  renderScreenshotList();
+}
+
+function previewScreenshot(index) {
+  showScreenshotPreview(currentScreenshots, index);
+}
+
+function showScreenshotPreview(screenshots, startIndex = 0) {
+  // Remove existing preview if any
+  const existing = document.querySelector('.screenshot-preview-overlay');
+  if (existing) existing.remove();
+
+  let currentIndex = startIndex;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'screenshot-preview-overlay';
+  overlay.innerHTML = `
+    <button class="screenshot-preview-close" onclick="this.parentElement.remove()">✕</button>
+    <button class="screenshot-preview-nav screenshot-preview-prev" onclick="event.stopPropagation(); navigatePreview(-1)">‹</button>
+    <img src="${screenshots[currentIndex]}" alt="截图预览">
+    <button class="screenshot-preview-nav screenshot-preview-next" onclick="event.stopPropagation(); navigatePreview(1)">›</button>
+    <div class="screenshot-preview-counter">${currentIndex + 1} / ${screenshots.length}</div>
+  `;
+
+  // Click overlay to close
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  // Keyboard navigation
+  const keyHandler = (e) => {
+    if (e.key === 'Escape') {
+      overlay.remove();
+      document.removeEventListener('keydown', keyHandler);
+    } else if (e.key === 'ArrowLeft') {
+      navigatePreview(-1);
+    } else if (e.key === 'ArrowRight') {
+      navigatePreview(1);
+    }
+  };
+  document.addEventListener('keydown', keyHandler);
+
+  document.body.appendChild(overlay);
+
+  function navigatePreview(delta) {
+    currentIndex = (currentIndex + delta + screenshots.length) % screenshots.length;
+    overlay.querySelector('img').src = screenshots[currentIndex];
+    overlay.querySelector('.screenshot-preview-counter').textContent = `${currentIndex + 1} / ${screenshots.length}`;
+  }
 }
 
 // ===== Settings Page =====
@@ -2907,6 +3166,21 @@ function escapeHtml(text) {
   return text.replace(/[&<>"'`]/g, m => map[m]);
 }
 
+// Strip Markdown symbols from AI-generated content
+function stripMarkdown(text) {
+  if (!text) return '';
+  return text
+    .replace(/^#{1,6}\s+/gm, '')           // ### 标题
+    .replace(/\*\*(.+?)\*\*/g, '$1')       // **加粗**
+    .replace(/\*(.+?)\*/g, '$1')           // *斜体*
+    .replace(/^[-*]\s+/gm, '● ')           // - 列表
+    .replace(/^>\s+/gm, '')                // > 引用
+    .replace(/`([^`]+)`/g, '$1')           // `代码`
+    .replace(/\|/g, ' ')                   // | 表格
+    .replace(/---+/g, '')                  // --- 分割线
+    .replace(/\n{3,}/g, '\n\n');            // 多余空行
+}
+
 // ===== Filter Debounce =====
 let filterTimers = {};
 function debounceFilter(key, fn, delay = 300) {
@@ -2916,6 +3190,20 @@ function debounceFilter(key, fn, delay = 300) {
 
 // ===== Changelog =====
 const CHANGELOG = [
+  {
+    version: 'v2.0.0',
+    date: '2026-05-31',
+    title: '一稿多发稳定性 + Markdown清理',
+    icon: '🚀',
+    changes: [
+      { type: 'fix', text: 'Nginx超时修复 — proxy_read_timeout从60秒改为300秒，彻底解决504网关超时' },
+      { type: 'fix', text: 'Markdown符号自动清理 — 生成内容自动去除 #、**、|、- 等Markdown格式' },
+      { type: 'fix', text: '文稿删除同步 — 删除文稿后一稿多发下拉列表自动刷新' },
+      { type: 'improve', text: '6平台Prompt全面加禁止Markdown指令 — 知乎/百家号/官网/公众号/小红书/抖音' },
+      { type: 'improve', text: '并行生成优化 — 批次大小调整为2，平衡速度与稳定性' },
+      { type: 'improve', text: '显示层也做Markdown清理 — localStorage旧内容也会自动去格式' },
+    ]
+  },
   {
     version: 'v1.9.0',
     date: '2026-05-30',

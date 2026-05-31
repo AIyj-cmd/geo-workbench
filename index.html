@@ -145,7 +145,6 @@
                   <th>搜索意图</th>
                   <th>优先级</th>
                   <th>建议主打卖点</th>
-                  <th>已测AI</th>
                   <th>内容状态</th>
                   <th>操作</th>
                 </tr>
@@ -261,11 +260,11 @@
           </div>
         </div>
         <div id="distMatrixInfo" class="mb-16">
-          <div class="card" style="padding:24px;text-align:center;color:var(--text-muted);">
-            <p style="font-size:32px;margin-bottom:12px;opacity:0.3;">📡</p>
-            <p style="font-weight:600;margin-bottom:8px;">选择一篇文章后，一键生成 6 个平台版本</p>
-            <p style="font-size:13px;">📘 知乎 → 📰 百家号 → 🌐 官网 → 📱 公众号 → 📕 小红书 → 🎬 抖音/视频号</p>
-            <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">每个平台使用专属改写 Prompt，内容自动保存，刷新不丢失</p>
+          <div class="dist-empty-card">
+            <div class="dist-empty-icon">📡</div>
+            <div class="dist-empty-title">选择一篇文章后，一键生成 6 个平台版本</div>
+            <div class="dist-empty-desc">📘 知乎 → 📰 百家号 → 🌐 官网 → 📱 公众号 → 📕 小红书 → 🎬 抖音/视频号</div>
+            <div class="dist-empty-desc" style="margin-top:8px;font-size:12px;">每个平台使用专属改写 Prompt，内容自动保存，刷新不丢失</div>
           </div>
         </div>
         <div id="distPlatforms"></div>
@@ -407,6 +406,7 @@
                   <th>测试平台</th>
                   <th>AI引用了谁(竞品)</th>
                   <th>AI是否提及新亦源</th>
+                  <th>截图</th>
                   <th>复测日期</th>
                   <th>备注</th>
                   <th style="width:80px">操作</th>
@@ -465,8 +465,19 @@
               <textarea class="form-textarea" id="trmCompetitors" rows="3" placeholder="记录 AI 回答中引用/推荐了哪些竞品公司或来源"></textarea>
             </div>
             <div class="form-group">
-              <label class="form-label">链接/截图地址</label>
-              <input type="text" class="form-input" id="trmLink" placeholder="可选，填截图路径或链接">
+              <label class="form-label">链接/截图</label>
+              <div class="screenshot-upload-area">
+                <div class="screenshot-list" id="trmScreenshots"></div>
+                <label class="screenshot-add-btn" id="trmScreenshotBtn">
+                  <input type="file" id="trmScreenshotInput" accept="image/*" multiple style="display:none">
+                  <span>📷 添加截图</span>
+                </label>
+              </div>
+              <div class="form-hint">支持粘贴截图（Ctrl+V）或点击上传，最多 5 张</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">链接地址</label>
+              <input type="text" class="form-input" id="trmLink" placeholder="可选，填测试链接或截图URL">
             </div>
             <div class="form-group">
               <label class="form-label">备注</label>
@@ -694,6 +705,6 @@
 <!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="app.js?v=20260531"></script>
+<script src="app.js?v=20260531g"></script>
 </body>
 </html>
