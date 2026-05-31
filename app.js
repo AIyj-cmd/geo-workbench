@@ -1566,16 +1566,88 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
 }
 
 function exportAllDistribution() {
-  const textareas = document.querySelectorAll('#distPlatforms textarea');
-  if (textareas.length === 0) { showToast('没有可导出的内容', 'error'); return; }
-  let allContent = '';
-  textareas.forEach((ta, i) => {
-    const dm = DISTRIBUTION_MATRIX[i];
-    if (dm) {
-      allContent += `\n\n===== ${dm.platform}（${dm.form}）=====\n\n${ta.value}`;
+  const articleId = parseInt(document.getElementById('distArticleSelect').value);
+  const article = state.articles.find(a => a.id === articleId);
+  if (!article) { showToast('没有可导出的内容', 'error'); return; }
+
+  const q = state.questions.find(q => q.id === article.questionId);
+  const title = q ? q.question : '一稿多发';
+
+  // Build structured HTML
+  let sectionsHtml = '';
+
+  // Master draft first
+  if (article.content) {
+    sectionsHtml += `
+    <div class="platform-section">
+      <div class="platform-header">
+        <h2>📝 母稿（原始版本）</h2>
+        <div class="platform-meta">信息最全、最长、最权威的超集版本</div>
+      </div>
+      ${mdToWordHtml(article.content)}
+    </div>`;
+  }
+
+  // Platform versions
+  if (article.platforms) {
+    for (const dm of DISTRIBUTION_MATRIX) {
+      const content = article.platforms[dm.platform];
+      if (content && content.trim()) {
+        sectionsHtml += `
+    <div class="platform-section">
+      <div class="platform-header">
+        <h2>${dm.icon} ${dm.platform}（${dm.form}）</h2>
+        <div class="platform-meta">建议篇幅：${dm.length} · ${dm.geoValue}</div>
+      </div>
+      ${mdToWordHtml(content)}
+    </div>`;
+      }
     }
-  });
-  exportToWord('一稿多发-全平台版本', allContent.trim());
+  }
+
+  const fullHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-size: 14px; line-height: 1.8; color: #1a1a2e; max-width: 800px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 22px; font-weight: 700; margin: 20px 0 12px; }
+    h2 { font-size: 18px; font-weight: 700; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin: 28px 0 12px; }
+    h3 { font-size: 16px; font-weight: 600; margin: 20px 0 8px; }
+    p { margin: 8px 0; }
+    ul, ol { padding-left: 24px; margin: 8px 0; }
+    li { margin: 4px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
+    th { background: #f3f4f6; font-weight: 600; }
+    blockquote { border-left: 3px solid #d1d5db; padding: 8px 16px; margin: 12px 0; color: #6b7280; }
+    hr { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    strong { font-weight: 700; }
+    .platform-section { page-break-before: always; margin-top: 40px; }
+    .platform-header { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; }
+    .platform-header h2 { border: none; margin: 0; padding: 0; font-size: 20px; }
+    .platform-meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <p style="font-size:12px;color:#6b7280;">生成时间：${new Date().toLocaleString('zh-CN')} · 共 ${(article.platforms ? Object.keys(article.platforms).length : 0) + 1} 个版本</p>
+  ${sectionsHtml}
+  <hr>
+  <p style="font-size:11px;color:#9ca3af;text-align:center;">由 GEO 内容工作台生成</p>
+</body>
+</html>`;
+
+  const blob = new Blob([fullHtml], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `一稿多发-${title.replace(/[\/\\:*?"<>|]/g, '_').slice(0, 40)}.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Word 文档已导出', 'success');
 }
 
 // ===== Article Management Page =====
@@ -1874,17 +1946,82 @@ function exportArticleWord(articleId) {
   if (!article) return;
   const q = state.questions.find(q => q.id === article.questionId);
   const title = q ? q.question : `文章${article.id}`;
-  let allContent = article.content || '';
 
+  let sectionsHtml = '';
+
+  // Master draft
+  if (article.content) {
+    sectionsHtml += `
+    <div class="platform-section">
+      <div class="platform-header">
+        <h2>📝 母稿</h2>
+        <div class="platform-meta">${article.model || '未知模型'} · ${(article.content || '').length.toLocaleString()} 字</div>
+      </div>
+      ${mdToWordHtml(article.content)}
+    </div>`;
+  }
+
+  // Platform versions
   if (article.platforms && Object.keys(article.platforms).length > 0) {
     for (const [platform, content] of Object.entries(article.platforms)) {
       if (content && content.trim()) {
-        allContent += `\n\n===== ${platform} =====\n\n${content}`;
+        const dm = DISTRIBUTION_MATRIX.find(d => d.platform === platform);
+        sectionsHtml += `
+    <div class="platform-section">
+      <div class="platform-header">
+        <h2>${dm ? dm.icon : '📄'} ${platform}${dm ? `（${dm.form}）` : ''}</h2>
+        ${dm ? `<div class="platform-meta">建议篇幅：${dm.length} · ${dm.geoValue}</div>` : ''}
+      </div>
+      ${mdToWordHtml(content)}
+    </div>`;
       }
     }
   }
 
-  exportToWord(title, allContent);
+  const platformCount = article.platforms ? Object.keys(article.platforms).length : 0;
+  const fullHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-size: 14px; line-height: 1.8; color: #1a1a2e; max-width: 800px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 22px; font-weight: 700; margin: 20px 0 12px; }
+    h2 { font-size: 18px; font-weight: 700; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin: 28px 0 12px; }
+    h3 { font-size: 16px; font-weight: 600; margin: 20px 0 8px; }
+    p { margin: 8px 0; }
+    ul, ol { padding-left: 24px; margin: 8px 0; }
+    li { margin: 4px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
+    th { background: #f3f4f6; font-weight: 600; }
+    blockquote { border-left: 3px solid #d1d5db; padding: 8px 16px; margin: 12px 0; color: #6b7280; }
+    hr { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    strong { font-weight: 700; }
+    .platform-section { page-break-before: always; margin-top: 40px; }
+    .platform-header { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; }
+    .platform-header h2 { border: none; margin: 0; padding: 0; font-size: 20px; }
+    .platform-meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <p style="font-size:12px;color:#6b7280;">生成时间：${article.updatedAt ? new Date(article.updatedAt).toLocaleString('zh-CN') : '-'} · 共 ${platformCount + 1} 个版本</p>
+  ${sectionsHtml}
+  <hr>
+  <p style="font-size:11px;color:#9ca3af;text-align:center;">由 GEO 内容工作台生成</p>
+</body>
+</html>`;
+
+  const blob = new Blob([fullHtml], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.replace(/[\/\\:*?"<>|]/g, '_').slice(0, 50)}.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Word 文档已导出', 'success');
 }
 
 function deleteArticle(articleId) {
@@ -3594,11 +3731,10 @@ function exportToWord(title, content) {
   <meta charset="UTF-8">
   <title>${title}</title>
   <style>
-    body { font-family: 'Microsoft YaHei', sans-serif; font-size: 14px; line-height: 1.8; color: #1a1a2e; max-width: 800px; margin: 0 auto; padding: 24px; }
-    h1, h2, h3, h4 { font-weight: 700; margin: 20px 0 12px; }
-    h1 { font-size: 22px; }
-    h2 { font-size: 18px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
-    h3 { font-size: 16px; }
+    body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-size: 14px; line-height: 1.8; color: #1a1a2e; max-width: 800px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 22px; font-weight: 700; margin: 20px 0 12px; }
+    h2 { font-size: 18px; font-weight: 700; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin: 28px 0 12px; }
+    h3 { font-size: 16px; font-weight: 600; margin: 20px 0 8px; }
     p { margin: 8px 0; }
     ul, ol { padding-left: 24px; margin: 8px 0; }
     li { margin: 4px 0; }
@@ -3609,6 +3745,10 @@ function exportToWord(title, content) {
     hr { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
     code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
     strong { font-weight: 700; }
+    .platform-section { page-break-before: always; margin-top: 40px; }
+    .platform-header { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; }
+    .platform-header h2 { border: none; margin: 0; padding: 0; font-size: 20px; }
+    .platform-meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -3632,14 +3772,81 @@ function exportToWord(title, content) {
 function exportAllArticlesWord() {
   if (state.articles.length === 0) { showToast('没有已生成的文章', 'error'); return; }
 
-  let allContent = '';
-  state.articles.forEach(a => {
+  let sectionsHtml = '';
+  state.articles.forEach((a, idx) => {
     const q = state.questions.find(q => q.id === a.questionId);
     const title = q ? q.question : `文章 #${a.id}`;
-    allContent += `\n\n${'='.repeat(50)}\n${title}\n${'='.repeat(50)}\n\n${a.content}`;
+    const platformCount = a.platforms ? Object.keys(a.platforms).length : 0;
+
+    sectionsHtml += `
+    <div class="platform-section">
+      <div class="platform-header">
+        <h2>${idx + 1}. ${escapeHtml(title)}</h2>
+        <div class="platform-meta">${a.model || '未知模型'} · ${(a.content || '').length.toLocaleString()} 字 · ${platformCount} 个平台版本</div>
+      </div>
+      ${mdToWordHtml(a.content || '')}
+    </div>`;
+
+    // Platform versions for this article
+    if (a.platforms) {
+      for (const [platform, content] of Object.entries(a.platforms)) {
+        if (content && content.trim()) {
+          const dm = DISTRIBUTION_MATRIX.find(d => d.platform === platform);
+          sectionsHtml += `
+    <div class="platform-section" style="margin-left:24px;">
+      <div class="platform-header">
+        <h2>${dm ? dm.icon : '📄'} ${platform}${dm ? `（${dm.form}）` : ''}</h2>
+      </div>
+      ${mdToWordHtml(content)}
+    </div>`;
+        }
+      }
+    }
   });
 
-  exportToWord('全部文章导出', allContent.trim());
+  const fullHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>全部文章导出</title>
+  <style>
+    body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-size: 14px; line-height: 1.8; color: #1a1a2e; max-width: 800px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 22px; font-weight: 700; margin: 20px 0 12px; }
+    h2 { font-size: 18px; font-weight: 700; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin: 28px 0 12px; }
+    h3 { font-size: 16px; font-weight: 600; margin: 20px 0 8px; }
+    p { margin: 8px 0; }
+    ul, ol { padding-left: 24px; margin: 8px 0; }
+    li { margin: 4px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
+    th { background: #f3f4f6; font-weight: 600; }
+    blockquote { border-left: 3px solid #d1d5db; padding: 8px 16px; margin: 12px 0; color: #6b7280; }
+    hr { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    strong { font-weight: 700; }
+    .platform-section { page-break-before: always; margin-top: 40px; }
+    .platform-header { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; }
+    .platform-header h2 { border: none; margin: 0; padding: 0; font-size: 20px; }
+    .platform-meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>全部文章导出</h1>
+  <p style="font-size:12px;color:#6b7280;">导出时间：${new Date().toLocaleString('zh-CN')} · 共 ${state.articles.length} 篇文章</p>
+  ${sectionsHtml}
+  <hr>
+  <p style="font-size:11px;color:#9ca3af;text-align:center;">由 GEO 内容工作台生成</p>
+</body>
+</html>`;
+
+  const blob = new Blob([fullHtml], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `全部文章-${new Date().toISOString().slice(0,10)}.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`已导出 ${state.articles.length} 篇文章`, 'success');
 }
 
 // ===== Modal Helpers =====
