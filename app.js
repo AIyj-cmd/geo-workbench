@@ -1124,39 +1124,76 @@ async function generateDistribution(forceRegenerate = false) {
 
   // Check if article already has saved platform versions → restore directly (unless forced)
   if (!forceRegenerate && article.platforms && Object.keys(article.platforms).length > 0) {
-    let html = '';
-    for (const dm of DISTRIBUTION_MATRIX) {
-      const savedContent = article.platforms[dm.platform] || '';
-      const statusTag = savedContent
-        ? '<span class="tag tag-complete">已保存</span>'
-        : '<span class="tag tag-medium">未生成</span>';
-      html += `
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-header">
-            <span style="font-size:20px">${dm.icon}</span>
-            <span style="font-weight:700;font-size:15px;color:${dm.color}">${dm.platform}</span>
-            <span class="tag tag-blue">${dm.form}</span>
-            <span class="text-sm text-muted">${dm.geoValue}</span>
-            ${statusTag}
-          </div>
-          <div class="card-body">
-            <textarea class="article-textarea" style="min-height:200px" id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(savedContent)}</textarea>
-          </div>
-        </div>`;
-    }
-    platformsDiv.innerHTML = html;
-    document.getElementById('btnExportDist').style.display = '';
+    renderDistributionCards(article, platformsDiv, articleId);
+    
+    // Check if there are missing platforms
+    const hasMissing = DISTRIBUTION_MATRIX.some(dm => !article.platforms[dm.platform]);
+    document.getElementById('btnContinueDist').style.display = hasMissing ? '' : 'none';
     document.getElementById('btnRegenDist').style.display = '';
+    document.getElementById('btnExportDist').style.display = '';
     showToast('已恢复上次生成的平台版本（可直接编辑）', 'info');
     return;
   }
 
-  // Generate new platform versions
+  // Generate all platform versions
+  await generatePlatformVersions(article, platformsDiv, articleId, DISTRIBUTION_MATRIX);
+}
+
+// Render distribution cards for an article
+function renderDistributionCards(article, platformsDiv, articleId) {
+  let html = '';
+  for (const dm of DISTRIBUTION_MATRIX) {
+    const savedContent = article.platforms[dm.platform] || '';
+    const statusTag = savedContent
+      ? '<span class="tag tag-complete">已保存</span>'
+      : '<span class="tag tag-medium">未生成</span>';
+    html += `
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <span style="font-size:20px">${dm.icon}</span>
+          <span style="font-weight:700;font-size:15px;color:${dm.color}">${dm.platform}</span>
+          <span class="tag tag-blue">${dm.form}</span>
+          <span class="text-sm text-muted">${dm.geoValue}</span>
+          ${statusTag}
+        </div>
+        <div class="card-body">
+          <textarea class="article-textarea" style="min-height:200px" id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(savedContent)}</textarea>
+        </div>
+      </div>`;
+  }
+  platformsDiv.innerHTML = html;
+}
+
+// Continue generating missing platform versions
+async function continueDistribution() {
+  const articleId = parseInt(document.getElementById('distArticleSelect').value);
+  if (!articleId) { showToast('请先选择一篇文章', 'error'); return; }
+
+  const article = state.articles.find(a => a.id === articleId);
+  if (!article || !article.platforms) return;
+
+  const platformsDiv = document.getElementById('distPlatforms');
+  const missingPlatforms = DISTRIBUTION_MATRIX.filter(dm => !article.platforms[dm.platform]);
+
+  if (missingPlatforms.length === 0) {
+    showToast('所有平台版本已生成', 'info');
+    return;
+  }
+
+  showToast(`继续生成 ${missingPlatforms.length} 个缺失的平台版本...`, 'info');
+  await generatePlatformVersions(article, platformsDiv, articleId, missingPlatforms);
+}
+
+// Generate platform versions (core logic)
+async function generatePlatformVersions(article, platformsDiv, articleId, platformsToGenerate) {
   platformsDiv.innerHTML = '<div class="generating-indicator"><div class="spinner"></div><p>正在生成各平台版本...</p></div>';
+
+  // Initialize platforms object if not exists
+  if (!article.platforms) article.platforms = {};
 
   let html = '';
 
-  for (const dm of DISTRIBUTION_MATRIX) {
+  for (const dm of platformsToGenerate) {
     try {
       const prompt = dm.prompt.replace('{{母稿}}', article.content);
 
@@ -1177,6 +1214,9 @@ async function generateDistribution(forceRegenerate = false) {
       const data = await response.json();
       const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
 
+      // Save to article.platforms immediately
+      article.platforms[dm.platform] = content;
+
       html += `
         <div class="card" style="margin-bottom:16px;">
           <div class="card-header">
@@ -1184,9 +1224,10 @@ async function generateDistribution(forceRegenerate = false) {
             <span style="font-weight:700;font-size:15px;color:${dm.color}">${dm.platform}</span>
             <span class="tag tag-blue">${dm.form}</span>
             <span class="text-sm text-muted">${dm.geoValue}</span>
+            <span class="tag tag-complete">已保存</span>
           </div>
           <div class="card-body">
-            <textarea class="article-textarea" style="min-height:200px" id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}">${escapeHtml(content)}</textarea>
+            <textarea class="article-textarea" style="min-height:200px" id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(content)}</textarea>
           </div>
         </div>`;
     } catch (e) {
@@ -1202,27 +1243,41 @@ async function generateDistribution(forceRegenerate = false) {
     }
   }
 
-  platformsDiv.innerHTML = html;
-  document.getElementById('btnExportDist').style.display = '';
-
-  // Add oninput handlers for live editing
-  platformsDiv.querySelectorAll('textarea').forEach((ta, i) => {
-    ta.setAttribute('oninput', `savePlatformEdits(${articleId})`);
-  });
-
-  // Save generated platform versions to article
-  const platforms = {};
-  platformsDiv.querySelectorAll('textarea').forEach((ta, i) => {
-    if (DISTRIBUTION_MATRIX[i]) {
-      platforms[DISTRIBUTION_MATRIX[i].platform] = ta.value;
+  // If there are existing platforms, render them too
+  if (Object.keys(article.platforms).length > platformsToGenerate.length) {
+    let existingHtml = '';
+    for (const dm of DISTRIBUTION_MATRIX) {
+      if (article.platforms[dm.platform] && !platformsToGenerate.find(p => p.platform === dm.platform)) {
+        existingHtml += `
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header">
+              <span style="font-size:20px">${dm.icon}</span>
+              <span style="font-weight:700;font-size:15px;color:${dm.color}">${dm.platform}</span>
+              <span class="tag tag-blue">${dm.form}</span>
+              <span class="text-sm text-muted">${dm.geoValue}</span>
+              <span class="tag tag-complete">已保存</span>
+            </div>
+            <div class="card-body">
+              <textarea class="article-textarea" style="min-height:200px" id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(article.platforms[dm.platform])}</textarea>
+            </div>
+          </div>`;
+      }
     }
-  });
-  article.platforms = platforms;
+    html = existingHtml + html;
+  }
+
+  platformsDiv.innerHTML = html;
+
+  // Save to state
   article.platformsUpdatedAt = new Date().toISOString();
   saveState();
 
+  // Update button visibility
+  const hasMissing = DISTRIBUTION_MATRIX.some(dm => !article.platforms[dm.platform]);
+  document.getElementById('btnContinueDist').style.display = hasMissing ? '' : 'none';
   document.getElementById('btnRegenDist').style.display = '';
-  showToast('各平台版本生成完成！', 'success');
+  document.getElementById('btnExportDist').style.display = '';
+  showToast('平台版本生成完成！', 'success');
 }
 
 function exportAllDistribution() {
