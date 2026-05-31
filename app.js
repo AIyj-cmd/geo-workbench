@@ -850,6 +850,7 @@ function renderWorkspace() {
     const articleCount = state.articles.filter(a => a.questionId === q.id).length;
     const angleLabel = articleCount > 1 ? `<span class="tag tag-purple" style="font-size:10px">${articleCount}个角度</span>` : (hasArticle ? '<span class="tag tag-green" style="font-size:10px">已有文章</span>' : '');
     return `<div class="workspace-question-item ${selected}" onclick="selectWorkspaceQuestion(${q.id})">
+      ${selected ? '<div class="workspace-q-check">✓</div>' : ''}
       <div class="workspace-q-text">${q.question}</div>
       <div class="workspace-q-meta">
         <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
