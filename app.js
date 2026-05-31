@@ -3907,6 +3907,22 @@ function debounceFilter(key, fn, delay = 300) {
 // ===== Changelog =====
 const CHANGELOG = [
   {
+    version: 'v2.1.0',
+    date: '2026-05-31',
+    title: '事实库 + 合规校验 + GEO评分 + 导出优化',
+    icon: '🛡️',
+    changes: [
+      { type: 'feature', text: '卖点弹药库升级为「事实库」— 新增数据类型（数字/百分比/描述）、确认状态、统一口径字段' },
+      { type: 'feature', text: '生成器自动注入事实库 — 已确认数据自动写入System Prompt，未确认的数字用「待补」占位' },
+      { type: 'feature', text: '合规+数据校验 — 查看文章时自动扫描绝对化用语（最/第一/100%）和未溯源数字' },
+      { type: 'feature', text: 'GEO母稿质量评分 — 6项自动检查（问答式标题/结论前置/结构化容器/FAQ/长尾词覆盖/篇幅），SABCD五级评分' },
+      { type: 'feature', text: '评分实时展示 — 生成母稿后自动评分，toast显示等级，编辑器下方展示详细报告' },
+      { type: 'improve', text: '导出格式全面优化 — 母稿+各平台独立区块，带图标+元信息+分页，告别=====-分隔符' },
+      { type: 'improve', text: '侧边栏标题「GEO 内容工作台」居中加大加粗' },
+      { type: 'fix', text: '卖点弹药库表格渲染修复 — spFilterStatus元素不存在导致JS崩溃' },
+    ]
+  },
+  {
     version: 'v2.0.0',
     date: '2026-05-31',
     title: '一稿多发稳定性 + Markdown清理',
