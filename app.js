@@ -1108,8 +1108,46 @@ function renderDistribution() {
     state.articles.map(a => {
       const q = state.questions.find(q => q.id === a.questionId);
       const label = q ? q.question : `文章 #${a.id}`;
-      return `<option value="${a.id}">${label}</option>`;
+      const hasPlatforms = a.platforms && Object.keys(a.platforms).length > 0;
+      return `<option value="${a.id}">${hasPlatforms ? '✅ ' : ''}${label}</option>`;
     }).join('');
+  select.onchange = onDistributionArticleSelect;
+}
+
+function onDistributionArticleSelect() {
+  const articleId = parseInt(document.getElementById('distArticleSelect').value);
+  const platformsDiv = document.getElementById('distPlatforms');
+  
+  if (!articleId) {
+    platformsDiv.innerHTML = '';
+    document.getElementById('btnGenDist').style.display = '';
+    document.getElementById('btnContinueDist').style.display = 'none';
+    document.getElementById('btnRegenDist').style.display = 'none';
+    document.getElementById('btnExportDist').style.display = 'none';
+    document.getElementById('distMatrixInfo').classList.remove('hidden');
+    return;
+  }
+
+  const article = state.articles.find(a => a.id === articleId);
+  if (!article) return;
+
+  if (article.platforms && Object.keys(article.platforms).length > 0) {
+    renderDistributionCards(article, platformsDiv, articleId);
+    
+    const hasMissing = DISTRIBUTION_MATRIX.some(dm => !article.platforms[dm.platform]);
+    document.getElementById('btnGenDist').style.display = 'none';
+    document.getElementById('btnContinueDist').style.display = hasMissing ? '' : 'none';
+    document.getElementById('btnRegenDist').style.display = '';
+    document.getElementById('btnExportDist').style.display = '';
+    document.getElementById('distMatrixInfo').classList.add('hidden');
+  } else {
+    platformsDiv.innerHTML = '';
+    document.getElementById('btnGenDist').style.display = '';
+    document.getElementById('btnContinueDist').style.display = 'none';
+    document.getElementById('btnRegenDist').style.display = 'none';
+    document.getElementById('btnExportDist').style.display = 'none';
+    document.getElementById('distMatrixInfo').classList.remove('hidden');
+  }
 }
 
 async function generateDistribution(forceRegenerate = false) {
