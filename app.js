@@ -961,6 +961,135 @@ function updateWordCount() {
   document.getElementById('wsWordCount').textContent = `${count} 字`;
 }
 
+// ===== GEO 母稿质量评分 =====
+function scoreMasterDraft(content, question) {
+  if (!content || content.length < 100) return { score: 0, checks: [], level: '无法评分' };
+
+  const checks = [];
+  const text = content.trim();
+  const lines = text.split('\n').filter(l => l.trim());
+  const firstLine = lines[0] || '';
+  const first200 = text.slice(0, 200);
+
+  // 提取目标关键词
+  const keywords = [];
+  if (question) {
+    const q = question.question || '';
+    keywords.push(...q.replace(/[？?！!，,。.：:]/g, ' ').split(/\s+/).filter(w => w.length >= 2));
+    if (question.sellingPoint) keywords.push(question.sellingPoint);
+  }
+  const kwSet = [...new Set(keywords.filter(k => k.length >= 2))];
+
+  // 1. 问答式标题
+  const hasQuestionTitle = /[？?]/.test(firstLine) ||
+    /^(如何|怎样|怎么|什么是|哪些|哪个|为什么|是否|能否|是不是|有没有)/.test(firstLine) ||
+    /吗[？?]?$/.test(firstLine);
+  checks.push({
+    name: '问答式标题',
+    pass: hasQuestionTitle,
+    detail: hasQuestionTitle ? `「${firstLine.slice(0, 30)}…」` : '标题不像提问句式，AI 难以匹配用户查询',
+  });
+
+  // 2. 结论前置
+  const conclusionPatterns = /(结论|答案|TL|一句话|简单说|总结|核心|关键是|本质上|总的来说|先说)/i;
+  const hasConclusion = conclusionPatterns.test(first200) ||
+    /^[^\n]{10,80}(是|就是|意味着|关键在于)/.test(first200);
+  checks.push({
+    name: '结论前置',
+    pass: hasConclusion,
+    detail: hasConclusion ? '开头直接给答案' : '开头没有结论，AI 可能跳过这段去找更直接的答案',
+  });
+
+  // 3. 结构化容器
+  const tableIndicators = /[→➜▼▶]|对比|vs|VS|表格|清单|筛选|checklist/i;
+  const listPattern = /(?:^|\n)\s*(?:[●◆◇■▸→\d+[.、)]|[（(]\d+[)）]).{5,}/gm;
+  const hasTable = tableIndicators.test(text) || (text.match(listPattern) || []).length >= 3;
+  checks.push({
+    name: '结构化容器',
+    pass: hasTable,
+    detail: hasTable ? '包含对比/清单/表格结构' : '缺少表格或清单，AI 更喜欢引用结构化内容',
+  });
+
+  // 4. FAQ 块
+  const faqPatterns = /(?:FAQ|常见问题|延伸问题|你可能还想知道|补充问|Q\d|[问Q][：:].{5,}[？?])/gi;
+  const faqMatches = text.match(faqPatterns) || [];
+  const hasFAQ = faqMatches.length >= 2 || /FAQ|常见问题/i.test(text);
+  checks.push({
+    name: 'FAQ 块',
+    pass: hasFAQ,
+    detail: hasFAQ ? `检测到 ${faqMatches.length} 处 FAQ 标记` : '没有 FAQ 块，AI 常整段引用 FAQ 回答用户追问',
+  });
+
+  // 5. 长尾词覆盖
+  const keywordHits = kwSet.filter(kw => {
+    const inTitle = firstLine.includes(kw);
+    const inFirst = first200.includes(kw);
+    const subheadings = lines.filter(l => /^[一二三四五六七八九十]+[、.．]|[（(][一二三四五六七八九十][)）]/.test(l.trim()));
+    const inSubheading = subheadings.some(l => l.includes(kw));
+    return inTitle || inFirst || inSubheading;
+  });
+  const kwCoverage = kwSet.length > 0 ? keywordHits.length / kwSet.length : 0;
+  const kwPass = kwCoverage >= 0.3 || kwSet.length === 0;
+  checks.push({
+    name: '长尾词覆盖',
+    pass: kwPass,
+    detail: kwSet.length === 0
+      ? '无目标关键词'
+      : `覆盖 ${keywordHits.length}/${kwSet.length} 个关键词（${Math.round(kwCoverage * 100)}%）${kwPass ? '' : '，标题/首段/小标题中缺少核心词'}`,
+  });
+
+  // 6. 字数检查
+  const charCount = text.replace(/\s/g, '').length;
+  const wordPass = charCount >= 1000;
+  checks.push({
+    name: '篇幅达标',
+    pass: wordPass,
+    detail: `${charCount.toLocaleString()} 字${wordPass ? '' : '，不足 1000 字，内容太薄 AI 不会优先引用'}`,
+  });
+
+  const passed = checks.filter(c => c.pass).length;
+  const total = checks.length;
+  const score = Math.round((passed / total) * 100);
+
+  let level;
+  if (score >= 100) level = '🏆 S 级 · GEO 标杆';
+  else if (score >= 83) level = '🟢 A 级 · 可发布';
+  else if (score >= 66) level = '🟡 B 级 · 需优化';
+  else if (score >= 50) level = '🟠 C 级 · 大改';
+  else level = '🔴 D 级 · 重写';
+
+  return { score, checks, level, passed, total, charCount };
+}
+
+function renderScoreReport(report) {
+  if (!report || report.score === 0) return '';
+  const scoreColor = report.score >= 83 ? 'var(--green)' :
+    report.score >= 66 ? 'var(--orange)' : 'var(--red)';
+  let html = '<div class="score-report">';
+  html += `<div class="score-header">
+    <div class="score-circle" style="border-color:${scoreColor}">
+      <span class="score-number" style="color:${scoreColor}">${report.score}</span>
+      <span class="score-label">分</span>
+    </div>
+    <div class="score-meta">
+      <div class="score-level">${report.level}</div>
+      <div class="text-sm text-muted">${report.passed}/${report.total} 项通过 · ${report.charCount.toLocaleString()} 字</div>
+    </div>
+  </div>`;
+  html += '<div class="score-checks">';
+  report.checks.forEach(c => {
+    const icon = c.pass ? '✅' : '❌';
+    const cls = c.pass ? 'check-pass' : 'check-fail';
+    html += `<div class="score-check ${cls}">
+      <span class="check-icon">${icon}</span>
+      <span class="check-name">${c.name}</span>
+      <span class="check-detail">${c.detail}</span>
+    </div>`;
+  });
+  html += '</div></div>';
+  return html;
+}
+
 async function generateArticle() {
   if (!state.wsSelectedQuestionId) { showToast('请先选择一个问题', 'error'); return; }
   if (state.wsIsGenerating) return;
@@ -1102,7 +1231,14 @@ ${factsText}
 
     saveState();
     updateWordCount();
-    showToast('文章生成完成！', 'success');
+
+    // 自动评分
+    const scoreReport = scoreMasterDraft(fullContent, q);
+    const scoreHtml = renderScoreReport(scoreReport);
+    const scoreContainer = document.getElementById('wsScoreReport');
+    if (scoreContainer) scoreContainer.innerHTML = scoreHtml;
+
+    showToast('文章生成完成！' + (scoreReport.level ? ` ${scoreReport.level}` : ''), 'success');
 
   } catch (e) {
     if (e.name === 'AbortError') {
@@ -1608,13 +1744,15 @@ function viewArticle(articleId) {
 
   overlay.addEventListener('click', e => { if (e.target === overlay) closeArticleModal(); });
 
-  // 添加校验报告
+  // 添加校验报告 + GEO 评分
   setTimeout(() => {
     const content = article.content || '';
     const report = validateArticle(content);
     const reportEl = document.getElementById('articleValidationReport');
     if (reportEl) {
-      reportEl.innerHTML = renderValidationReport(report);
+      const q = state.questions.find(q => q.id === article.questionId);
+      const geoScore = scoreMasterDraft(content, q);
+      reportEl.innerHTML = renderScoreReport(geoScore) + renderValidationReport(report);
     }
   }, 100);
 }
