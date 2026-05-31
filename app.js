@@ -1181,25 +1181,31 @@ async function generateDistribution(forceRegenerate = false) {
 function renderDistributionCards(article, platformsDiv, articleId) {
   let html = '';
   for (const dm of DISTRIBUTION_MATRIX) {
-    const savedContent = article.platforms[dm.platform] || '';
-    const statusTag = savedContent
-      ? '<span class="tag tag-complete">已保存</span>'
-      : '<span class="tag tag-medium">未生成</span>';
-    html += `
-      <div class="card" style="margin-bottom:16px;">
-        <div class="card-header">
-          <span style="font-size:20px">${dm.icon}</span>
-          <span style="font-weight:700;font-size:15px;color:${dm.color}">${dm.platform}</span>
-          <span class="tag tag-blue">${dm.form}</span>
-          <span class="text-sm text-muted">${dm.geoValue}</span>
-          ${statusTag}
-        </div>
-        <div class="card-body">
-          <textarea class="article-textarea" style="min-height:200px" id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(savedContent)}</textarea>
-        </div>
-      </div>`;
+    html += buildDistCard(dm, article.platforms[dm.platform] || '', articleId);
   }
   platformsDiv.innerHTML = html;
+}
+
+// Build a single distribution card HTML
+function buildDistCard(dm, content, articleId) {
+  const hasContent = !!content;
+  const statusTag = hasContent
+    ? '<span class="tag tag-complete">已保存</span>'
+    : '<span class="tag tag-medium">未生成</span>';
+  
+  return `
+    <div class="dist-card">
+      <div class="dist-card-header">
+        <span class="dist-card-icon">${dm.icon}</span>
+        <span class="dist-card-platform" style="color:${dm.color}">${dm.platform}</span>
+        <span class="dist-card-form">${dm.form}</span>
+        <span class="dist-card-status">${statusTag}</span>
+      </div>
+      <div class="dist-card-note">${dm.geoValue}</div>
+      <div class="dist-card-body">
+        <textarea id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(content)}</textarea>
+      </div>
+    </div>`;
 }
 
 // Continue generating missing platform versions
@@ -1255,28 +1261,16 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
       // Save to article.platforms immediately
       article.platforms[dm.platform] = content;
 
-      html += `
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-header">
-            <span style="font-size:20px">${dm.icon}</span>
-            <span style="font-weight:700;font-size:15px;color:${dm.color}">${dm.platform}</span>
-            <span class="tag tag-blue">${dm.form}</span>
-            <span class="text-sm text-muted">${dm.geoValue}</span>
-            <span class="tag tag-complete">已保存</span>
-          </div>
-          <div class="card-body">
-            <textarea class="article-textarea" style="min-height:200px" id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(content)}</textarea>
-          </div>
-        </div>`;
+      html += buildDistCard(dm, content, articleId);
     } catch (e) {
       html += `
-        <div class="card" style="margin-bottom:16px;border-color:var(--red);">
-          <div class="card-header">
-            <span style="font-size:20px">${dm.icon}</span>
-            <span style="font-weight:700">${dm.platform}</span>
-            <span class="tag tag-medium">生成失败</span>
+        <div class="dist-card" style="border-color:var(--red);">
+          <div class="dist-card-header">
+            <span class="dist-card-icon">${dm.icon}</span>
+            <span class="dist-card-platform">${dm.platform}</span>
+            <span class="dist-card-status"><span class="tag tag-medium">生成失败</span></span>
           </div>
-          <p class="text-sm text-muted" style="padding:0 20px 16px">${e.message}</p>
+          <p class="text-sm text-muted" style="padding:12px 18px;margin:0;">${e.message}</p>
         </div>`;
     }
   }
@@ -1286,19 +1280,7 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
     let existingHtml = '';
     for (const dm of DISTRIBUTION_MATRIX) {
       if (article.platforms[dm.platform] && !platformsToGenerate.find(p => p.platform === dm.platform)) {
-        existingHtml += `
-          <div class="card" style="margin-bottom:16px;">
-            <div class="card-header">
-              <span style="font-size:20px">${dm.icon}</span>
-              <span style="font-weight:700;font-size:15px;color:${dm.color}">${dm.platform}</span>
-              <span class="tag tag-blue">${dm.form}</span>
-              <span class="text-sm text-muted">${dm.geoValue}</span>
-              <span class="tag tag-complete">已保存</span>
-            </div>
-            <div class="card-body">
-              <textarea class="article-textarea" style="min-height:200px" id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(article.platforms[dm.platform])}</textarea>
-            </div>
-          </div>`;
+        existingHtml += buildDistCard(dm, article.platforms[dm.platform], articleId);
       }
     }
     html = existingHtml + html;

@@ -6,6 +6,7 @@
   <title>56XYYY · GEO 内容工作台</title>
   <link rel="icon" type="image/jpeg" href="logo.jpg">
   <link rel="stylesheet" href="style.css?v=20260531">
+  <link rel="stylesheet" href="dist-card.css?v=20260531">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 </head>
@@ -248,10 +249,16 @@
           <select class="filter-select" id="distArticleSelect" style="min-width:300px">
             <option value="">选择一篇已生成的文章...</option>
           </select>
-          <button class="btn btn-primary" onclick="generateDistribution()" id="btnGenDist">📡 生成各平台版本</button>
-          <button class="btn btn-success" onclick="continueDistribution()" id="btnContinueDist" style="display:none">▶️ 继续生成</button>
-          <button class="btn btn-warning" onclick="generateDistribution(true)" id="btnRegenDist" style="display:none">🔄 全部重新生成</button>
-          <button class="btn" onclick="exportAllDistribution()" id="btnExportDist" style="display:none">📥 全部导出Word</button>
+          <div class="dist-actions">
+            <div class="dist-actions-left">
+              <button class="btn btn-primary" onclick="generateDistribution()" id="btnGenDist">📡 生成各平台版本</button>
+              <button class="btn btn-success" onclick="continueDistribution()" id="btnContinueDist" style="display:none">▶️ 继续生成</button>
+              <button class="btn btn-warning" onclick="generateDistribution(true)" id="btnRegenDist" style="display:none">🔄 全部重新生成</button>
+            </div>
+            <div class="dist-actions-right">
+              <button class="btn" onclick="exportAllDistribution()" id="btnExportDist" style="display:none">📥 全部导出Word</button>
+            </div>
+          </div>
         </div>
         <div id="distMatrixInfo" class="mb-16">
           <div class="card" style="padding:24px;text-align:center;color:var(--text-muted);">
