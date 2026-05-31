@@ -1632,3 +1632,211 @@ tr:last-child td { border-bottom: none; }
   line-height: 1;
   white-space: nowrap;
 }
+
+/* ========== 数据看板新增样式 ========== */
+
+/* 空状态提示 */
+.dash-empty-hint {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 40px 20px;
+  line-height: 1.6;
+}
+
+/* AI提及率趋势图 */
+.dash-trend-chart {
+  display: flex;
+  gap: 8px;
+  height: 180px;
+  padding: 8px 0;
+}
+.dash-trend-y {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  width: 36px;
+  text-align: right;
+  padding: 4px 0;
+}
+.dash-trend-bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  border-left: 1px solid var(--border-light);
+  padding-left: 8px;
+}
+.dash-trend-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+.dash-trend-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.dash-trend-bar {
+  width: 80%;
+  max-width: 48px;
+  background: linear-gradient(180deg, var(--blue) 0%, #60a5fa 100%);
+  border-radius: 6px 6px 0 0;
+  position: relative;
+  min-height: 4px;
+  transition: height 0.3s ease;
+}
+.dash-trend-value {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--blue);
+  white-space: nowrap;
+}
+.dash-trend-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  white-space: nowrap;
+}
+.dash-trend-footer {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-light);
+}
+
+/* 待复测列表 */
+.dash-retest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash-retest-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg-secondary, #f9fafb);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.dash-retest-date {
+  font-weight: 600;
+  color: var(--orange, #f59e0b);
+  font-size: 12px;
+  min-width: 48px;
+}
+.dash-retest-q {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.dash-retest-status {
+  flex-shrink: 0;
+}
+.dash-retest-more {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px;
+}
+
+/* 拖拽样式 */
+.dash-chart-card[draggable="true"] {
+  cursor: grab;
+  user-select: none;
+}
+.dash-chart-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+.dash-card-dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+}
+.dash-card-dragover {
+  border: 2px dashed var(--blue) !important;
+  background: rgba(59, 130, 246, 0.05) !important;
+}
+
+/* 校验报告样式 */
+.validation-pass {
+  text-align: center;
+  color: var(--green, #10b981);
+  font-size: 14px;
+  padding: 16px;
+  background: rgba(16, 185, 129, 0.05);
+  border-radius: 8px;
+}
+.validation-report {
+  font-size: 13px;
+}
+.validation-header {
+  font-weight: 600;
+  color: var(--orange, #f59e0b);
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+.validation-section {
+  margin-bottom: 12px;
+}
+.validation-section-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.validation-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.validation-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.validation-error {
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid #ef4444;
+}
+.validation-warn {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid #f59e0b;
+}
+.validation-word {
+  font-weight: 600;
+  color: var(--text);
+  min-width: 60px;
+  flex-shrink: 0;
+}
+.validation-context {
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+/* 表单行布局 */
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+.form-row .form-group {
+  flex: 1;
+}

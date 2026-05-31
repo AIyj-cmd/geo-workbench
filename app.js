@@ -736,10 +736,13 @@ function batchGenerate() {
 // ===== Selling Points Page =====
 function getFilteredSPs() {
   let sps = [...state.sellingPoints];
-  const search = document.getElementById('spSearch').value.toLowerCase();
-  const category = document.getElementById('spFilterCategory').value;
+  const cat = document.getElementById('spFilterCategory')?.value;
+  if (cat) sps = sps.filter(sp => sp.category === cat);
+  const status = document.getElementById('spFilterStatus')?.value;
+  if (status === 'confirmed') sps = sps.filter(sp => sp.confirmed);
+  if (status === 'pending') sps = sps.filter(sp => !sp.confirmed);
+  const search = (document.getElementById('spSearch')?.value || '').toLowerCase();
   if (search) sps = sps.filter(sp => sp.point.toLowerCase().includes(search) || sp.category.toLowerCase().includes(search));
-  if (category) sps = sps.filter(sp => sp.category === category);
   return sps;
 }
 
@@ -749,12 +752,14 @@ function renderSellingPoints() {
   // Stats
   const all = state.sellingPoints;
   const categories = [...new Set(all.map(sp => sp.category))];
-  const warnings = all.filter(sp => sp.warn).length;
+  const confirmed = all.filter(sp => sp.confirmed).length;
+  const pending = all.filter(sp => !sp.confirmed).length;
 
   document.getElementById('spStats').innerHTML = `
-    <div class="stat-card blue"><div class="stat-label">总卖点数</div><div class="stat-value">${all.length}</div></div>
-    <div class="stat-card green"><div class="stat-label">类别数</div><div class="stat-value">${categories.length}</div></div>
-    <div class="stat-card red"><div class="stat-label">数据待确认</div><div class="stat-value">${warnings}</div></div>
+    <div class="stat-card blue"><div class="stat-label">总数据点</div><div class="stat-value">${all.length}</div></div>
+    <div class="stat-card green"><div class="stat-label">已确认</div><div class="stat-value">${confirmed}</div></div>
+    <div class="stat-card orange"><div class="stat-label">待确认</div><div class="stat-value">${pending}</div></div>
+    <div class="stat-card purple"><div class="stat-label">类别数</div><div class="stat-value">${categories.length}</div></div>
   `;
 
   // Update category filter
@@ -765,14 +770,21 @@ function renderSellingPoints() {
   // Table
   const tbody = document.getElementById('spTableBody');
   tbody.innerHTML = filtered.map((sp, i) => {
-    const warnClass = sp.warn ? 'warn-highlight' : '';
+    const confirmedTag = sp.confirmed
+      ? '<span class="tag tag-green">✓ 已确认</span>'
+      : '<span class="tag tag-orange">待确认</span>';
+    const dataTypeTag = sp.dataType === 'number'
+      ? '<span class="tag tag-blue">数字</span>'
+      : sp.dataType === 'percent'
+        ? '<span class="tag tag-purple">百分比</span>'
+        : '<span class="tag tag-gray">描述</span>';
     return `<tr>
       <td>${i + 1}</td>
       <td><span class="tag tag-blue">${sp.category}</span></td>
-      <td class="${warnClass}">${sp.point}${sp.warn ? ' ⚠️' : ''}</td>
-      <td class="text-sm">${sp.dimension || '-'}</td>
-      <td class="text-sm text-muted">${sp.notes || '-'}</td>
-      <td>${sp.warn ? '<span class="tag tag-medium">待确认</span>' : '<span class="tag tag-green">正常</span>'}</td>
+      <td>${sp.point}</td>
+      <td>${dataTypeTag}</td>
+      <td>${confirmedTag}</td>
+      <td class="text-sm">${sp.unifiedDesc || sp.point}</td>
       <td>
         <div class="card-actions">
           <button class="btn btn-sm btn-ghost" onclick="editSP(${sp.id})" title="编辑">✏️</button>
@@ -784,10 +796,12 @@ function renderSellingPoints() {
 }
 
 function openAddSP() {
-  document.getElementById('spModalTitle').textContent = '添加卖点';
+  document.getElementById('spModalTitle').textContent = '添加数据点';
   document.getElementById('spmCategory').value = '';
   document.getElementById('spmPoint').value = '';
-  document.getElementById('spmDimension').value = '';
+  document.getElementById('spmDataType').value = 'text';
+  document.getElementById('spmUnifiedDesc').value = '';
+  document.getElementById('spmConfirmed').value = 'false';
   document.getElementById('spmNotes').value = '';
   document.getElementById('spModal').dataset.editId = '';
   openModal('spModal');
@@ -796,10 +810,12 @@ function openAddSP() {
 function editSP(id) {
   const sp = state.sellingPoints.find(sp => sp.id === id);
   if (!sp) return;
-  document.getElementById('spModalTitle').textContent = '编辑卖点';
+  document.getElementById('spModalTitle').textContent = '编辑数据点';
   document.getElementById('spmCategory').value = sp.category;
   document.getElementById('spmPoint').value = sp.point;
-  document.getElementById('spmDimension').value = sp.dimension || '';
+  document.getElementById('spmDataType').value = sp.dataType || 'text';
+  document.getElementById('spmUnifiedDesc').value = sp.unifiedDesc || '';
+  document.getElementById('spmConfirmed').value = sp.confirmed ? 'true' : 'false';
   document.getElementById('spmNotes').value = sp.notes || '';
   document.getElementById('spModal').dataset.editId = id;
   openModal('spModal');
@@ -810,20 +826,21 @@ function saveSellingPoint() {
   const data = {
     category: document.getElementById('spmCategory').value.trim(),
     point: document.getElementById('spmPoint').value.trim(),
-    dimension: document.getElementById('spmDimension').value.trim(),
+    dataType: document.getElementById('spmDataType').value,
+    unifiedDesc: document.getElementById('spmUnifiedDesc').value.trim(),
+    confirmed: document.getElementById('spmConfirmed').value === 'true',
     notes: document.getElementById('spmNotes').value.trim(),
-    warn: false,
   };
-  if (!data.point) { showToast('请输入卖点', 'error'); return; }
+  if (!data.point) { showToast('请输入数据点', 'error'); return; }
 
   if (editId) {
     const sp = state.sellingPoints.find(sp => sp.id === parseInt(editId));
     if (sp) { Object.assign(sp, data); }
-    showToast('卖点已更新', 'success');
+    showToast('数据点已更新', 'success');
   } else {
     data.id = state.nextSpId++;
     state.sellingPoints.push(data);
-    showToast('卖点已添加', 'success');
+    showToast('数据点已添加', 'success');
   }
   saveState();
   closeModal('spModal');
@@ -958,6 +975,13 @@ async function generateArticle() {
 
   const sellingPoints = state.sellingPoints.map(sp => `- ${sp.category}：${sp.point}`).join('\n');
 
+  // 构建事实库注入
+  const confirmedFacts = state.sellingPoints.filter(sp => sp.confirmed);
+  const factsText = confirmedFacts.map(sp => {
+    const desc = sp.unifiedDesc || sp.point;
+    return `- [${sp.dataType === 'percent' ? '百分比' : sp.dataType === 'number' ? '数字' : '描述'}] ${sp.category}：${desc}`;
+  }).join('\n');
+
   let userPrompt = `客户提问：${q.question}
 行业：${q.industry}
 搜索意图：${q.intent}
@@ -965,6 +989,17 @@ async function generateArticle() {
 
 可用卖点弹药库：
 ${sellingPoints}`;
+
+  // 注入已确认事实库
+  if (factsText) {
+    userPrompt += `\n\n【事实库 - 已确认数据，必须原样使用】
+${factsText}
+
+⚠️ 数据纪律：
+1. 以上事实库数据必须原样使用，不得修改数字或表述
+2. 文中其他数字如果没有事实库支撑，请用「待补：xxx」标注，绝不自己编
+3. 禁止绝对化用语：最/第一/100%/0失误/唯一`;
+  }
 
   // Inject angle prompt if selected
   if (angle) {
@@ -1220,11 +1255,34 @@ function buildDistCard(dm, content, articleId) {
         <span class="dist-card-form">${dm.form}</span>
         <span class="dist-card-note">${dm.geoValue}</span>
         <span class="dist-card-status">${statusTag}</span>
+        ${hasContent ? `<button class="btn btn-sm btn-primary" onclick="copyPlatformText(${articleId}, '${dm.platform}')" title="复制文案">📋 复制文案</button>` : ''}
       </div>
       <div class="dist-card-body">
         <textarea id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(stripMarkdown(content))}</textarea>
       </div>
     </div>`;
+}
+
+// Copy platform text to clipboard
+function copyPlatformText(articleId, platform) {
+  const article = state.articles.find(a => a.id === articleId);
+  if (!article || !article.platforms || !article.platforms[platform]) {
+    showToast('没有可复制的内容', 'error');
+    return;
+  }
+  const text = stripMarkdown(article.platforms[platform]);
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(`${platform} 文案已复制`, 'success');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(`${platform} 文案已复制`, 'success');
+  });
 }
 
 // Continue generating missing platform versions
@@ -1530,6 +1588,7 @@ function viewArticle(articleId) {
           <button class="btn btn-sm btn-primary" onclick="saveArticleEdit(${article.id})">💾 保存修改</button>
         </div>
         <textarea id="articleEditTextarea" style="width:100%;min-height:400px;padding:16px 24px;border:none;outline:none;font-family:inherit;font-size:14px;line-height:1.7;resize:vertical;"></textarea>
+        <div id="articleValidationReport" style="padding:16px 24px;border-top:1px solid var(--border);"></div>
         ${platformEntries ? `<div style="padding:16px 24px;border-top:1px solid var(--border);"><h4 style="margin-bottom:12px;">📡 各平台版本</h4>${platformEntries}</div>` : ''}
       </div>
     </div>`;
@@ -1548,6 +1607,107 @@ function viewArticle(articleId) {
   }
 
   overlay.addEventListener('click', e => { if (e.target === overlay) closeArticleModal(); });
+
+  // 添加校验报告
+  setTimeout(() => {
+    const content = article.content || '';
+    const report = validateArticle(content);
+    const reportEl = document.getElementById('articleValidationReport');
+    if (reportEl) {
+      reportEl.innerHTML = renderValidationReport(report);
+    }
+  }, 100);
+}
+
+// 合规 + 数据校验
+function validateArticle(text) {
+  if (!text) return { absoluteWords: [], missingNumbers: [], total: 0 };
+
+  // 1. 绝对化用语检测
+  const absolutePattern = /最[^\w]?|[第壹]一|100%|0失误|0差错|唯一|首家|首选|领先|第一|顶级|极致|完美|绝对|万能|无敌/gi;
+  const absoluteMatches = [];
+  let match;
+  while ((match = absolutePattern.exec(text)) !== null) {
+    const start = Math.max(0, match.index - 10);
+    const end = Math.min(text.length, match.index + match[0].length + 10);
+    absoluteMatches.push({
+      word: match[0],
+      context: text.slice(start, end),
+      index: match.index,
+    });
+  }
+
+  // 2. 数字溯源检测
+  const numberPattern = /\d+[\.]?\d*\s*(万|%|家|个|元|年|天|小时|分钟|倍|人|单|件|平米|㎡|km|米)/g;
+  const numberMatches = [];
+  while ((match = numberPattern.exec(text)) !== null) {
+    const start = Math.max(0, match.index - 15);
+    const end = Math.min(text.length, match.index + match[0].length + 15);
+    const context = text.slice(start, end);
+
+    // 检查是否在事实库中
+    const inFactBase = state.sellingPoints.some(sp => {
+      if (!sp.confirmed) return false;
+      const desc = sp.unifiedDesc || sp.point;
+      return desc.includes(match[0]) || match[0].includes(desc);
+    });
+
+    // 检查是否是"待补"标记
+    const isPending = text.slice(Math.max(0, match.index - 5), match.index).includes('待补');
+
+    if (!inFactBase && !isPending) {
+      numberMatches.push({
+        number: match[0],
+        context: context,
+        index: match.index,
+      });
+    }
+  }
+
+  return {
+    absoluteWords: absoluteMatches,
+    missingNumbers: numberMatches,
+    total: absoluteMatches.length + numberMatches.length,
+  };
+}
+
+// 渲染校验报告
+function renderValidationReport(report) {
+  if (report.total === 0) {
+    return '<div class="validation-pass">✅ 校验通过，未发现合规或数据问题</div>';
+  }
+
+  let html = '<div class="validation-report">';
+  html += `<div class="validation-header">⚠️ 校验发现 ${report.total} 个问题</div>`;
+
+  if (report.absoluteWords.length > 0) {
+    html += '<div class="validation-section">';
+    html += `<div class="validation-section-title">🔴 绝对化用语（${report.absoluteWords.length}处）</div>`;
+    html += '<div class="validation-items">';
+    report.absoluteWords.forEach(item => {
+      html += `<div class="validation-item validation-error">
+        <span class="validation-word">${escapeHtml(item.word)}</span>
+        <span class="validation-context">...${escapeHtml(item.context)}...</span>
+      </div>`;
+    });
+    html += '</div></div>';
+  }
+
+  if (report.missingNumbers.length > 0) {
+    html += '<div class="validation-section">';
+    html += `<div class="validation-section-title">🟡 数字溯源（${report.missingNumbers.length}处）</div>`;
+    html += '<div class="validation-items">';
+    report.missingNumbers.forEach(item => {
+      html += `<div class="validation-item validation-warn">
+        <span class="validation-word">${escapeHtml(item.number)}</span>
+        <span class="validation-context">...${escapeHtml(item.context)}...</span>
+      </div>`;
+    });
+    html += '</div></div>';
+  }
+
+  html += '</div>';
+  return html;
 }
 
 function closeArticleModal() {
@@ -1794,6 +1954,84 @@ function renderDashboard() {
   const testRecords = state.testRecords || [];
   const sellingPoints = state.sellingPoints || [];
 
+  // ========== 卡片排序管理 ==========
+  const CARD_IDS = [
+    'trend', 'competitors', 'retest',
+    'priorities', 'intents', 'statuses',
+    'industries', 'clusters', 'progress',
+    'testSummary', 'angles', 'platforms',
+    'topSP', 'matrix'
+  ];
+  let cardOrder = CARD_IDS;
+  try {
+    const saved = localStorage.getItem('dashboardCardOrder');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // 合并：已保存的顺序 + 新增的卡片
+      const validIds = parsed.filter(id => CARD_IDS.includes(id));
+      const newIds = CARD_IDS.filter(id => !validIds.includes(id));
+      cardOrder = [...validIds, ...newIds];
+    }
+  } catch (e) {}
+
+  // 拖拽状态
+  let draggedCardId = null;
+
+  function handleDragStart(e) {
+    draggedCardId = e.target.dataset.cardId;
+    e.target.classList.add('dash-card-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', draggedCardId);
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const target = e.target.closest('.dash-chart-card');
+    if (target && target.dataset.cardId !== draggedCardId) {
+      target.classList.add('dash-card-dragover');
+    }
+  }
+
+  function handleDragLeave(e) {
+    e.target.closest('.dash-chart-card')?.classList.remove('dash-card-dragover');
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    const target = e.target.closest('.dash-chart-card');
+    if (!target || !draggedCardId) return;
+    const targetId = target.dataset.cardId;
+    if (targetId === draggedCardId) return;
+
+    // 重新排序
+    const fromIdx = cardOrder.indexOf(draggedCardId);
+    const toIdx = cardOrder.indexOf(targetId);
+    cardOrder.splice(fromIdx, 1);
+    cardOrder.splice(toIdx, 0, draggedCardId);
+
+    // 保存并重新渲染
+    localStorage.setItem('dashboardCardOrder', JSON.stringify(cardOrder));
+    renderDashboard();
+  }
+
+  function handleDragEnd(e) {
+    document.querySelectorAll('.dash-card-dragging, .dash-card-dragover').forEach(el => {
+      el.classList.remove('dash-card-dragging', 'dash-card-dragover');
+    });
+    draggedCardId = null;
+  }
+
+  // 注册全局拖拽事件（用事件委托）
+  const chartsContainer = document.getElementById('dashboardCharts');
+  if (chartsContainer) {
+    chartsContainer.ondragstart = handleDragStart;
+    chartsContainer.ondragover = handleDragOver;
+    chartsContainer.ondragleave = handleDragLeave;
+    chartsContainer.ondrop = handleDrop;
+    chartsContainer.ondragend = handleDragEnd;
+  }
+
   // ========== 核心指标 ==========
   const questionsWithArticles = new Set(articles.map(a => a.questionId));
   const generatedCount = questionsWithArticles.size;
@@ -1887,161 +2125,294 @@ function renderDashboard() {
     if (a.angleName) matrixData[a.questionId].add(a.angleName);
   });
 
-  chartsEl.innerHTML = `
-    <!-- 第一行：核心分布 -->
-    <div class="dash-chart-card">
-      <h4>📊 优先级分布</h4>
-      ${Object.entries(priorities).map(([k, v]) => `
-        <div class="bar-chart-row">
-          <div class="bar-label">${k}</div>
-          <div class="bar-track"><div class="bar-fill bar-${k === '高' ? 'red' : k === '中' ? 'orange' : 'gray'}" style="width:${Math.round(v / maxP * 100)}%"></div></div>
-          <div class="bar-value">${v}</div>
-        </div>
-      `).join('')}
-    </div>
-    <div class="dash-chart-card">
-      <h4>🔍 搜索意图分布</h4>
-      ${Object.entries(intents).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
-        <div class="bar-chart-row">
-          <div class="bar-label">${k}</div>
-          <div class="bar-track"><div class="bar-fill bar-purple" style="width:${Math.round(v / maxInt * 100)}%"></div></div>
-          <div class="bar-value">${v}</div>
-        </div>
-      `).join('')}
-    </div>
-    <div class="dash-chart-card">
-      <h4>📋 内容状态分布</h4>
-      ${Object.entries(statuses).map(([k, v]) => `
-        <div class="bar-chart-row">
-          <div class="bar-label">${k}</div>
-          <div class="bar-track"><div class="bar-fill bar-${k === '已发布' ? 'green' : k === '进行中' ? 'blue' : 'gray'}" style="width:${Math.round(v / maxSt * 100)}%"></div></div>
-          <div class="bar-value">${v}</div>
-        </div>
-      `).join('')}
-    </div>
+  // ========== 新增：AI提及率趋势线 ==========
+  const mentionTrend = {};
+  testRecords.forEach(r => {
+    if (!r.testDate) return;
+    const d = new Date(r.testDate);
+    const weekStart = new Date(d);
+    weekStart.setDate(d.getDate() - d.getDay());
+    const key = weekStart.toISOString().slice(0, 10);
+    if (!mentionTrend[key]) mentionTrend[key] = { total: 0, mentioned: 0 };
+    mentionTrend[key].total++;
+    if (r.mentioned === '是') mentionTrend[key].mentioned++;
+  });
+  const trendData = Object.entries(mentionTrend)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([week, d]) => ({
+      week,
+      label: week.slice(5), // MM-DD
+      rate: d.total > 0 ? Math.round(d.mentioned / d.total * 100) : 0,
+      total: d.total,
+    }));
+  const maxTrendRate = Math.max(...trendData.map(t => t.rate), 100);
 
-    <!-- 第二行：行业 + 选题簇 + 生产进度 -->
-    <div class="dash-chart-card">
-      <h4>🏭 行业分布</h4>
-      ${Object.entries(industries).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
-        <div class="bar-chart-row">
-          <div class="bar-label">${k}</div>
-          <div class="bar-track"><div class="bar-fill bar-blue" style="width:${Math.round(v / maxI * 100)}%"></div></div>
-          <div class="bar-value">${v}</div>
-        </div>
-      `).join('')}
-    </div>
-    <div class="dash-chart-card">
-      <h4>🎯 选题簇分布 Top 6</h4>
-      ${sortedClusters.map(([k, v]) => `
-        <div class="bar-chart-row">
-          <div class="bar-label" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${k}">${k}</div>
-          <div class="bar-track"><div class="bar-fill bar-cyan" style="width:${Math.round(v / maxC * 100)}%"></div></div>
-          <div class="bar-value">${v}</div>
-        </div>
-      `).join('')}
-    </div>
-    <div class="dash-chart-card">
-      <h4>📝 内容生产进度</h4>
-      <div class="dash-progress-ring">
-        <svg viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="40" fill="none" stroke="#f0f0f0" stroke-width="8"/>
-          <circle cx="50" cy="50" r="40" fill="none" stroke="${generatedCount > 0 ? '#10b981' : '#d1d5db'}" stroke-width="8"
-            stroke-dasharray="${generatedCount / all.length * 251} 251" stroke-linecap="round" transform="rotate(-90 50 50)"/>
-        </svg>
-        <div class="dash-progress-text">${all.length > 0 ? Math.round(generatedCount / all.length * 100) : 0}%</div>
-      </div>
-      <div class="dash-progress-labels">
-        <span><i class="dot green"></i>已生成 ${generatedCount}</span>
-        <span><i class="dot gray"></i>未生成 ${notGenerated}</span>
-      </div>
-    </div>
+  // ========== 新增：竞品出现频次榜 ==========
+  const competitorMap = {};
+  testRecords.forEach(r => {
+    if (!r.competitors) return;
+    // 按逗号、分号、换行分割竞品名称
+    const names = r.competitors.split(/[,;，；\n]+/).map(s => s.trim()).filter(Boolean);
+    names.forEach(name => {
+      competitorMap[name] = (competitorMap[name] || 0) + 1;
+    });
+  });
+  const topCompetitors = Object.entries(competitorMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+  const maxComp = topCompetitors.length > 0 ? topCompetitors[0][1] : 1;
 
-    <!-- 第三行：测试 + 角度 + 平台 -->
-    <div class="dash-chart-card">
-      <h4>🧪 测试记录摘要</h4>
-      <div class="dash-metrics-grid">
-        <div class="dash-metric-item">
-          <div class="dash-metric-num blue">${testedQuestionIds.size}</div>
-          <div class="dash-metric-desc">已测试问题</div>
-        </div>
-        <div class="dash-metric-item">
-          <div class="dash-metric-num green">${mentionedQuestionIds.size}</div>
-          <div class="dash-metric-desc">AI已提及</div>
-        </div>
-        <div class="dash-metric-item">
-          <div class="dash-metric-num purple">${mentionRate}%</div>
-          <div class="dash-metric-desc">提及率</div>
-        </div>
-        <div class="dash-metric-item">
-          <div class="dash-metric-num orange">${recentArticles}</div>
-          <div class="dash-metric-desc">近7天新增</div>
-        </div>
-      </div>
-    </div>
-    ${sortedAngles.length > 0 ? `
-    <div class="dash-chart-card">
-      <h4>📐 角度使用分布</h4>
-      ${sortedAngles.map(([k, v]) => `
-        <div class="bar-chart-row">
-          <div class="bar-label">${k}</div>
-          <div class="bar-track"><div class="bar-fill bar-orange" style="width:${Math.round(v / maxA * 100)}%"></div></div>
-          <div class="bar-value">${v}</div>
-        </div>
-      `).join('')}
-    </div>
-    ` : ''}
-    ${Object.keys(platformMap).length > 0 ? `
-    <div class="dash-chart-card">
-      <h4>📡 平台覆盖</h4>
-      ${Object.entries(platformMap).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
-        <div class="bar-chart-row">
-          <div class="bar-label">${k}</div>
-          <div class="bar-track"><div class="bar-fill bar-green" style="width:${Math.round(v / maxPlat * 100)}%"></div></div>
-          <div class="bar-value">${v}</div>
-        </div>
-      `).join('')}
-    </div>
-    ` : ''}
+  // ========== 新增：待复测提醒 ==========
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endOfWeek = new Date(today);
+  endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
+  const pendingRetest = state.questions.filter(q => {
+    if (!q.retestDate) return false;
+    const rd = new Date(q.retestDate);
+    return rd >= today && rd <= endOfWeek;
+  }).sort((a, b) => a.retestDate.localeCompare(b.retestDate));
 
-    <!-- 第四行：热门卖点 + 覆盖矩阵 -->
-    ${topSP.length > 0 ? `
-    <div class="dash-chart-card">
-      <h4>🔥 热门卖点 Top 5</h4>
-      ${topSP.map(([k, v]) => `
-        <div class="bar-chart-row">
-          <div class="bar-label" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${k}">${k}</div>
-          <div class="bar-track"><div class="bar-fill bar-red" style="width:${Math.round(v / maxSP * 100)}%"></div></div>
-          <div class="bar-value">${v}</div>
+  // 定义每个卡片的 HTML 内容
+  const cards = {
+    trend: {
+      html: trendData.length > 0 ? `
+        <h4>📈 AI提及率趋势线</h4>
+        <div class="dash-trend-chart">
+          <div class="dash-trend-y">
+            <span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span>
+          </div>
+          <div class="dash-trend-bars">
+            ${trendData.map(t => `
+              <div class="dash-trend-col">
+                <div class="dash-trend-bar-track">
+                  <div class="dash-trend-bar" style="height:${Math.round(t.rate / maxTrendRate * 100)}%" title="${t.rate}% (${t.mentioned}/${t.total})">
+                    <span class="dash-trend-value">${t.rate}%</span>
+                  </div>
+                </div>
+                <div class="dash-trend-label">${t.label}</div>
+              </div>
+            `).join('')}
+          </div>
         </div>
-      `).join('')}
-    </div>
-    ` : ''}
-    ${angleNames.length > 0 ? `
-    <div class="dash-chart-card dash-matrix-card">
-      <h4>🗺️ 问题×角度覆盖矩阵</h4>
-      <div class="dash-matrix-wrapper">
-        <table class="dash-matrix">
-          <thead>
-            <tr>
-              <th>问题</th>
-              ${angleNames.map(a => `<th title="${a}">${a.slice(0, 4)}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>
-            ${topQuestions.map(q => {
-              const covered = matrixData[q.id] || new Set();
-              return `<tr>
-                <td title="${q.question}" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${q.question.slice(0, 20)}</td>
-                ${angleNames.map(a => `<td>${covered.has(a) ? '✅' : '—'}</td>`).join('')}
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    ` : ''}
-  `;
+        <div class="dash-trend-footer">每周AI提及率 = 该周被提及问题数 ÷ 该周已测试问题数</div>
+      ` : `
+        <h4>📈 AI提及率趋势线</h4>
+        <div class="dash-empty-hint">暂无测试数据，添加测试记录后自动生成趋势线</div>
+      `,
+      span: 2
+    },
+    competitors: {
+      html: `
+        <h4>🏆 竞品出现频次榜</h4>
+        ${topCompetitors.length > 0 ? topCompetitors.map(([name, count], i) => `
+          <div class="bar-chart-row">
+            <div class="bar-label">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`} ${name}</div>
+            <div class="bar-track"><div class="bar-fill bar-red" style="width:${Math.round(count / maxComp * 100)}%"></div></div>
+            <div class="bar-value">${count}次</div>
+          </div>
+        `).join('') : '<div class="dash-empty-hint">暂无竞品数据，测试记录中填写「AI引用了谁」后自动统计</div>'}
+      `,
+      span: 1
+    },
+    retest: {
+      html: `
+        <h4>🔔 本周待复测</h4>
+        ${pendingRetest.length > 0 ? `
+          <div class="dash-retest-list">
+            ${pendingRetest.slice(0, 8).map(q => `
+              <div class="dash-retest-item">
+                <span class="dash-retest-date">${q.retestDate.slice(5)}</span>
+                <span class="dash-retest-q" title="${q.question}">${q.question.slice(0, 25)}${q.question.length > 25 ? '...' : ''}</span>
+                <span class="dash-retest-status tag ${q.mentioned === '是' ? 'tag-green' : 'tag-pending'}">${q.mentioned === '是' ? '已提及' : '未提及'}</span>
+              </div>
+            `).join('')}
+            ${pendingRetest.length > 8 ? `<div class="dash-retest-more">还有 ${pendingRetest.length - 8} 条...</div>` : ''}
+          </div>
+        ` : '<div class="dash-empty-hint">本周无需复测的记录</div>'}
+      `,
+      span: 1
+    },
+    priorities: {
+      html: `
+        <h4>📊 优先级分布</h4>
+        ${Object.entries(priorities).map(([k, v]) => `
+          <div class="bar-chart-row">
+            <div class="bar-label">${k}</div>
+            <div class="bar-track"><div class="bar-fill bar-${k === '高' ? 'red' : k === '中' ? 'orange' : 'gray'}" style="width:${Math.round(v / maxP * 100)}%"></div></div>
+            <div class="bar-value">${v}</div>
+          </div>
+        `).join('')}
+      `,
+      span: 1
+    },
+    intents: {
+      html: `
+        <h4>🔍 搜索意图分布</h4>
+        ${Object.entries(intents).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
+          <div class="bar-chart-row">
+            <div class="bar-label">${k}</div>
+            <div class="bar-track"><div class="bar-fill bar-purple" style="width:${Math.round(v / maxInt * 100)}%"></div></div>
+            <div class="bar-value">${v}</div>
+          </div>
+        `).join('')}
+      `,
+      span: 1
+    },
+    statuses: {
+      html: `
+        <h4>📋 内容状态分布</h4>
+        ${Object.entries(statuses).map(([k, v]) => `
+          <div class="bar-chart-row">
+            <div class="bar-label">${k}</div>
+            <div class="bar-track"><div class="bar-fill bar-${k === '已发布' ? 'green' : k === '进行中' ? 'blue' : 'gray'}" style="width:${Math.round(v / maxSt * 100)}%"></div></div>
+            <div class="bar-value">${v}</div>
+          </div>
+        `).join('')}
+      `,
+      span: 1
+    },
+    industries: {
+      html: `
+        <h4>🏭 行业分布</h4>
+        ${Object.entries(industries).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
+          <div class="bar-chart-row">
+            <div class="bar-label">${k}</div>
+            <div class="bar-track"><div class="bar-fill bar-blue" style="width:${Math.round(v / maxI * 100)}%"></div></div>
+            <div class="bar-value">${v}</div>
+          </div>
+        `).join('')}
+      `,
+      span: 1
+    },
+    clusters: {
+      html: `
+        <h4>🎯 选题簇分布 Top 6</h4>
+        ${sortedClusters.map(([k, v]) => `
+          <div class="bar-chart-row">
+            <div class="bar-label" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${k}">${k}</div>
+            <div class="bar-track"><div class="bar-fill bar-cyan" style="width:${Math.round(v / maxC * 100)}%"></div></div>
+            <div class="bar-value">${v}</div>
+          </div>
+        `).join('')}
+      `,
+      span: 1
+    },
+    progress: {
+      html: `
+        <h4>📝 内容生产进度</h4>
+        <div class="dash-progress-ring">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#f0f0f0" stroke-width="8"/>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="${generatedCount > 0 ? '#10b981' : '#d1d5db'}" stroke-width="8"
+              stroke-dasharray="${generatedCount / all.length * 251} 251" stroke-linecap="round" transform="rotate(-90 50 50)"/>
+          </svg>
+          <div class="dash-progress-text">${all.length > 0 ? Math.round(generatedCount / all.length * 100) : 0}%</div>
+        </div>
+        <div class="dash-progress-labels">
+          <span><i class="dot green"></i>已生成 ${generatedCount}</span>
+          <span><i class="dot gray"></i>未生成 ${notGenerated}</span>
+        </div>
+      `,
+      span: 1
+    },
+    testSummary: {
+      html: `
+        <h4>🧪 测试记录摘要</h4>
+        <div class="dash-metrics-grid">
+          <div class="dash-metric-item">
+            <div class="dash-metric-num blue">${testedQuestionIds.size}</div>
+            <div class="dash-metric-desc">已测试问题</div>
+          </div>
+          <div class="dash-metric-item">
+            <div class="dash-metric-num green">${mentionedQuestionIds.size}</div>
+            <div class="dash-metric-desc">AI已提及</div>
+          </div>
+          <div class="dash-metric-item">
+            <div class="dash-metric-num purple">${mentionRate}%</div>
+            <div class="dash-metric-desc">提及率</div>
+          </div>
+          <div class="dash-metric-item">
+            <div class="dash-metric-num orange">${recentArticles}</div>
+            <div class="dash-metric-desc">近7天新增</div>
+          </div>
+        </div>
+      `,
+      span: 1
+    },
+    angles: sortedAngles.length > 0 ? {
+      html: `
+        <h4>📐 角度使用分布</h4>
+        ${sortedAngles.map(([k, v]) => `
+          <div class="bar-chart-row">
+            <div class="bar-label">${k}</div>
+            <div class="bar-track"><div class="bar-fill bar-orange" style="width:${Math.round(v / maxA * 100)}%"></div></div>
+            <div class="bar-value">${v}</div>
+          </div>
+        `).join('')}
+      `,
+      span: 1
+    } : null,
+    platforms: Object.keys(platformMap).length > 0 ? {
+      html: `
+        <h4>📡 平台覆盖</h4>
+        ${Object.entries(platformMap).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
+          <div class="bar-chart-row">
+            <div class="bar-label">${k}</div>
+            <div class="bar-track"><div class="bar-fill bar-green" style="width:${Math.round(v / maxPlat * 100)}%"></div></div>
+            <div class="bar-value">${v}</div>
+          </div>
+        `).join('')}
+      `,
+      span: 1
+    } : null,
+    topSP: topSP.length > 0 ? {
+      html: `
+        <h4>🔥 热门卖点 Top 5</h4>
+        ${topSP.map(([k, v]) => `
+          <div class="bar-chart-row">
+            <div class="bar-label" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${k}">${k}</div>
+            <div class="bar-track"><div class="bar-fill bar-red" style="width:${Math.round(v / maxSP * 100)}%"></div></div>
+            <div class="bar-value">${v}</div>
+          </div>
+        `).join('')}
+      `,
+      span: 1
+    } : null,
+    matrix: angleNames.length > 0 ? {
+      html: `
+        <h4>🗺️ 问题×角度覆盖矩阵</h4>
+        <div class="dash-matrix-wrapper">
+          <table class="dash-matrix">
+            <thead>
+              <tr>
+                <th>问题</th>
+                ${angleNames.map(a => `<th title="${a}">${a.slice(0, 4)}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${topQuestions.map(q => {
+                const covered = matrixData[q.id] || new Set();
+                return `<tr>
+                  <td title="${q.question}" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${q.question.slice(0, 20)}</td>
+                  ${angleNames.map(a => `<td>${covered.has(a) ? '✅' : '—'}</td>`).join('')}
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `,
+      span: 2
+    } : null,
+  };
+
+  // 按 cardOrder 渲染，跳过不存在的卡片
+  chartsEl.innerHTML = cardOrder.map(id => {
+    const card = cards[id];
+    if (!card) return '';
+    const spanStyle = card.span > 1 ? ` style="grid-column: span ${card.span};"` : '';
+    return `<div class="dash-chart-card" draggable="true" data-card-id="${id}"${spanStyle}>${card.html}</div>`;
+  }).join('');
 }
 
 // ===== Kanban Page =====

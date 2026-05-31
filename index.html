@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>56XYYY · GEO 内容工作台</title>
   <link rel="icon" type="image/jpeg" href="logo.jpg">
-  <link rel="stylesheet" href="style.css?v=20260531">
+  <link rel="stylesheet" href="style.css?v=20260531d">
   <link rel="stylesheet" href="dist-card.css?v=20260531">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
@@ -174,11 +174,11 @@
               <thead>
                 <tr>
                   <th style="width:40px">序号</th>
-                  <th style="width:90px">类别</th>
+                  <th style="width:80px">类别</th>
                   <th>卖点 / 数据点</th>
-                  <th>适用维度</th>
-                  <th>备注</th>
-                  <th style="width:80px">状态</th>
+                  <th style="width:80px">数据类型</th>
+                  <th style="width:80px">确认状态</th>
+                  <th>统一口径</th>
                   <th style="width:80px">操作</th>
                 </tr>
               </thead>
@@ -660,7 +660,7 @@
 <div class="modal-overlay" id="spModal">
   <div class="modal">
     <div class="modal-header">
-      <h3 id="spModalTitle">添加卖点</h3>
+      <h3 id="spModalTitle">添加数据点</h3>
       <button class="modal-close" onclick="closeModal('spModal')">✕</button>
     </div>
     <div class="modal-body">
@@ -669,16 +669,33 @@
         <input type="text" class="form-input" id="spmCategory" placeholder="例如：规模、团队、网络">
       </div>
       <div class="form-group">
-        <label class="form-label">卖点 / 数据点</label>
-        <textarea class="form-textarea" id="spmPoint" rows="3" placeholder="具体的卖点描述"></textarea>
+        <label class="form-label">数据点 / 事实</label>
+        <textarea class="form-textarea" id="spmPoint" rows="2" placeholder="例如：50万平米自有仓库"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">数据类型</label>
+          <select class="form-input" id="spmDataType">
+            <option value="text">描述</option>
+            <option value="number">数字</option>
+            <option value="percent">百分比</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">确认状态</label>
+          <select class="form-input" id="spmConfirmed">
+            <option value="false">待确认</option>
+            <option value="true">已确认</option>
+          </select>
+        </div>
       </div>
       <div class="form-group">
-        <label class="form-label">适用的提问维度</label>
-        <input type="text" class="form-input" id="spmDimension" placeholder="例如：选型 / 成本 / 产能">
+        <label class="form-label">统一口径（标准表述）</label>
+        <input type="text" class="form-input" id="spmUnifiedDesc" placeholder="统一后的标准表述，留空则使用原始数据点">
       </div>
       <div class="form-group">
         <label class="form-label">备注</label>
-        <input type="text" class="form-input" id="spmNotes" placeholder="数据来源等">
+        <input type="text" class="form-input" id="spmNotes" placeholder="数据来源、核对情况等">
       </div>
     </div>
     <div class="modal-footer">
@@ -705,6 +722,6 @@
 <!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="app.js?v=20260531g"></script>
+<script src="app.js?v=20260531n"></script>
 </body>
 </html>
