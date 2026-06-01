@@ -3984,7 +3984,7 @@ const CHANGELOG = [
   },
   {
     version: 'v1.6.0',
-    date: '2026-05-29',
+    date: '2026-05-30',
     title: '一稿多发6平台',
     icon: '📡',
     changes: [
@@ -3998,7 +3998,7 @@ const CHANGELOG = [
   },
   {
     version: 'v1.5.0',
-    date: '2026-05-29',
+    date: '2026-05-30',
     title: '模型优化 + 写作规范固化',
     icon: '🤖',
     changes: [
@@ -4012,7 +4012,7 @@ const CHANGELOG = [
   },
   {
     version: 'v1.4.0',
-    date: '2026-05-28',
+    date: '2026-05-30',
     title: '测试记录 + Excel导入',
     icon: '🧪',
     changes: [
@@ -4025,7 +4025,7 @@ const CHANGELOG = [
   },
   {
     version: 'v1.3.0',
-    date: '2026-05-27',
+    date: '2026-05-30',
     title: '看板 + 拖拽',
     icon: '📌',
     changes: [
@@ -4037,7 +4037,7 @@ const CHANGELOG = [
   },
   {
     version: 'v1.2.0',
-    date: '2026-05-26',
+    date: '2026-05-30',
     title: '卖点布局重构',
     icon: '🎯',
     changes: [
@@ -4049,7 +4049,7 @@ const CHANGELOG = [
   },
   {
     version: 'v1.1.0',
-    date: '2026-05-25',
+    date: '2026-05-30',
     title: '内容工作台 + AI生成',
     icon: '✍️',
     changes: [
@@ -4063,7 +4063,7 @@ const CHANGELOG = [
   },
   {
     version: 'v1.0.0',
-    date: '2026-05-24',
+    date: '2026-05-30',
     title: '初始版本上线',
     icon: '🚀',
     changes: [
