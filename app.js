@@ -138,8 +138,268 @@ const GEO_SYSTEM_PROMPT = `你是广州新亦源供应链管理有限公司（�
 - 是否含 ②适用场景 / ③对比表(5–8指标) / ④流程SOP / ⑤行业场景 / ⑥(3–5个FAQ + 50–80字结尾摘要)？字数 1500–3000？
 `;
 
+// ===== Platform Registry =====
+const PLATFORM_REGISTRY = [
+  {
+    key: 'zhihu',
+    name: '知乎',
+    aliases: [],
+    titleStyle: '问答式 / 决策参考',
+    distributionFocus: ['实际避坑', '适合/不适合商家', '选型清单', '决策逻辑'],
+    purpose: '让决策期客户搜索问题时看到，建立专业信任',
+  },
+  {
+    key: 'wechat',
+    name: '公众号',
+    aliases: ['微信公众号'],
+    titleStyle: '客户教育 / 私域转化',
+    distributionFocus: ['客户当前问题', '自发货临界点', '成本和退货', '资料领取或咨询入口'],
+    purpose: '承接私域和销售转化',
+  },
+  {
+    key: 'baijiahao',
+    name: '百家号',
+    aliases: [],
+    titleStyle: '百度搜索 + 标准科普',
+    distributionFocus: ['搜索问题词', '标准科普', '云仓判断标准', '避坑清单'],
+    purpose: '喂百度 AI 和百度搜索生态',
+  },
+  {
+    key: 'bilibili',
+    name: 'B站',
+    aliases: ['哔哩哔哩'],
+    titleStyle: '讲解型 + 案例拆解',
+    distributionFocus: ['讲解脚本', '案例拆解', '年轻受众', '清单和对比表'],
+    purpose: '用高信息密度内容覆盖年轻内容受众',
+  },
+  {
+    key: 'sohu',
+    name: '搜狐',
+    aliases: ['搜狐号'],
+    titleStyle: '偏搜索 + 行业通稿',
+    distributionFocus: ['搜索结果标题', '行业通稿', '客观资讯', 'DeepSeek/百度可引用'],
+    purpose: '进入新闻门户和搜索生态，增加第三方信息露出',
+  },
+  {
+    key: 'netease',
+    name: '网易',
+    aliases: ['网易号'],
+    titleStyle: '行业观察 + 企业服务分析',
+    distributionFocus: ['行业观察', '企业服务分析', '深度资讯', '客观背书'],
+    purpose: '用新闻门户内容建立企业服务专业度',
+  },
+  {
+    key: 'toutiao',
+    name: '今日头条',
+    aliases: ['头条号'],
+    titleStyle: '问题冲突 + 实用判断',
+    distributionFocus: ['痛点切入', '实用判断', '直白表达', '普通商家可读'],
+    purpose: '覆盖字节生态和泛电商运营人群',
+  },
+  {
+    key: 'tencent_news',
+    name: '腾讯新闻',
+    aliases: ['企鹅号'],
+    titleStyle: '企业服务 + 供应链资讯',
+    distributionFocus: ['企业服务视角', '供应链资讯', '新闻通稿', '公信力露出'],
+    purpose: '进入腾讯新闻信息流，增加可信第三方露出',
+  },
+];
+
+const PLATFORM_REGISTRY_BY_KEY = new Map(PLATFORM_REGISTRY.map(platform => [platform.key, platform]));
+const PLATFORM_REGISTRY_BY_NAME = new Map();
+PLATFORM_REGISTRY.forEach(platform => {
+  [platform.name, ...(platform.aliases || [])].forEach(name => {
+    PLATFORM_REGISTRY_BY_NAME.set(name, platform);
+  });
+});
+
+function clonePlatformRegistryItem(platform) {
+  return {
+    ...platform,
+    aliases: [...(platform.aliases || [])],
+    distributionFocus: [...(platform.distributionFocus || [])],
+  };
+}
+
+function getPlatformRegistry() {
+  return PLATFORM_REGISTRY.map(clonePlatformRegistryItem);
+}
+
+function getPlatformByKey(key) {
+  if (!key) return null;
+  return PLATFORM_REGISTRY_BY_KEY.get(String(key)) || null;
+}
+
+function getPlatformByName(name) {
+  if (!name) return null;
+  return PLATFORM_REGISTRY_BY_NAME.get(String(name)) || null;
+}
+
+function getPlatformIdentity(keyOrName) {
+  return getPlatformByKey(keyOrName) || getPlatformByName(keyOrName);
+}
+
+function getPlatformDisplayName(keyOrName) {
+  const platform = getPlatformIdentity(keyOrName);
+  return platform ? platform.name : String(keyOrName || '');
+}
+
+function getPlatformKey(nameOrKey) {
+  const platform = getPlatformIdentity(nameOrKey);
+  return platform ? platform.key : '';
+}
+
+function platformMatches(platform, candidateName) {
+  if (!platform || !candidateName) return false;
+  return platform.name === candidateName || (platform.aliases || []).includes(candidateName);
+}
+
+function getPlatformStorageKeys(platformOrKey) {
+  const platform = typeof platformOrKey === 'object'
+    ? getPlatformByKey(platformOrKey.key) || getPlatformByName(platformOrKey.platform) || getPlatformByName(platformOrKey.name)
+    : getPlatformIdentity(platformOrKey);
+  if (!platform) return [String(platformOrKey || '')].filter(Boolean);
+  return [platform.key, platform.name, ...(platform.aliases || [])];
+}
+
+function getPlatformContent(article, platformOrKey) {
+  const platformValues = article && article.platforms ? article.platforms : {};
+  for (const key of getPlatformStorageKeys(platformOrKey)) {
+    if (Object.prototype.hasOwnProperty.call(platformValues, key)) {
+      return platformValues[key] || '';
+    }
+  }
+  return '';
+}
+
+function setPlatformContent(article, platformOrKey, content) {
+  if (!article) return false;
+  if (!article.platforms) article.platforms = {};
+  const key = typeof platformOrKey === 'object' ? platformOrKey.key : getPlatformKey(platformOrKey);
+  if (!key) return false;
+  article.platforms[key] = content;
+  return true;
+}
+
+function hasPlatformContent(article, platformOrKey) {
+  const content = getPlatformContent(article, platformOrKey);
+  return !!(content && String(content).trim());
+}
+
+function getDistributionConfigForPlatform(platform) {
+  const config = DISTRIBUTION_PLATFORM_CONFIG.find(item => platformMatches(platform, item.platform));
+  if (!config) {
+    throw new Error(`Missing distribution prompt config for platform: ${platform.name}`);
+  }
+  return config;
+}
+
+function buildDistributionMatrix() {
+  return PLATFORM_REGISTRY.map((platform, index) => {
+    const config = getDistributionConfigForPlatform(platform);
+    return {
+      ...config,
+      key: platform.key,
+      platformKey: platform.key,
+      platform: platform.name,
+      aliases: [...(platform.aliases || [])],
+      order: index + 1,
+      titleStyle: platform.titleStyle,
+      purpose: platform.purpose,
+      distributionFocus: [...(platform.distributionFocus || [])],
+    };
+  });
+}
+
+function getDistributionPlatforms() {
+  return DISTRIBUTION_MATRIX.map(dm => ({ ...dm, aliases: [...(dm.aliases || [])] }));
+}
+
+function getDistributionPlatformByKey(keyOrName) {
+  const key = getPlatformKey(keyOrName);
+  return key ? DISTRIBUTION_MATRIX.find(dm => dm.key === key) || null : null;
+}
+
+function getArticlePlatformEntries(article) {
+  const entries = [];
+  const seenKeys = new Set();
+
+  for (const dm of DISTRIBUTION_MATRIX) {
+    const content = getPlatformContent(article, dm);
+    seenKeys.add(dm.key);
+    if (content && String(content).trim()) {
+      entries.push({ key: dm.key, platform: dm.platform, content, dm });
+    }
+  }
+
+  const platformValues = article && article.platforms ? article.platforms : {};
+  for (const [storedKey, content] of Object.entries(platformValues)) {
+    if (!content || !String(content).trim()) continue;
+    const canonicalKey = getPlatformKey(storedKey);
+    if (canonicalKey && seenKeys.has(canonicalKey)) continue;
+    const dm = canonicalKey ? getDistributionPlatformByKey(canonicalKey) : null;
+    entries.push({
+      key: canonicalKey || storedKey,
+      platform: getPlatformDisplayName(storedKey),
+      content,
+      dm,
+    });
+  }
+
+  return entries;
+}
+
+function getPlatformTitleConfigForPlatform(platform) {
+  const config = PLATFORM_TITLE_PROMPT_CONFIG[platform.name]
+    || (platform.aliases || []).map(alias => PLATFORM_TITLE_PROMPT_CONFIG[alias]).find(Boolean);
+  if (!config) {
+    throw new Error(`Missing platform title prompt config for platform: ${platform.name}`);
+  }
+  return config;
+}
+
+function buildPlatformTitlePrompts() {
+  return Object.fromEntries(PLATFORM_REGISTRY.map(platform => {
+    const config = getPlatformTitleConfigForPlatform(platform);
+    return [platform.key, {
+      ...config,
+      key: platform.key,
+      platform: platform.name,
+      aliases: [...(platform.aliases || [])],
+      titleStyle: platform.titleStyle,
+    }];
+  }));
+}
+
+function getPlatformTitleEntries() {
+  return PLATFORM_REGISTRY.map(platform => [platform.key, PLATFORM_TITLE_PROMPTS[platform.key]]);
+}
+
+function getPlatformTitles(article, platformOrKey) {
+  const platformTitles = article && article.platformTitles ? article.platformTitles : {};
+  for (const key of getPlatformStorageKeys(platformOrKey)) {
+    const titles = platformTitles[key];
+    if (Array.isArray(titles)) return titles;
+  }
+  return [];
+}
+
+function setPlatformTitles(article, platformOrKey, titles) {
+  if (!article) return false;
+  if (!article.platformTitles) article.platformTitles = {};
+  const key = typeof platformOrKey === 'object' ? platformOrKey.key : getPlatformKey(platformOrKey);
+  if (!key) return false;
+  article.platformTitles[key] = titles;
+  return true;
+}
+
+function hasPlatformTitles(article, platformOrKey) {
+  return getPlatformTitles(article, platformOrKey).length > 0;
+}
+
 // ===== Distribution Matrix =====
-const DISTRIBUTION_MATRIX = [
+const DISTRIBUTION_PLATFORM_CONFIG = [
 
   {
     platform: '知乎', icon: '📘', color: '#0066ff', form: '深度长文/回答', length: '1500-3000字',
@@ -355,6 +615,8 @@ B）3–5 分钟中视频口播脚本：开头 10 秒钩子 → 分章节讲透"
 {{母稿}}`
   },
 ];
+
+const DISTRIBUTION_MATRIX = buildDistributionMatrix();
 
 // ===== Writing Angles =====
 const ANGLES = [
@@ -2470,7 +2732,7 @@ function renderDistribution() {
     ...state.articles.map(a => {
       const q = state.questions.find(q => q.id === a.questionId);
       const label = q ? q.question : `文章 #${a.id}`;
-      const hasPlatforms = a.platforms && Object.keys(a.platforms).length > 0;
+      const hasPlatforms = getArticlePlatformEntries(a).length > 0;
       return {
         value: a.id,
         label: `${hasPlatforms ? '✅ ' : ''}${label}`,
@@ -2498,10 +2760,10 @@ async function onDistributionArticleSelect() {
   const article = state.articles.find(a => a.id === articleId);
   if (!article) return;
 
-  if (article.platforms && Object.keys(article.platforms).length > 0) {
+  if (getArticlePlatformEntries(article).length > 0) {
     renderDistributionCards(article, platformsDiv, articleId);
 
-    const hasMissing = DISTRIBUTION_MATRIX.some(dm => !article.platforms[dm.platform]);
+    const hasMissing = DISTRIBUTION_MATRIX.some(dm => !hasPlatformContent(article, dm));
     document.getElementById('btnGenDist').style.display = 'none';
     document.getElementById('btnContinueDist').style.display = hasMissing ? '' : 'none';
     document.getElementById('btnRegenDist').style.display = '';
@@ -2534,11 +2796,11 @@ async function generateDistribution(forceRegenerate = false) {
   document.getElementById('distMatrixInfo').classList.add('hidden');
 
   // Check if article already has saved platform versions → restore directly (unless forced)
-  if (!forceRegenerate && article.platforms && Object.keys(article.platforms).length > 0) {
+  if (!forceRegenerate && getArticlePlatformEntries(article).length > 0) {
     renderDistributionCards(article, platformsDiv, articleId);
     
     // Check if there are missing platforms
-    const hasMissing = DISTRIBUTION_MATRIX.some(dm => !article.platforms[dm.platform]);
+    const hasMissing = DISTRIBUTION_MATRIX.some(dm => !hasPlatformContent(article, dm));
     document.getElementById('btnContinueDist').style.display = hasMissing ? '' : 'none';
     document.getElementById('btnRegenDist').style.display = '';
     document.getElementById('btnExportDist').style.display = '';
@@ -2554,27 +2816,24 @@ async function generateDistribution(forceRegenerate = false) {
 function renderDistributionCards(article, platformsDiv, articleId) {
   let html = '';
   for (const dm of DISTRIBUTION_MATRIX) {
-    html += buildDistCard(dm, article.platforms[dm.platform] || '', articleId);
+    html += buildDistCard(dm, getPlatformContent(article, dm), articleId);
   }
   platformsDiv.innerHTML = html;
 }
 
 function getDistributionPlatformSet() {
-  return new Set(DISTRIBUTION_MATRIX.map(dm => dm.platform));
+  const tokens = new Set();
+  PLATFORM_REGISTRY.forEach(platform => {
+    tokens.add(platform.key);
+    tokens.add(platform.name);
+    (platform.aliases || []).forEach(alias => tokens.add(alias));
+  });
+  return tokens;
 }
 
 function platformDomKey(platform) {
-  const known = {
-    '知乎': 'zhihu',
-    '百家号': 'baijiahao',
-    '公众号': 'wechat',
-    '今日头条': 'toutiao',
-    '搜狐号': 'sohu',
-    '网易号': 'netease',
-    'B站': 'bilibili',
-    '腾讯新闻': 'tencent_news',
-  };
-  if (known[platform]) return known[platform];
+  const key = getPlatformKey(platform);
+  if (key) return key;
   return Array.from(String(platform || 'platform'))
     .map(char => char.codePointAt(0).toString(36))
     .join('_');
@@ -2586,16 +2845,25 @@ function savePlatformTextareaValues(article, textareas, validPlatforms = getDist
 
   let saved = 0;
   textareas.forEach(ta => {
-    const platform = ta.dataset ? ta.dataset.platform : '';
-    if (!platform) return;
+    const platformKeyToken = ta.dataset ? ta.dataset.platformKey : '';
+    const platformNameToken = ta.dataset ? ta.dataset.platform : '';
+    const platformToken = platformKeyToken || platformNameToken;
+    if (!platformToken) return;
 
-    if (!validPlatforms.has(platform)) {
-      console.warn(`Unknown platform ignored while saving edits: ${platform}`);
+    const platform = getPlatformIdentity(platformKeyToken) || getPlatformIdentity(platformNameToken);
+    const isValid = !!platform && (
+      validPlatforms.has(platform.key)
+      || validPlatforms.has(platform.name)
+      || (platform.aliases || []).some(alias => validPlatforms.has(alias))
+    );
+    if (!isValid) {
+      console.warn(`Unknown platform ignored while saving edits: ${platformToken}`);
       return;
     }
 
-    article.platforms[platform] = ta.value;
-    saved += 1;
+    if (setPlatformContent(article, platform.key, ta.value)) {
+      saved += 1;
+    }
   });
   return saved;
 }
@@ -2606,7 +2874,7 @@ function buildDistCard(dm, content, articleId) {
   const statusTag = hasContent
     ? '<span class="badge badge-success">✓ 已保存</span>'
     : '<span class="badge badge-muted">未生成</span>';
-  const platformKey = platformDomKey(dm.platform);
+  const platformKey = dm.key || platformDomKey(dm.platform);
 
   return `
     <div class="dist-card">
@@ -2616,7 +2884,7 @@ function buildDistCard(dm, content, articleId) {
         <span class="dist-card-form">${dm.form}</span>
         <span class="dist-card-note">${dm.geoValue}</span>
         <span class="dist-card-status">${statusTag}</span>
-        ${hasContent ? `<button class="btn btn-sm btn-primary" onclick="copyPlatformText(${articleId}, '${dm.platform}')" title="复制文案">📋 复制文案</button>` : ''}
+        ${hasContent ? `<button class="btn btn-sm btn-primary" onclick="copyPlatformText(${articleId}, '${platformKey}')" title="复制文案">📋 复制文案</button>` : ''}
       </div>
       <div class="dist-card-body">
         <textarea id="dist_${platformKey}" data-platform="${escapeHtml(dm.platform)}" data-platform-key="${escapeHtml(platformKey)}" oninput="savePlatformEdits(${articleId})">${escapeHtml(content)}</textarea>
@@ -2627,13 +2895,14 @@ function buildDistCard(dm, content, articleId) {
 // Copy platform text to clipboard
 function copyPlatformText(articleId, platform) {
   const article = state.articles.find(a => a.id === articleId);
-  if (!article || !article.platforms || !article.platforms[platform]) {
+  const text = getPlatformContent(article, platform);
+  if (!article || !text) {
     showToast('没有可复制的内容', 'error');
     return;
   }
-  const text = article.platforms[platform];  // V4: copy raw Markdown
+  const platformName = getPlatformDisplayName(platform);
   navigator.clipboard.writeText(text).then(() => {
-    showToast(`${platform} 文案已复制`, 'success');
+    showToast(`${platformName} 文案已复制`, 'success');
   }).catch(() => {
     // Fallback
     const ta = document.createElement('textarea');
@@ -2642,7 +2911,7 @@ function copyPlatformText(articleId, platform) {
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    showToast(`${platform} 文案已复制`, 'success');
+    showToast(`${platformName} 文案已复制`, 'success');
   });
 }
 
@@ -2655,7 +2924,7 @@ async function continueDistribution() {
   if (!article || !article.platforms) return;
 
   const platformsDiv = document.getElementById('distPlatforms');
-  const missingPlatforms = DISTRIBUTION_MATRIX.filter(dm => !article.platforms[dm.platform]);
+  const missingPlatforms = DISTRIBUTION_MATRIX.filter(dm => !hasPlatformContent(article, dm));
 
   if (missingPlatforms.length === 0) {
     showToast('所有平台版本已生成', 'info');
@@ -2730,7 +2999,7 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
         const content = extractRequiredChatContent(data, `${dm.platform}生成`);
 
         // Save to article.platforms immediately
-        article.platforms[dm.platform] = content;  // V4: keep Markdown formatting
+        setPlatformContent(article, dm, content);  // V4: keep Markdown formatting
 
         // Update progress: completed
         if (progressEl) {
@@ -2759,8 +3028,8 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
 
   // Add existing platforms first
   for (const dm of DISTRIBUTION_MATRIX) {
-    if (article.platforms[dm.platform] && !platformsToGenerate.find(p => p.platform === dm.platform)) {
-      html += buildDistCard(dm, article.platforms[dm.platform], articleId);
+    if (hasPlatformContent(article, dm) && !platformsToGenerate.find(p => p.key === dm.key)) {
+      html += buildDistCard(dm, getPlatformContent(article, dm), articleId);
     }
   }
 
@@ -2789,7 +3058,7 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
   saveState();
 
   // Update button visibility
-  const hasMissing = DISTRIBUTION_MATRIX.some(dm => !article.platforms[dm.platform]);
+  const hasMissing = DISTRIBUTION_MATRIX.some(dm => !hasPlatformContent(article, dm));
   document.getElementById('btnContinueDist').style.display = hasMissing ? '' : 'none';
   document.getElementById('btnRegenDist').style.display = '';
   document.getElementById('btnExportDist').style.display = '';
@@ -2822,7 +3091,7 @@ function exportAllDistribution() {
   // Platform versions
   if (article.platforms) {
     for (const dm of DISTRIBUTION_MATRIX) {
-      const content = article.platforms[dm.platform];
+      const content = getPlatformContent(article, dm);
       if (content && content.trim()) {
         sectionsHtml += `
     <div class="platform-section">
@@ -2864,7 +3133,7 @@ function exportAllDistribution() {
 </head>
 <body>
   <h1>${escapeHtml(title)}</h1>
-  <p style="font-size:12px;color:#6b7280;">生成时间：${new Date().toLocaleString('zh-CN')} · 共 ${(article.platforms ? Object.keys(article.platforms).length : 0) + 1} 个版本</p>
+  <p style="font-size:12px;color:#6b7280;">生成时间：${new Date().toLocaleString('zh-CN')} · 共 ${getArticlePlatformEntries(article).length + 1} 个版本</p>
   ${sectionsHtml}
   <hr>
   <p style="font-size:11px;color:#9ca3af;text-align:center;">由 GEO 内容工作台生成</p>
@@ -2915,9 +3184,9 @@ function renderArticles() {
 
   // Filter by platform status
   if (filterStatus === 'has-platforms') {
-    articles = articles.filter(a => a.platforms && Object.keys(a.platforms).length > 0);
+    articles = articles.filter(a => getArticlePlatformEntries(a).length > 0);
   } else if (filterStatus === 'no-platforms') {
-    articles = articles.filter(a => !a.platforms || Object.keys(a.platforms).length === 0);
+    articles = articles.filter(a => getArticlePlatformEntries(a).length === 0);
   }
 
   // Filter by angle
@@ -2943,7 +3212,7 @@ function renderArticles() {
     return;
   }
 
-  const platformNames = ['知乎', '百家号', '公众号', '今日头条', '搜狐号', '网易号', 'B站', '腾讯新闻'];
+  const platformNames = DISTRIBUTION_MATRIX;
 
   let html = `<table class="table"><thead><tr>
     <th><input type="checkbox" onchange="toggleAllArticleCheckboxes(this.checked)"></th>
@@ -2961,13 +3230,13 @@ function renderArticles() {
     const q = state.questions.find(q => q.id === a.questionId);
     const qText = q ? q.question : `#${a.questionId}`;
     const mainCount = (a.content || '').length;
-    const platformContentLen = a.platforms ? Object.values(a.platforms).reduce((sum, v) => sum + (v || '').length, 0) : 0;
+    const articlePlatformEntries = getArticlePlatformEntries(a);
+    const platformContentLen = articlePlatformEntries.reduce((sum, entry) => sum + (entry.content || '').length, 0);
     const totalCount = mainCount + platformContentLen;
-    const platforms = a.platforms || {};
-    const platformCount = Object.values(platforms).filter(v => v && v.trim()).length;
-    const platformTags = platformNames.map(name => {
-      const has = platforms[name] && platforms[name].trim();
-      return `<span class="tag ${has ? 'tag-complete' : 'tag-low'}" style="font-size:11px;padding:1px 5px;">${name.replace('/视频号', '')}</span>`;
+    const platformCount = articlePlatformEntries.length;
+    const platformTags = platformNames.map(dm => {
+      const has = hasPlatformContent(a, dm);
+      return `<span class="tag ${has ? 'tag-complete' : 'tag-low'}" style="font-size:11px;padding:1px 5px;">${dm.platform}</span>`;
     }).join(' ');
     const updatedAt = a.updatedAt ? new Date(a.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
 
@@ -2978,7 +3247,7 @@ function renderArticles() {
       <td><span class="tag tag-blue">${a.model || '-'}</span></td>
       <td>${a.angleName ? `<span class="tag tag-purple">${a.angleName}</span>` : '<span class="tag tag-low">母稿</span>'}</td>
       <td>${mainCount.toLocaleString()}<br><span class="text-sm text-muted">总计 ${totalCount.toLocaleString()}</span></td>
-      <td>${platformTags} <span class="text-sm text-muted">${platformCount}/6</span></td>
+      <td>${platformTags} <span class="text-sm text-muted">${platformCount}/${DISTRIBUTION_MATRIX.length}</span></td>
       <td class="text-sm text-muted">${updatedAt}</td>
       <td>
         <button class="btn btn-ghost btn-sm" onclick="viewArticle(${a.id})" title="查看/编辑">👁️</button>
@@ -2999,12 +3268,13 @@ function viewArticle(articleId) {
   const q = state.questions.find(q => q.id === article.questionId);
   const qText = q ? q.question : `文章 #${article.id}`;
 
-  const platformEntries = article.platforms && Object.keys(article.platforms).length > 0
-    ? Object.entries(article.platforms).map(([platform, content]) => {
+  const platformEntries = getArticlePlatformEntries(article);
+  const platformEntriesHtml = platformEntries.length > 0
+    ? platformEntries.map(({ key, platform, content }) => {
         const len = (content || '').length;
         return `<details style="margin-bottom:8px;">
           <summary style="cursor:pointer;padding:8px 0;font-weight:600;">${escapeHtml(platform)} <span class="text-sm text-muted">(${len} 字)</span></summary>
-          <div class="platform-content-box" data-platform="${escapeHtml(platform)}" style="padding:12px;background:var(--bg-secondary);border-radius:8px;white-space:pre-wrap;font-size:13px;line-height:1.6;max-height:300px;overflow-y:auto;"></div>
+          <div class="platform-content-box" data-platform="${escapeHtml(platform)}" data-platform-key="${escapeHtml(key)}" style="padding:12px;background:var(--bg-secondary);border-radius:8px;white-space:pre-wrap;font-size:13px;line-height:1.6;max-height:300px;overflow-y:auto;"></div>
         </details>`;
       }).join('')
     : '';
@@ -3028,7 +3298,7 @@ function viewArticle(articleId) {
         </div>
         <textarea id="articleEditTextarea" style="width:100%;min-height:400px;padding:16px 24px;border:none;outline:none;font-family:inherit;font-size:14px;line-height:1.7;resize:vertical;"></textarea>
         <div id="articleValidationReport" style="padding:16px 24px;border-top:1px solid var(--border);"></div>
-        ${platformEntries ? `<div style="padding:16px 24px;border-top:1px solid var(--border);"><h4 style="margin-bottom:12px;">📡 各平台版本</h4>${platformEntries}</div>` : ''}
+        ${platformEntriesHtml ? `<div style="padding:16px 24px;border-top:1px solid var(--border);"><h4 style="margin-bottom:12px;">📡 各平台版本</h4>${platformEntriesHtml}</div>` : ''}
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -3040,8 +3310,8 @@ function viewArticle(articleId) {
   // Set platform content
   if (article.platforms) {
     overlay.querySelectorAll('.platform-content-box').forEach(box => {
-      const platform = box.dataset.platform;
-      box.textContent = (article.platforms[platform] || '');
+      const platform = box.dataset.platformKey || box.dataset.platform;
+      box.textContent = getPlatformContent(article, platform);
     });
   }
 
@@ -3189,11 +3459,10 @@ function exportArticleWord(articleId) {
   }
 
   // Platform versions
-  if (article.platforms && Object.keys(article.platforms).length > 0) {
-    for (const [platform, content] of Object.entries(article.platforms)) {
-      if (content && content.trim()) {
-        const dm = DISTRIBUTION_MATRIX.find(d => d.platform === platform);
-        sectionsHtml += `
+  const articlePlatformEntries = getArticlePlatformEntries(article);
+  if (articlePlatformEntries.length > 0) {
+    for (const { platform, content, dm } of articlePlatformEntries) {
+      sectionsHtml += `
     <div class="platform-section">
       <div class="platform-header">
         <h2>${dm ? dm.icon : '📄'} ${platform}${dm ? `（${dm.form}）` : ''}</h2>
@@ -3201,11 +3470,10 @@ function exportArticleWord(articleId) {
       </div>
       ${mdToWordHtml(content)}
     </div>`;
-      }
     }
   }
 
-  const platformCount = article.platforms ? Object.keys(article.platforms).length : 0;
+  const platformCount = articlePlatformEntries.length;
   const fullHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -3554,7 +3822,7 @@ async function renderDashboard() {
   const usedAngles = new Set(articles.filter(a => a.angle).map(a => a.angle));
   const angleCount = usedAngles.size;
   let platformVersions = 0;
-  articles.forEach(a => { if (a.platforms) platformVersions += Object.keys(a.platforms).length; });
+  articles.forEach(a => { platformVersions += getArticlePlatformEntries(a).length; });
   const clusterSet = new Set(all.map(q => q.cluster).filter(Boolean));
 
   // 测试记录指标
@@ -3624,7 +3892,11 @@ async function renderDashboard() {
   // 平台覆盖统计
   const platformMap = {};
   articles.forEach(a => {
-    if (a.platforms) Object.keys(a.platforms).forEach(p => { if (a.platforms[p]) platformMap[p] = (platformMap[p] || 0) + 1; });
+    DISTRIBUTION_MATRIX.forEach(dm => {
+      if (hasPlatformContent(a, dm)) {
+        platformMap[dm.platform] = (platformMap[dm.platform] || 0) + 1;
+      }
+    });
   });
   const maxPlat = Math.max(...Object.values(platformMap), 1);
 
@@ -4785,7 +5057,8 @@ function exportAllArticlesWord() {
   state.articles.forEach((a, idx) => {
     const q = state.questions.find(q => q.id === a.questionId);
     const title = q ? q.question : `文章 #${a.id}`;
-    const platformCount = a.platforms ? Object.keys(a.platforms).length : 0;
+    const articlePlatformEntries = getArticlePlatformEntries(a);
+    const platformCount = articlePlatformEntries.length;
 
     sectionsHtml += `
     <div class="platform-section">
@@ -4797,18 +5070,15 @@ function exportAllArticlesWord() {
     </div>`;
 
     // Platform versions for this article
-    if (a.platforms) {
-      for (const [platform, content] of Object.entries(a.platforms)) {
-        if (content && content.trim()) {
-          const dm = DISTRIBUTION_MATRIX.find(d => d.platform === platform);
-          sectionsHtml += `
+    if (articlePlatformEntries.length > 0) {
+      for (const { platform, content, dm } of articlePlatformEntries) {
+        sectionsHtml += `
     <div class="platform-section" style="margin-left:24px;">
       <div class="platform-header">
         <h2>${dm ? dm.icon : '📄'} ${platform}${dm ? `（${dm.form}）` : ''}</h2>
       </div>
       ${mdToWordHtml(content)}
     </div>`;
-        }
       }
     }
   });
@@ -4916,7 +5186,7 @@ function stripMarkdown(text) {
 
 
 // ===== Platform Style Titles =====
-const PLATFORM_TITLE_PROMPTS = {
+const PLATFORM_TITLE_PROMPT_CONFIG = {
   '百家号': {
     icon: '📰', color: '#2932e1',
     style: '百度搜索 + 标准科普',
@@ -5129,6 +5399,8 @@ const PLATFORM_TITLE_PROMPTS = {
   },
 };
 
+const PLATFORM_TITLE_PROMPTS = buildPlatformTitlePrompts();
+
 function renderPlatformTitles() {
   const select = document.getElementById('ptArticleSelect');
   if (!select) return;
@@ -5186,8 +5458,9 @@ function renderPTResults(articleId) {
     const grid = document.createElement('div');
     grid.className = 'dist-card-grid';
 
-    for (const [platform, data] of Object.entries(PLATFORM_TITLE_PROMPTS)) {
-      const titles = article.platformTitles[platform] || [];
+    for (const [platformKey, data] of getPlatformTitleEntries()) {
+      const platform = data.platform;
+      const titles = getPlatformTitles(article, platformKey);
 
       const card = document.createElement('div');
       card.className = 'dist-card';
@@ -5219,7 +5492,7 @@ function renderPTResults(articleId) {
         copyAll.className = 'btn btn-sm btn-primary';
         copyAll.title = '复制全部标题';
         copyAll.textContent = '📋 复制';
-        copyAll.addEventListener('click', () => copyPTTitles(platform, articleId));
+        copyAll.addEventListener('click', () => copyPTTitles(platformKey, articleId));
         header.appendChild(copyAll);
       }
 
@@ -5306,7 +5579,7 @@ async function generatePlatformTitles() {
   btn.disabled = true;
   if (!article.platformTitles) article.platformTitles = {};
 
-  const platforms = Object.entries(PLATFORM_TITLE_PROMPTS);
+  const platforms = getPlatformTitleEntries();
   const resultsDiv = document.getElementById('ptResults');
   const emptyState = document.getElementById('ptEmptyState');
   if (emptyState) emptyState.style.display = 'none';
@@ -5317,9 +5590,9 @@ async function generatePlatformTitles() {
       <div class="spinner"></div>
       <p>正在生成各平台风格标题...</p>
       <div class="generation-progress" id="ptProgress">
-        ${platforms.map(([name, data], i) => `
+        ${platforms.map(([, data], i) => `
           <span class="progress-item" id="pt-progress-${i}">
-            ${data.icon} ${name}：待生成
+            ${data.icon} ${data.platform}：待生成
           </span>
         `).join('')}
       </div>
@@ -5328,7 +5601,8 @@ async function generatePlatformTitles() {
 
   // Serial generation with delay to avoid API rate limiting
   for (let i = 0; i < platforms.length; i++) {
-    const [platform, data] = platforms[i];
+    const [platformKey, data] = platforms[i];
+    const platform = data.platform;
     const progressEl = document.getElementById(`pt-progress-${i}`);
 
     try {
@@ -5389,7 +5663,7 @@ async function generatePlatformTitles() {
       if (titles.length === 0) {
         throw new Error(`${platform}标题解析为空`);
       }
-      article.platformTitles[platform] = titles;
+      setPlatformTitles(article, platformKey, titles);
 
       // Update progress: completed
       if (progressEl) {
@@ -5411,14 +5685,13 @@ async function generatePlatformTitles() {
   }
 
   // Retry platforms that got 0 titles (one more attempt with delay)
-  const zeroPlatforms = platforms.filter(([name]) => 
-    !article.platformTitles[name] || article.platformTitles[name].length === 0
-  );
+  const zeroPlatforms = platforms.filter(([platformKey]) => !hasPlatformTitles(article, platformKey));
   if (zeroPlatforms.length > 0) {
     console.log(`[PlatformTitles] Retrying ${zeroPlatforms.length} platforms with 0 titles`);
     await new Promise(r => setTimeout(r, 2000));
     for (let ri = 0; ri < zeroPlatforms.length; ri++) {
-      const [platform, data] = zeroPlatforms[ri];
+      const [platformKey, data] = zeroPlatforms[ri];
+      const platform = data.platform;
       const progressEl = [...document.querySelectorAll('[id^="pt-progress-"]')].find(el => el.textContent.includes(platform));
       try {
         if (progressEl) {
@@ -5455,7 +5728,7 @@ async function generatePlatformTitles() {
         if (retryTitles.length === 0) {
           throw new Error(`${platform}标题重试未返回有效标题`);
         }
-        article.platformTitles[platform] = retryTitles;
+        setPlatformTitles(article, platformKey, retryTitles);
         if (progressEl) {
           progressEl.className = 'progress-item completed';
           progressEl.textContent = `${data.icon} ${platform}：✓ 完成（${retryTitles.length}个标题）`;
@@ -5479,8 +5752,9 @@ async function generatePlatformTitles() {
   btn.disabled = false;
   renderPTResults(articleId);
   const failedPlatforms = platforms
-    .map(([name]) => name)
-    .filter(name => !article.platformTitles[name] || article.platformTitles[name].length === 0);
+    .map(([platformKey, data]) => ({ platformKey, name: data.platform }))
+    .filter(({ platformKey }) => !hasPlatformTitles(article, platformKey))
+    .map(({ name }) => name);
   if (failedPlatforms.length > 0) {
     showToast(`部分平台标题生成失败：${failedPlatforms.join('、')}`, 'warning');
   } else {
@@ -5490,10 +5764,12 @@ async function generatePlatformTitles() {
 
 function copyPTTitles(platform, articleId) {
   const article = state.articles.find(a => a.id === articleId);
-  if (!article?.platformTitles?.[platform]) return;
-  const text = article.platformTitles[platform].join('\n');
+  const titles = getPlatformTitles(article, platform);
+  if (!titles.length) return;
+  const platformName = getPlatformDisplayName(platform);
+  const text = titles.join('\n');
   navigator.clipboard.writeText(text).then(() => {
-    showToast(`${platform} 标题已复制`, 'success');
+    showToast(`${platformName} 标题已复制`, 'success');
   });
 }
 

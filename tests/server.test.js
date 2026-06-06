@@ -297,15 +297,41 @@ test('frontend helpers escape dangerous title text and save platform edits by da
   assert.equal(source.includes('<div class="title-lib-text">${q.question}</div>'), false);
   assert.equal(source.includes('<div class="workspace-q-text">${q.question}</div>'), false);
 
+  const registry = context.getPlatformRegistry();
+  const registryNames = Array.from(registry, platform => platform.name);
+  const registryKeys = Array.from(registry, platform => platform.key);
+  const distributionKeys = Array.from(context.getDistributionPlatforms(), platform => platform.key);
+  const titlePromptKeys = Array.from(context.getPlatformTitleEntries(), ([key]) => key);
+  assert.equal(registry.length, 8);
+  assert.deepEqual(
+    registryNames,
+    ['知乎', '公众号', '百家号', 'B站', '搜狐', '网易', '今日头条', '腾讯新闻']
+  );
+  assert.equal(new Set(registryKeys).size, 8);
+  assert.equal(new Set(registryNames).size, 8);
+  assert.equal(context.getDistributionPlatforms().length, registry.length);
+  assert.equal(context.getPlatformTitleEntries().length, registry.length);
+  assert.deepEqual(distributionKeys, registryKeys);
+  assert.deepEqual(titlePromptKeys, registryKeys);
+  const removedPlatforms = new Set(['小红书', '抖音', '视频号', '官网']);
+  registry.flatMap(platform => [platform.name, ...(platform.aliases || [])]).forEach(name => {
+    assert.equal(removedPlatforms.has(name), false);
+  });
+
+  assert.equal(context.getPlatformKey('网易号'), 'netease');
+  assert.equal(context.getPlatformDisplayName('网易号'), '网易');
+  assert.equal(context.getPlatformContent({ platforms: { '网易号': 'legacy netease' } }, 'netease'), 'legacy netease');
+
   const article = { platforms: { '知乎': 'old zhihu', '网易号': 'old netease' } };
   const textareas = [
-    { dataset: { platform: '网易号' }, value: 'new netease' },
-    { dataset: { platform: '知乎' }, value: 'new zhihu' },
-    { dataset: { platform: '未知平台' }, value: 'should not save' },
+    { dataset: { platform: '网易号', platformKey: 'netease' }, value: 'new netease' },
+    { dataset: { platform: '知乎', platformKey: 'zhihu' }, value: 'new zhihu' },
+    { dataset: { platform: '未知平台', platformKey: 'unknown' }, value: 'should not save' },
   ];
-  const saved = context.savePlatformTextareaValues(article, textareas, new Set(['知乎', '网易号']));
+  const saved = context.savePlatformTextareaValues(article, textareas);
   assert.equal(saved, 2);
-  assert.equal(article.platforms['网易号'], 'new netease');
-  assert.equal(article.platforms['知乎'], 'new zhihu');
+  assert.equal(article.platforms.netease, 'new netease');
+  assert.equal(article.platforms.zhihu, 'new zhihu');
   assert.equal(article.platforms['未知平台'], undefined);
+  assert.equal(context.getPlatformContent(article, '网易号'), 'new netease');
 });

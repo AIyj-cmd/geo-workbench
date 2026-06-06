@@ -314,19 +314,34 @@ async function main() {
 
     log('checking distribution platform textarea metadata');
     const distributionState = await evaluate(cdp, `(() => {
+      const registry = getPlatformRegistry();
+      const distribution = getDistributionPlatforms();
+      const titleEntries = getPlatformTitleEntries();
       const article = { platforms: {} };
       for (const dm of DISTRIBUTION_MATRIX) {
-        article.platforms[dm.platform] = 'smoke content';
+        article.platforms[dm.key] = 'smoke content';
       }
       const container = document.createElement('div');
       renderDistributionCards(article, container, 999);
       const textareas = Array.from(container.querySelectorAll('textarea'));
       return {
+        registryCount: registry.length,
+        registryKeys: registry.map(platform => platform.key),
+        registryNames: registry.map(platform => platform.name),
+        distributionCount: distribution.length,
+        titlePromptCount: titleEntries.length,
+        titlePromptKeys: titleEntries.map(([key]) => key),
         count: textareas.length,
         platforms: textareas.map(ta => ta.dataset.platform || ''),
         keys: textareas.map(ta => ta.dataset.platformKey || '')
       };
     })()`);
+    assert(distributionState.registryCount === 8, 'PLATFORM_REGISTRY does not contain exactly 8 platforms');
+    assert(JSON.stringify(distributionState.registryNames) === JSON.stringify(platforms), 'PLATFORM_REGISTRY order/name mismatch');
+    assert(new Set(distributionState.registryKeys).size === 8, 'PLATFORM_REGISTRY keys are not unique');
+    assert(distributionState.distributionCount === distributionState.registryCount, 'DISTRIBUTION_MATRIX count mismatch');
+    assert(distributionState.titlePromptCount === distributionState.registryCount, 'PLATFORM_TITLE_PROMPTS count mismatch');
+    assert(JSON.stringify(distributionState.titlePromptKeys) === JSON.stringify(distributionState.registryKeys), 'PLATFORM_TITLE_PROMPTS key order mismatch');
     assert(distributionState.count >= 8, 'distribution card did not render 8 textareas');
     assert(distributionState.keys.every(Boolean), 'some distribution textareas are missing data-platform-key');
     for (const platform of platforms) {
