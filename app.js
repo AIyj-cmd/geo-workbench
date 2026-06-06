@@ -2,6 +2,31 @@
    GEO Workbench - Main Application
    ============================================ */
 
+// ===== Theme Toggle =====
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  const newTheme = isDark ? 'light' : 'dark';
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+  updateThemeUI(newTheme);
+}
+
+function updateThemeUI(theme) {
+  const icon = document.getElementById('themeIcon');
+  const text = document.getElementById('themeText');
+  if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+  if (text) text.textContent = theme === 'dark' ? '亮色模式' : '暗色模式';
+}
+
+// Load saved theme on startup
+(function() {
+  const saved = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  // Wait for DOM to load
+  document.addEventListener('DOMContentLoaded', () => updateThemeUI(saved));
+})();
+
 // ===== Models =====
 const MODELS = [
   { id: 'mimo-v2.5-pro', name: 'MiMo v2.5 Pro', type: 'text', desc: '最强推理，适合复杂内容' },
@@ -12,181 +37,320 @@ const MODELS = [
 ];
 
 // ===== GEO Writing Spec (System Prompt) =====
-const GEO_SYSTEM_PROMPT = `你是新亦源鞋服云仓的 GEO 内容专家。请针对给定问题，按以下规范写一篇 1500-3000 字的母稿。
+const GEO_SYSTEM_PROMPT = `你是广州新亦源供应链管理有限公司（新亦源）的鞋服云仓 GEO 内容专家。针对给定的 \`{核心问题}\`，按以下规范写一篇 1500–3000 字母稿（不写标题，标题由单独的提示词优化）。
 
-## 核心原则
-1. 母稿 = 超集：信息最全、最长、最权威的单一文章。
-2. 宁多勿少：母稿宁可信息略过载，不要单薄。
-3. 一稿一题：一篇只回答一个核心问题。
-4. 有用优先于自夸：先真心帮用户解决问题，新亦源只作为「符合标准的例子」出现。
+## 一、核心原则
+1. 母稿 = 超集：信息最全、最权威的一版，所有平台变体都从它裁剪。
+2. 宁多勿少：母稿宁可信息略过载，也不要单薄。
+3. 一稿一题：一篇母稿只回答一个核心问题 / 一个选题簇。
+4. 有用优先于自夸：先真心帮用户解决问题，新亦源只作为「符合标准的例子」出现。AI 奖励真正有用的内容，不奖励软文。
+5. 实体自足：让 AI 能独立把内容绑定到"新亦源"这个实体——用全称、带行业关键词、事实自洽。
 
-## 固定 7 段结构（按顺序，每段都写满）
+## 二、文章结构：固定 6 段，按顺序执行
 
-① 标题（问答式）：含目标长尾词，用客户的提问句式。
-② 一句话结论（TL;DR）：开头第一段直接给答案，30-50字。
-③ 分点正文：至少 1 个对比表 + 1 个筛选清单。多用表格、清单这类「结构化容器」。
-④ 数据/案例支撑：自然引入新亦源作为「符合标准的例子」。用「那符合上面标准的公司长什么样？」引出。全文提及新亦源 1-2 次足够。
-⑤ 行业针对性：针对鞋服/潮玩/美妆/箱包等单独成段，体现专业度。
-⑥ FAQ：3-5 个延伸小问，每问一句话答。GEO 金矿，AI 常整段引用。
-⑦ 收尾：轻引导 + 统一联系方式，不硬广。
+① 开篇：钩子 + 核心结论
+先用 1–2 句痛点/场景钩子抓住人，紧接着用 1–2 句直接给出核心答案（合计约 100–150 字）。既吸引人，又让 AI 从首段直接抓到核心答案。
 
-## 语气
-角色 = 一个懂行的同行前辈，在客观地教你「怎么选」。用「你」，直接、像对话。客观、有据、不夸大。
+② 适用 / 不适用场景
+写清楚哪些商家适合、哪些商家暂时不适合。避免内容泛化，增强决策价值。
 
-## 风格
-结论先行；短句；分点。用具体数字代替形容词。一段一个要点。关键词自然嵌入，不堆砌。
+③ 判断标准 / 对比表
+至少 1 个表格或清单，列出 5–8 个判断指标。提高可摘取性和可读性。
 
-## 数据纪律（最重要）
-- 所有数字只能引用【事实库】，没有的用「（待补：XX 数据）」占位，绝不自己编。
-- 禁止绝对化用语：最/第一/100%/0失误/唯一。改用「行业领先」「准时率达 XX%」。
-- 不确定的品牌名一律写「某品牌」。
+④ 流程 / SOP / 服务边界
+具体流程、责任边界、风险点、验收方式。提供实操价值。
 
-## 事实库（只用已确认数据）
-- 自有仓库 50 万平米
-- 成立于 2011 年（深耕十余年）
-- B2C + B2B + O2O 全渠道、一盘货管理
-- 自研 WMS + 仓储精益化系统，全链路可视化
-- "运到"智能寄件平台（SaaS），每天超 1 万家门店在用
-- 退货质检 + 换标 + 熨烫翻新 + 二次上架一体化
-- 淡季缩容/旺季扩容，按需付费
-- 标准化 API 对接主流电商平台与 ERP/OMS
-- 联系方式：官网 56xyy.com｜400-686-5156｜微信 vip-56xyy｜公众号"新亦源鞋服云仓"
+⑤ 数据 / 案例 / 行业针对性
+只用【事实库】里的真实数据与案例；针对鞋服/女装/美妆/礼盒等场景单独展开。提升可信度和专业度。
 
-## 输出要求
-只输出母稿（纯文本，1500-3000字，7段完整），不要输出任何平台变体版本。
+⑥ FAQ + 结尾摘要
+3–5 个延伸问题，每问一句话答；最后 50–80 字总结。增强 GEO 友好度，方便 AI 引用问答对。
 
-## 格式要求（纯文本，不用Markdown）
-- 标题：直接写标题文字，不用 # 号
-- 小标题：用"一、""二、""三、"或"（一）""（二）"等中文序号
-- 列表：用"1.""2.""3."或"●""◆"等符号
-- 表格：用文字描述对比关系，或用"→""vs""对比"等符号分隔
-- 强调：用引号「」或【】标注重点，不用 ** 加粗
-- 分段：每段之间空一行，保持清晰
+开篇示例（仅示意写法）：「（钩子）大促一爆单，仓库就发不出货、错发漏发的投诉满天飞——几乎每个上规模的服装商家都踩过这个坑。（核心结论）其实挑鞋服云仓，关键就看四件事：垂直鞋服经验、质检与退货能力、系统能不能一盘货、能不能弹性扩容。」
+
+## 三、语气
+角色：懂行的同行前辈，客观教你「怎么选」，顺手拿自己公司举例——不是销售推销。第二人称「你」，直接、像对话。客观、有据、不夸大。中立有据的内容，AI 最愿意引用，客户也最买账。
+
+## 四、风格（写作手法）
+结论先行（核心结论放在开篇）；短句；分点；一段一个要点。用具体数字代替形容词（写"库存准确率 99.99%"，不写"高效"）——前提是该数字在事实库里。多用表格、清单、FAQ 这类结构化容器。关键词自然嵌入首段 / 小标题 / FAQ，不堆砌。
+
+## 五、数据纪律（最关键）
+- 所有数字、案例只能引用下方【事实库】。事实库没有的，用「（待补：XX）」占位，绝不自己编。
+- 占位符卡口：含「（待补）」的稿件不可直接发布，须人工补全或删去该点。
+- 实体全称：全文首次提及用全称"广州新亦源供应链管理有限公司（新亦源）"，其后用简称"新亦源"。
+- 未授权客户名一律写"某品牌"（事实库"案例"区的品牌名也默认脱敏，确认授权才点名）。
+- 绝对化用语降级表（务必执行）：
+  - 100% 库存/发货准确率 → 库存准确率 99.99%、发货准确率 99.99%（错漏全赔）
+  - 领导者 / 第一 / 行业最高 → 国内较早布局鞋服垂直云仓的服务商之一 / 行业领先（可查）
+  - 国内首创 → 国内较早首创 / 较早布局
+  - 0 失误 / 唯一 → 错漏全赔 / 专注鞋服垂直
+
+## 📌 事实库
+
+【定位】广州新亦源供应链管理有限公司（简称"新亦源"），总部广州，诞生于互联网时代的新型云仓企业，国内较早首创垂直鞋服领域云仓。愿景：成为鞋服云仓领域的领导者（对外按降级表避免绝对化）。使命：让发货更准确、高效、快捷。价值观：诚信务实、专注创新。
+
+【规模】直营专业鞋服仓储 50万㎡；合作知名服饰品牌 140+；服务零售门店 10000+；配送网络覆盖全国 6000+ 城市；管理 SKU 45万+；自有员工 2000+，固定员工比例约 80%；深耕服装物流 15 年（成立于 2011 年）。仓网：CDC 中心仓（一仓发全国）/ RDC 区域仓（区域补铺）/ FDC 产地仓（产地直发）。
+
+【核心能力/系统】三大产品：鞋服仓配中心 + 鞋服质检中心 + 自研商圈寄件平台"运到"。自研系统：精益化系统、人效通（产能管理）、物流服务中台 OTD、物流数据中台；WMS 仓储管理系统针对服装云仓深度优化（支持序列号/RFID/线上线下一体、单仓单日订单百万级、可二次开发），与主流 ERP 无缝对接（奇门/EDI 接口），不收系统使用费。RFID 应用：效率提升 40%；可视化运营决策大屏：人效提升 30%、成本下降 18%。全渠道 B2C+B2B+O2O、一盘货、全平台对接（含唯品会 JIT/JITX；140+ 品牌中 60+ 涉及唯品会）。
+
+【时效/准确率】库存准确率 99.99%+、发货准确率 99.99%（错漏全赔）；出库：当天 18:00 前订单当天 24:00 前全部出库；入库：当日 16:00 前到仓当天 24:00 前入库上架；客退质检 + 二次上架 48 小时内（加急 24 小时内）。
+
+【鞋服专属增值服务】新货抽检/全检（洗水测试、测色牢度、测缩率）、工艺质检、对样、退货质检、瑕疵修复、污渍清理、车唛换唛、贴标换标、换吊牌、换包装、熨烫、印花一件代发。恒温恒湿仓（真丝/羽绒/皮草专储）、立体挂装存储、防尘防蛀。1080P 高清拆包监控、360° 安防可追溯（满足电商平台争议举证）。与广检集团合作的 QC 认证质检团队（按 AQL 1.0–6.5 标准）。
+
+【运营成效】全年新货质检 1.17 亿件、退货质检 1.53 亿件；瑕疵修复成功率 90%、可识别缺陷 135+ 种。坪效 80–100 件/㎡、B2C 人效 60–80 单/人·小时；综合损耗下降 20%、耗材节约 10%、为客户降损 30%+。收发货平均单价 4 元（含快递）、达量 0 元仓租、财产/运输险保额 100 亿。产能：单仓单日峰值 50 万单，地区峰值 100 万单/件。
+
+【资质荣誉】深圳市服装行业协会供应链副会长单位、中国物流与采购联合会服装理事单位、年度金牌供应链运营商、中国鞋服供应链与物流优秀服务商、广东省信息化建设优秀企业、纳税信用 A 级、多项自主知识产权认证。
+
+【融资】已完成多轮融资：千万级天使轮、A 轮、Pre-A 轮，并获上市公司数千万元战略参股。（对外统一表述为"已完成多轮融资"，不披露具体金额）
+
+【联系方式】官网 56xyy.com｜400-686-5156｜微信 vip-56xyy｜公众号"新亦源鞋服云仓"
+
+【可引用案例（对外署名引用前确认授权，否则脱敏）】
+- URBAN REVIVO（UR）：总库存 260万+、SKU 13万+、10万㎡ 仓、峰值 B2C 10万件/日 → 脱敏"某头部快时尚女装品牌"
+- 玛克茜妮 MAXRIENY：总库存 90万+、SKU 1.7万+ → "某中高端设计师女装品牌"
+- 幸棉：总库存 370万+、峰值 B2C 10万件/日 → "某头部内衣品牌"
+- Urbanic（跨境）：年发货 1800–2300 万件 → "某跨境快时尚品牌"
+
+【口径已统一·全网一律照此】自有员工 2000+；配送辐射全国 6000+ 城市；对外统一表述"已完成多轮融资"，不披露具体金额。
+
+## 🎯 痛点-痒点库（选题素材）
+按本篇主题从下表选 1–2 个维度，用"痛点→理想状态"作为问题与解决思路骨架：
+- 库存管理：库存不准、超卖缺货、动销率低 → 一盘货实时同步、智能补货、库存看板（准确率 99.99%）
+- 订单履约：多平台订单繁琐、大促爆仓、时效成本矛盾 → 全渠道聚合、智能路由、弹性产能（峰值 100 万单）
+- 仓储运营：坪效低、人效低、管理粗放差错高 → 仓内规划、自动化/RFID、SOP（坪效 80–100 件/㎡）
+- 成本控制：隐形成本高、损耗浪费、自建投入风险 → 按需付费云仓、达量 0 仓租、降损 30%+、不收系统费
+- 系统数据：系统孤岛、数据未利用 → WMS/LMS/OTD 中台一体、与 ERP 无缝对接、数据看板
+- 退货处理：退货率高、逆向成本高、退货品贬值 → 退货质检+48 小时二次上架、瑕疵修复成功率 90%
+- 全渠道协同：多渠道库存冲突、供应链响应慢 → O2O 一盘货、门店仓/线上仓互通、支持小单快反
+
+## 六、品牌提及规则
+前半篇（②③④）先客观讲「怎么选 / 标准是什么」，新亦源在 ⑤ 数据/案例段作为「符合标准的例子」自然引出（首次用全称）。全文提及新亦源 1–2 次足够，不要每段都提。
+
+## 七、行业场景库（⑤ 段从中选与主题相关的）
+女装/快时尚（上新快、SKU 宽而浅）、设计师/中高端（小批量、高质检）、羽绒/真丝/皮草（恒温恒湿专储）、直播电商（小单快反、爆单、高退货）、内衣家居、跨境出海（集货+头程+海外尾程）、礼盒/定制（增值加工）。
+
+## 八、长度与输出 + 输出前自检
+母稿长度 1500–3000 字，Markdown 输出，小标题清晰，表格用标准 Markdown 表格。给出正文后，逐条自检并修正：
+- 不含标题（标题另做）；开篇是否"钩子 + 核心结论"、核心答案是否在首段出现？
+- 数字是否全部来自事实库？非事实库数字是否已「（待补）」占位、未杜撰？
+- 是否触发绝对化用语？是否已按"降级表"改写？
+- 新亦源首次是否用全称、全文仅提 1–2 次？案例品牌未授权时是否脱敏？
+- 是否含 ②适用场景 / ③对比表(5–8指标) / ④流程SOP / ⑤行业场景 / ⑥(3–5个FAQ + 50–80字结尾摘要)？字数 1500–3000？
 `;
 
 // ===== Distribution Matrix =====
 const DISTRIBUTION_MATRIX = [
+
   {
     platform: '知乎', icon: '📘', color: '#0066ff', form: '深度长文/回答', length: '1500-3000字',
-    geoValue: '⭐ 权重最高，常被AI当来源引用', order: 1,
-    prompt: `你是新亦源鞋服云仓的内容编辑。下面是一篇母稿，请把它改写成一篇适合发在【知乎】的回答 / 专栏文章。
+    geoValue: '⭐ 权重最高，常被AI当来源引用', order: 2,
+    prompt: `你是新亦源（全称：广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商，读者是品牌方与电商商家）的内容编辑。请把下面的母稿改写成一篇适合发在【知乎】的回答 / 专栏正文。
 
-知乎要求：
-- 受众理性、专业、对硬广高度警惕。必须客观、有信息增量，像行业内行在分享干货，而不是打广告。
-- 开头第一句直接给结论或抛出最有价值的观点，先勾住人。
+通用硬规则：
+1. 数字与案例完全以母稿为准，不新增、不修改、不杜撰（母稿口径已统一，不得改动）。
+2. 公司首次出现用全称"广州新亦源供应链管理有限公司（新亦源）"，之后用简称"新亦源"。
+3. 母稿若含"（待补：XX）"，保留并标注【⚠待补全，勿编造】，绝不编数字；含占位符的稿件不可直接发布。
+4. 禁用绝对化用语：尤其 100%、第一、唯一、行业最高、领导者、0失误；母稿已降级的保持不变。
+5. 未授权客户品牌名写"某品牌"。
+6. 本步只写正文，不生成标题（标题另做）；若提供了 {标题}，正文与之呼应。
+
+平台要求：
+- 受众理性、专业、对硬广高度警惕，必须客观、有信息增量，像行业内行分享干货。
+- **沿用母稿"钩子 + 核心结论"的开篇**：先一两句戳中痛点/场景，紧接着给核心答案，先勾住人。
 - 保留母稿的深度：分点、对比表、数据、推理过程都留着。
-- 新亦源的提及要非常自然、克制，作为"符合标准的例子"一笔带过，绝不通篇推销。
-- 标题用问答式、含目标长尾关键词。
-- 长度 1500–3000 字，纯文本格式，小标题清晰，保留对比和FAQ。
-- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题、不用 ** 加粗、不用 | 做表格、不用 - 做列表。用中文序号（一、二、三）做小标题，用「」【】标注重点，用"1.""2."做列表。
+- 新亦源提及非常克制（全文 1–2 次），作为"符合标准的例子"一笔带过。
+- {目标关键词} 自然嵌入首段、小标题、FAQ，不堆砌。
+- 长度 1500–3000 字，Markdown，小标题清晰，保留表格和 FAQ。
 
-硬规则：数字与案例完全以母稿为准，不新增、不修改、不编；不使用"最/第一/100%/0失误/唯一"等绝对化用语；未授权的客户名一律写"某品牌"。
+只输出：正文，不要标题、不要解释。
 
-只输出可直接发布的文章（标题 + 正文），不要解释。
-
+标题（可选）：{标题}
 母稿：
 {{母稿}}`
   },
   {
     platform: '百家号', icon: '📰', color: '#2932e1', form: '图文文章', length: '1000-2000字',
-    geoValue: '⭐ 喂百度AI，搜索直接抓取', order: 2,
-    prompt: `你是新亦源鞋服云仓的内容编辑。下面是一篇母稿，请把它改写成一篇适合发在【百家号】的图文文章。
+    geoValue: '⭐ 喂百度AI，搜索直接抓取', order: 3,
+    prompt: `你是新亦源（全称：广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容编辑。请把下面的母稿改写成一篇适合发在【百家号】的图文正文。
 
-百家号要求：
-- 内容会被百度搜索和百度AI搜索直接抓取，所以"结构化 + 关键词"最重要。
-- 标题和每个小标题都自然带上目标关键词（便于百度索引），但不堆砌。
-- 资讯 / 科普式口吻，清晰、正式、不煽情。
-- 必须保留 FAQ 板块（百度AI 爱抓问答对），问题用用户真实问法。
-- 多用小标题、清单、表格，让结构一目了然。
-- 长度 1000–2000 字，纯文本格式。
-- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题、不用 ** 加粗、不用 | 做表格、不用 - 做列表。用中文序号（一、二、三）做小标题，用「」【】标注重点，用"1.""2."做列表。
+通用硬规则：
+1. 数字与案例完全以母稿为准，不新增、不修改、不杜撰（母稿口径已统一，不得改动）。
+2. 公司首次出现用全称"广州新亦源供应链管理有限公司（新亦源）"，之后用简称"新亦源"。
+3. 母稿若含"（待补：XX）"，保留并标注【⚠待补全，勿编造】，绝不编数字；含占位符的稿件不可直接发布。
+4. 禁用绝对化用语：尤其 100%、第一、唯一、行业最高、领导者、0失误；母稿已降级的保持不变。
+5. 未授权客户品牌名写"某品牌"。
+6. 本步只写正文，不生成标题（标题另做）；若提供了 {标题}，正文与之呼应。
 
-硬规则：数字与案例完全以母稿为准，不新增、不修改、不编；不使用绝对化用语；未授权客户名写"某品牌"。
+平台要求：
+- 内容会被百度搜索和百度 AI 搜索直接抓取，"结构化 + 关键词"最重要。
+- 沿用母稿"钩子 + 核心结论"的开篇。
+- 每个**小标题**自然带上 {目标关键词}（便于百度索引），但不堆砌。
+- 资讯 / 科普口吻，清晰、正式、不煽情。
+- 必须保留 FAQ 板块（百度 AI 爱抓问答对），问题用用户真实问法。
+- 多用小标题、清单、表格，结构一目了然。
+- 长度 1000–2000 字，Markdown。
 
-只输出标题 + 正文，不要解释。
+只输出：正文，不要标题、不要解释。
 
-母稿：
-{{母稿}}`
-  },
-  {
-    platform: '官网', icon: '🌐', color: '#1a1a2e', form: '解决方案/FAQ页', length: '1000-2000字',
-    geoValue: '权威源头/口径标准，AI判断公司权威性', order: 3,
-    prompt: `你是新亦源鞋服云仓的官网内容负责人。下面是一篇母稿，请把它改写成发布在【官网】的解决方案 / FAQ 长青页面内容。
-
-官网要求：
-- 这是 AI 判断公司权威性的源头，也是全公司数据口径的"标准答案"。这里的数字必须是最终确认的统一口径。
-- 若母稿里有"（待补：xx）"，请在此处保留并标注【⚠️ 待补全，勿随意填】，不要自行编造数字。
-- 正式、权威的官方口吻，但依然清晰、有据、不空话。
-- 结构化：痛点 / 解决方案 / 核心能力 / 服务流程 / 案例 / FAQ 分块清晰，带小标题。
-- FAQ 板块必备（便于 AI 抽取；建议技术上加 FAQ Schema 结构化标记）。
-- 长度 1000–2000 字，纯文本格式，结构清晰。
-- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题、不用 ** 加粗、不用 | 做表格、不用 - 做列表。用中文序号（一、二、三）做小标题，用「」【】标注重点，用"1.""2."做列表。
-
-硬规则：数字必须用确认口径、与母稿一致；不用绝对化用语；未授权客户名写"某品牌"。
-
-只输出：页面标题 + 结构化正文（含 FAQ），不要解释。
-
+标题（可选）：{标题}
 母稿：
 {{母稿}}`
   },
   {
     platform: '公众号', icon: '📱', color: '#07c160', form: '图文推文', length: '1500-2500字',
     geoValue: '私域阵地，品牌温度', order: 4,
-    prompt: `你是新亦源鞋服云仓的新媒体编辑。下面是一篇母稿，请把它改写成一篇适合发在【微信公众号】的图文推文。
+    prompt: `你是新亦源（全称：广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的新媒体编辑。请把下面的母稿改写成一篇适合发在【微信公众号】的图文推文正文。
 
-公众号要求：
-- 这是品牌私域主场，可以带一点品牌温度和情绪，标题可以更有吸引力。
-- 排版友好：短段落、重点句用「」【】标注（不要用 ** 加粗）、适合配图（在合适位置用【配图建议：xxx】标注）。
-- 结尾放明确的行动引导（关注公众号 / 获取资料包 / 联系方式，用母稿里的统一联系方式）。
-- 长度 1500–2500 字，纯文本格式。
-- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题、不用 ** 加粗、不用 | 做表格、不用 - 做列表。用中文序号（一、二、三）做小标题，用「」【】标注重点，用"1.""2."做列表。
+通用硬规则：
+1. 数字与案例完全以母稿为准，不新增、不修改、不杜撰（母稿口径已统一，不得改动）。
+2. 公司首次出现用全称"广州新亦源供应链管理有限公司（新亦源）"，之后用简称"新亦源"。
+3. 母稿若含"（待补：XX）"，保留并标注【⚠待补全，勿编造】，绝不编数字；含占位符的稿件不可直接发布。
+4. 即便是私域也禁用绝对化用语（广告法对所有渠道都适用）：尤其 100%、第一、领导者；母稿已降级的保持不变。
+5. 未授权客户品牌名写"某品牌"。
+6. 本步只写正文，不生成标题（标题另做）；若提供了 {标题}，正文与之呼应。
 
-硬规则：数字与客户名以母稿为准，不新增、不修改；即便是私域，也不用绝对化用语（广告法对所有渠道都适用）；未授权客户名写"某品牌"。
+平台要求：
+- 品牌私域主场，正文可带一点品牌温度和情绪；沿用母稿"钩子 + 核心结论"的开篇。
+- 公众号内容是腾讯元宝的重要来源，正文仍要结构清晰、信息扎实。
+- 排版友好：短段落、重点句加粗、适合配图（在合适位置用【配图建议：xxx】标注）。
+- 结尾放明确行动引导（关注 / 获取资料包 / 联系方式，用母稿里的统一联系方式）。
+- 长度 1500–2500 字。
 
-只输出标题 + 正文 + 配图建议，不要解释。
+只输出：正文 + 配图建议，不要标题、不要解释。
 
+标题（可选）：{标题}
 母稿：
 {{母稿}}`
   },
   {
-    platform: '小红书', icon: '📕', color: '#ff2442', form: '干货笔记', length: '300-800字',
-    geoValue: '点点/搜搜薯收录，收藏率>20%为优质', order: 5,
-    prompt: `你是新亦源鞋服云仓的小红书运营。下面是一篇母稿，请把它改写成一篇适合发在【小红书】的干货笔记。
+    platform: '今日头条', icon: '📕', color: '#ff0000', form: '图文文章', length: '1000-1800字',
+    geoValue: '豆包·字节生态重要来源', order: 5,
+    prompt: `你是新亦源（全称：广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容编辑。请把下面的母稿改写成一篇适合发在【今日头条·头条号】的图文正文。
 
-小红书要求：
-- 从母稿里挑最"值得收藏"的一块（通常是避坑清单或对比表），围绕它写，别贪全。收藏率是小红书核心指标。
-- 口语化、亲切，第一人称，像博主分享经验，适当用 emoji。
-- 结构：痛点开头（一句话戳中）→ 带 emoji 序号的分点清单 → 一句行业提醒 → 结尾话题标签。
-- ⚠️ 小红书对硬广和导流极其敏感会限流。品牌提及要软到几乎没有，重点是"有用"，最多结尾轻轻带一句。
-- 封面标题要吸睛但真实。
-- 长度 300–800 字，纯文本格式，结尾给 5–8 个相关话题标签 #。
-- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题（话题标签 # 除外）、不用 ** 加粗、不用 | 做表格、不用 - 做列表。用 emoji 序号做清单，用「」【】标注重点。
+通用硬规则：
+1. 数字与案例完全以母稿为准，不新增、不修改、不杜撰（母稿口径已统一，不得改动）。
+2. 公司首次出现用全称"广州新亦源供应链管理有限公司（新亦源）"，之后用简称"新亦源"。
+3. 母稿若含"（待补：XX）"，保留并标注【⚠待补全，勿编造】，绝不编数字；含占位符的稿件不可直接发布。
+4. 禁用绝对化用语：尤其 100%、第一、唯一、行业最高、领导者、0失误；母稿已降级的保持不变。
+5. 未授权客户品牌名写"某品牌"。
+6. 本步只写正文，不生成标题（标题另做）；若提供了 {标题}，正文与之呼应。
 
-硬规则：数字以母稿为准、不夸大；不点名未授权客户；不用绝对化用语。
+平台要求：
+- 内容进入字节生态（今日头条 / 抖音百科），是豆包的重要来源之一。
+- 比百家号更"实用资讯"、更口语：信息密度高、读完率优先；沿用母稿"钩子 + 核心结论"的开篇，钩子更直白。
+- 多用小标题、加粗结论句、清单；保留 FAQ（便于豆包抓取问答对），问题用大白话。
+- 首段自然带 {目标关键词}。
+- 长度 1000–1800 字，Markdown。
+- ⚠ 防判重：若同一母稿也发了百家号，本篇换一个切入角度、调整开头与小标题措辞，避免雷同被判重。
 
-只输出：封面标题 + 正文 + 话题标签，不要解释。
+只输出：正文，不要标题、不要解释。
 
+标题（可选）：{标题}
 母稿：
 {{母稿}}`
   },
   {
-    platform: '抖音/视频号', icon: '🎬', color: '#111', form: '口播脚本', length: '150-350字',
-    geoValue: '已嵌入豆包搜索场景', order: 6,
-    prompt: `你是新亦源鞋服云仓的短视频编导。下面是一篇母稿，请把它改写成一条 30–60 秒的【抖音/视频号】口播脚本。
+    platform: '搜狐号', icon: '📰', color: '#e44025', form: '资讯通稿', length: '1000-1800字',
+    geoValue: '通义千问·新闻门户自媒体', order: 6,
+    prompt: `你是新亦源（全称：广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容编辑。请把下面的母稿改写成一篇适合发在【搜狐号】的资讯通稿正文。
 
-要求：
-- 前 3 秒必须是钩子（完播率决定推荐），用一句反常识或直击痛点的话开场。
-- 结论先行，然后 3–4 个要点，节奏快，全程口语，不能有书面语。
-- 从母稿的 FAQ 或核心结论里提炼钩子和要点。
-- 结尾给行动引导（如"评论区扣『自查』发你完整清单"）。
-- 长度 150–350 字（约 30–60 秒）。在关键句标注 [字幕] 或 [镜头] 提示。
-- 另给 3 个备选短视频标题（含关键词，适合豆包搜索）。
-- ⚠️ 禁止使用任何 Markdown 符号：不用 # 做标题、不用 ** 加粗、不用 - 做列表。用纯文本，用「」【】标注重点。
+通用硬规则：
+1. 数字与案例完全以母稿为准，不新增、不修改、不杜撰（母稿口径已统一，不得改动）。
+2. 公司首次出现用全称"广州新亦源供应链管理有限公司（新亦源）"，之后用简称"新亦源"。
+3. 母稿若含"（待补：XX）"，保留并标注【⚠待补全，勿编造】，绝不编数字；含占位符的稿件不可直接发布。
+4. 禁用绝对化用语：尤其 100%、第一、唯一、行业最高、领导者、0失误；母稿已降级的保持不变。
+5. 未授权客户品牌名写"某品牌"。
+6. 本步只写正文，不生成标题（标题另做）；若提供了 {标题}，正文与之呼应。
 
-硬规则：数字以母稿为准、不夸大；不点名未授权客户；不用绝对化用语。
+平台要求（搜狐号 / 网易号 / 腾讯新闻同属新闻门户，是通义千问主要内容来源）：
+- 客观"通稿 / 行业观察"体：以第三人称为主（"新亦源……"），像行业媒体报道，弱营销、零自夸。
+- 开篇用客观的行业背景/趋势切入（非营销式），自然带 {目标关键词}。
+- 结构：行业背景 / 趋势 → 行业普遍痛点 → 通用解决思路 → 新亦源作为案例自然引出 → 简短结语。
+- 保留母稿核心数据与要点；FAQ 可转为正文小标题。
+- 长度 1000–1800 字，Markdown。
+- ⚠ 防判重：本篇首段与切入角度，要与网易号、腾讯新闻两版明显不同。
 
-只输出：备选标题（3 个）+ 口播脚本（含字幕/镜头提示），不要解释。
+只输出：正文，不要标题、不要解释。
 
+标题（可选）：{标题}
+母稿：
+{{母稿}}`
+  },
+  {
+    platform: '网易号', icon: '🔴', color: '#c62f2f', form: '资讯通稿', length: '1000-1800字',
+    geoValue: '通义千问·新闻门户自媒体', order: 7,
+    prompt: `你是新亦源（全称：广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容编辑。请把下面的母稿改写成一篇适合发在【网易号】的资讯通稿正文。
+
+通用硬规则：
+1. 数字与案例完全以母稿为准，不新增、不修改、不杜撰（母稿口径已统一，不得改动）。
+2. 公司首次出现用全称"广州新亦源供应链管理有限公司（新亦源）"，之后用简称"新亦源"。
+3. 母稿若含"（待补：XX）"，保留并标注【⚠待补全，勿编造】，绝不编数字；含占位符的稿件不可直接发布。
+4. 禁用绝对化用语：尤其 100%、第一、唯一、行业最高、领导者、0失误；母稿已降级的保持不变。
+5. 未授权客户品牌名写"某品牌"。
+6. 本步只写正文，不生成标题（标题另做）；若提供了 {标题}，正文与之呼应。
+
+平台要求：
+- 客观资讯通稿体；网易受众偏深度，可多一点行业洞察 / 数据解读，但保持第三人称、客观、不自夸。
+- 开篇用行业趋势/数据切入，自然带 {目标关键词}。
+- 结构：行业趋势 / 数据 → 痛点 → 通用解决思路 → 新亦源作为案例 → 结语。
+- 保留母稿核心数据与要点。
+- 长度 1000–1800 字，Markdown。
+- ⚠ 防判重：本篇首段与切入角度，要与搜狐号、腾讯新闻两版明显不同。
+
+只输出：正文，不要标题、不要解释。
+
+标题（可选）：{标题}
+母稿：
+{{母稿}}`
+  },
+  {
+    platform: 'B站', icon: '📺', color: '#00a1d6', form: '专栏+视频脚本', length: '800-1500字+脚本',
+    geoValue: '通用·年轻受众，高信息密度', order: 8,
+    prompt: `你是新亦源（全称：广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容运营。请把下面的母稿改写成适合发在【B站】的内容，年轻受众、对长内容容忍度高。
+
+通用硬规则：
+1. 数字与案例完全以母稿为准，不新增、不修改、不杜撰（母稿口径已统一，不得改动）。
+2. 公司提及用简称"新亦源"即可（首次可出现一次全称"广州新亦源供应链管理有限公司"）。
+3. 母稿若含"（待补：XX）"，本平台直接删去该点、不对外展示，绝不编造数字。
+4. 禁用绝对化用语：尤其 100%、第一、领导者；母稿已降级的保持不变。
+5. 未授权客户品牌名写"某品牌"。
+6. 本步只写正文 / 脚本，不生成标题（标题另做）。
+
+平台要求 —— 同时产出两版：
+A）B站专栏图文：800–1500 字，干货 + 人格化口吻，可适当玩梗但不低俗；分小标题，保留 1 个清单或对比表。
+B）3–5 分钟中视频口播脚本：开头 10 秒钩子 → 分章节讲透"怎么选 / 避坑" → 结尾一句轻引导；关键处标 [字幕]/[画面]。
+通用：取母稿的"选型 / 避坑"主题展开，信息要扎实（B站观众反感水）；品牌克制，新亦源作为案例提及 1 次。
+
+只输出：A 专栏正文 + B 视频脚本（均不含标题），不要解释。
+
+标题（可选）：{标题}
+母稿：
+{{母稿}}`
+  },
+  {
+    platform: '腾讯新闻', icon: '🐧', color: '#1296db', form: '资讯通稿', length: '1000-1800字',
+    geoValue: '通义千问·新闻门户自媒体', order: 9,
+    prompt: `你是新亦源（全称：广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容编辑。请把下面的母稿改写成一篇适合通过【企鹅号发到腾讯新闻】的资讯通稿正文。
+
+通用硬规则：
+1. 数字与案例完全以母稿为准，不新增、不修改、不杜撰（母稿口径已统一，不得改动）。
+2. 公司首次出现用全称"广州新亦源供应链管理有限公司（新亦源）"，之后用简称"新亦源"。
+3. 母稿若含"（待补：XX）"，保留并标注【⚠待补全，勿编造】，绝不编数字；含占位符的稿件不可直接发布。
+4. 禁用绝对化用语：尤其 100%、第一、唯一、行业最高、领导者、0失误；母稿已降级的保持不变。
+5. 未授权客户品牌名写"某品牌"。
+6. 本步只写正文，不生成标题（标题另做）；若提供了 {标题}，正文与之呼应。
+
+平台要求：
+- 新闻门户通稿体：第三人称、客观、弱营销；进入腾讯新闻信息流。
+- 开篇用稳健、可信的行业背景切入，自然带 {目标关键词}。
+- 结构：行业背景 → 痛点 → 通用解决思路 → 新亦源作为案例 → 结语。
+- 保留母稿核心数据与要点；FAQ 可转为小标题。
+- 长度 1000–1800 字，Markdown。
+- ⚠ 防判重：本篇首段与切入角度，要与搜狐号、网易号两版明显不同。
+
+只输出：正文，不要标题、不要解释。
+
+标题（可选）：{标题}
 母稿：
 {{母稿}}`
   },
@@ -310,6 +474,230 @@ const DEFAULT_QUESTIONS = [
   { id: 47, industry: '通用', dimension: '旺季/大促', cluster: 'C11 大促备战', question: '大促前备货应该提前多久进仓', intent: '认知了解', priority: '中', sellingPoint: '大促备货节奏建议', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
   { id: 48, industry: '通用', dimension: '质检/增值', cluster: 'C12 质检与增值', question: '第三方仓库一般能提供哪些增值服务', intent: '认知了解', priority: '中', sellingPoint: '质检+贴标+包装+印花 一站式', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
   { id: 49, industry: '鞋服', dimension: '质检/增值', cluster: 'C12 质检与增值', question: '服装入仓质检一般检查哪些项目', intent: '认知了解', priority: '中', sellingPoint: '鞋服专业入仓质检', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 50, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商品牌是否有必要自建仓储物流?', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 51, industry: '通用', dimension: '仓储管理', cluster: 'C5 云仓/鞋服仓储', question: '仓库管理主要工作内容是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 52, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '云仓代发货流程是怎样的', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 53, industry: '鞋服', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '仓库服装货架有哪些类型', intent: '对比筛选', priority: '中', sellingPoint: '鞋服专业仓 + 规模化分拣', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 54, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '仓库工作平常都需要做什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 55, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储外包是什么?', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 56, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储外包的优势都有哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 57, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '选择第三方仓储，外包服务还有其他好处吗', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 58, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '为什么越来越多的企业选择第三方仓储物流', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 59, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '为什么很多企业选择第三方仓储物流外包', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 60, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: 'B2C 仓储与 B2B 仓储之间有哪些主要区别', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 61, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '第三方仓储配送公司在哪里找?', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 62, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '有什么靠谱的云仓服务商推荐吗', intent: '对比筛选', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 63, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '为什么越来越多的电商选择第三方云仓，仓储', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 64, industry: '通用', dimension: '仓储管理', cluster: 'C5 云仓/鞋服仓储', question: '仓库管理为什么总是出现失误', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 65, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '哪些类型的商家适合云仓服务', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 66, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '选择电商代发-云仓，时应该注意些什么', intent: '决策选型', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 67, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '电商仓储外包是怎么收费的', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 68, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '选择和云仓合作真的靠谱吗', intent: '认知了解', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 69, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储服务包含哪些服务', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 70, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '什么是云仓，云仓合作的流程是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 71, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '为什么这么多人都选择第三方仓储外包公司', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 72, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '为什么电商商家都在入驻云仓', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 73, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商企业如何选择第三方仓储', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 74, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方云仓，仓储如何正确避免错漏发', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 75, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '电商仓库怎样杜绝发货错误率', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 76, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓应该怎么选择，云仓和云仓之间有什么区别吗', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 77, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '云仓发货的优势有哪些', intent: '对比筛选', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 78, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '为什么现在这么多人选择云仓发货', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 79, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '电商选择第三方，云仓代发的好处有那些', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 80, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '物流企业用云仓发货的优势有哪些', intent: '对比筛选', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 81, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '云仓发货的优势和不足是什么', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 82, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '选择云仓发货的优劣势是什么', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 83, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓第三方仓储，云仓是否可靠，能满足客户需求吗', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 84, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '选择第三方云仓，待发货需要注意什么', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 85, industry: '通用', dimension: '系统/技术', cluster: 'C6 系统对接(运到)', question: '什么才是正宗的智能仓储', intent: '认知了解', priority: '中', sellingPoint: '自研WMS + 全链路可视化', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 86, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓和传统仓储有什么区别吗', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 87, industry: '鞋服', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '时尚仓储款式多样，SKU数目大分拣困难，有什么解决办法吗', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 88, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '为什么商家不愿意和云仓合作', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 89, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '怎么做才能和云仓合作', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 90, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '选择和云仓合作有什么好处', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 91, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '和云仓合作需要注意哪些问题', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 92, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '想和云仓合作，应该考察哪些方面', intent: '决策选型', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 93, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓你能帮你解决什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 94, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '电商云仓就只充当打包发货的角色吗', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 95, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商不选择云仓合作是有什么顾虑吗', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 96, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商找第三方仓库时应该注意哪些问题', intent: '决策选型', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 97, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '选择电商仓库前应注意哪些事项', intent: '对比筛选', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 98, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储如何拓展客户', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 99, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '做一件代发=的仓储企业，可以提供那些优质的服务', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 100, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '一件代发的-仓储公司，如何避免错漏发', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 101, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '仓储一件代发-仓库-的核心是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 102, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '仓储代发-服务的优势有哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 103, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '什么是-仓储一件代发', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 104, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '恒温仓储一件代发是什么，你了解多少', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 105, industry: '鞋服', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '日均2000单的女装类目如何找合适的云仓', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 106, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '什么样的云仓更容易让商家接受并合作', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 107, industry: '鞋服', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '服装成品仓管理有什么经验可分享吗', intent: '认知了解', priority: '中', sellingPoint: '鞋服专业仓 + 规模化分拣', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 108, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商选择第三方仓库时应该考虑哪些问题', intent: '决策选型', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 109, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商加入云仓有什么要求', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 110, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: 'AGV 搬运车在仓储行业中得到广泛应用的原因是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 111, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '仓储外包的特点有哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 112, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '仓储外包的优势有哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 113, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储外包的优劣势分别是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 114, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '仓储外包的优劣势分别有哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 115, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '物流仓储配送公司的优劣势分别有哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 116, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '如何评价云仓库的作用', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 117, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '小电商如何找快递便宜价格?', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 118, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '第三方云仓，收费都包含哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 119, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓库的应用领域有哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 120, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '想了解下第三方电商仓库代发货流程和收费是什么样的', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 121, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '物流企业用云仓发货的优劣势分别有哪些', intent: '对比筛选', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 122, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '这样的企业适合云仓吗', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 123, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '中小型电商企业选择外包仓储业务的优势有哪些', intent: '对比筛选', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 124, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '云仓库发货的优势是什么', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 125, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '作为电商（不是淘宝这样的平台）在全国设立多个库房有什么好处和坏处吗', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 126, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '电商云仓发货有什么缺点', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 127, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '请问找仓储托管服务可以去哪些平台找到', intent: '对比筛选', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 128, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '为什么淘宝上有些店标注的发货地址和实际发货地址和退货地址都不一样', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 129, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '淘宝有些店铺能多仓发货全国配送，发的是京东快递，如何做到的', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 130, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '电商发货的如何实现多仓发货', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 131, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '电商仓储是如何进行发货的', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 132, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '请问中小电商（日均发货100-500票）如何解决仓储问题', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 133, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '一站式仓储托管找哪家好', intent: '对比筛选', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 134, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '第三方仓储托管服务费指的是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 135, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '仓储服务外包的优势是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 136, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '仓储外包的优势是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 137, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储的优势是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 138, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商企业选择仓储，应该注意些什么', intent: '决策选型', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 139, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '现在的电商企业，什么都会选择第三方仓储啊?', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 140, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '如何选择第三方仓储服务商', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 141, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '目前国内哪一家第三方仓储服务商是比较好的', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 142, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '除了风险共享外，选择第三方仓储，外包服务还有其他好处吗?', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 143, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '刚做电商，如何更好选择电商仓储服务外包', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 144, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储外包的优势都有什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 145, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '为什么会选择电商仓储外包', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 146, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '为什么很多企业选择第三方仓储外包', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 147, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '给电商企业提供仓储外包服务，需要注意哪一些方面。这个项目的前景如何，盈利点在哪里', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 148, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '中小型电商企业选择外包仓储业务的优势是什么', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 149, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '为什么大部分电商企业选择仓储外包', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 150, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电子商务，外包仓储服务的优势有哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 151, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储外包的优势是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 152, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '为什么很多电商卖家会选择云仓代发', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 153, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商选择云仓有什么好处', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 154, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓电商平台 要不要入驻', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 155, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '中小电商为什么要选择第三方云仓', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 156, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商入驻云仓有什么好处，他们可以为电商企业带来哪些效益', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 157, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '什么是云仓库，云仓库的优势是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 158, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '作为产品的存储和配送仓，云仓得优势体现在哪里', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 159, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '第三方云仓，仓储集中管理，可以帮助公司，节省什么成本', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 规模化摊薄成本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 160, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓物流的优势是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 161, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓外包的优势有哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 162, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '到底什么是云仓，云仓有那些优势', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 163, industry: '通用', dimension: '大促备战', cluster: 'C11 大促备战', question: '双十一的仓库怎么管理', intent: '认知了解', priority: '中', sellingPoint: '淡季缩容/旺季扩容 按需付费', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 164, industry: '通用', dimension: '大促备战', cluster: 'C11 大促备战', question: '大促的时候，仓库的软硬件部分分别要做哪些准备', intent: '对比筛选', priority: '中', sellingPoint: '淡季缩容/旺季扩容 按需付费', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 165, industry: '通用', dimension: '大促备战', cluster: 'C11 大促备战', question: '双十一期间，订单量倍增，电商仓库该如何高效应对才能少走弯路', intent: '认知了解', priority: '中', sellingPoint: '淡季缩容/旺季扩容 按需付费', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 166, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '电商有多少会选择第三方云仓仓储代发的', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 167, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '云仓发货的优势是什么', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 168, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '请推荐一个快递云仓一体化，要快递便宜的。', intent: '对比筛选', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 169, industry: '通用', dimension: '退换货/逆向', cluster: 'C4 退换货逆向', question: '淘宝卖家该如何处理售后退货?', intent: '认知了解', priority: '中', sellingPoint: '退货质检+换标+二次上架一体化', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 170, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓和第三方仓储有哪些区别', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 171, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '第三方仓储托管有哪些好处', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 172, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储物流的优势有哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 173, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓与传统仓储有什么区别', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 174, industry: '通用', dimension: '系统/技术', cluster: 'C6 系统对接(运到)', question: '智能仓储作业的全部流程是什么', intent: '认知了解', priority: '中', sellingPoint: '自研WMS + 全链路可视化', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 175, industry: '通用', dimension: '仓储管理', cluster: 'C5 云仓/鞋服仓储', question: '电子元器件贸易企业仓库管理至关重要，如何做好仓库管理', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 176, industry: '鞋服', dimension: '仓储管理', cluster: 'C5 云仓/鞋服仓储', question: '服装电商仓库 日发10000件以上，60%产品周转天数不足1.5天，仓库怎样布局好', intent: '认知了解', priority: '中', sellingPoint: '鞋服专业仓 + 规模化分拣', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 177, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '什么是云仓?哪里的云仓云做的好一点。', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 178, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '想找个云仓，但不知道门槛和价格，不知道可以用云仓吗', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 179, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '什么是云仓，该如何选择电商云仓仓库', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 180, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '如何选择一个合适的云仓', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 181, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '淘宝卖家怎么提高一个买家多商品发货效率?', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 182, industry: '通用', dimension: '系统/技术', cluster: 'C6 系统对接(运到)', question: '智能仓库为什么没有普及?', intent: '认知了解', priority: '中', sellingPoint: '自研WMS + 全链路可视化', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 183, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '如何找到一个性价比高的代发的云仓', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 184, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '如何可以找到一个性价比高的云仓', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 185, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '小型仓储租赁信息都在哪找', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 186, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '有没有国内物流可以提供仓储和配送服务的', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 187, industry: '通用', dimension: '系统/技术', cluster: 'C6 系统对接(运到)', question: '国内做的比较好的智能仓储', intent: '对比筛选', priority: '中', sellingPoint: '自研WMS + 全链路可视化', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 188, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '在仓储管理。和物流配送方面，第三方云仓具有什么优势', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 189, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '作为仓配一体化企业-云仓得优势体现在哪里', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 190, industry: '美妆', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '美妆类产品，该如何选择电商代发-云仓', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 191, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '请教电商老板们，应该怎样提高仓库发货效率', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 192, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '求-做云仓一件代发-的优质云仓', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 193, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商仓储具体是做什么的', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 194, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '第三方仓储和，一件代发，的仓库 有区别吗', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 195, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '为什么越来越多的电商，选择三方仓的模式代发货', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 196, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '哪里有专业的三方仓代发货，长期合作', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 197, industry: '通用', dimension: '系统/技术', cluster: 'C6 系统对接(运到)', question: '仓库如果做到自动化存取货物', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 198, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储是做什么的', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 199, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商和云仓合作有什么优势', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 200, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '电商仓储代发-一般都怎么收费', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 201, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '第三方仓库的收费标准是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 202, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '第三方，云仓发货，配送的速度会比自己发货的速度快吗', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 203, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '什么是第三方云仓仓储', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 204, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '第三方云仓一般都怎么收费', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 205, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '什么是专业的，一件代发。的仓库', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 206, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '什么是云仓，什么是第三方仓储，能为客户解决什么问题', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 207, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商卖家为什么要找云仓合作', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 208, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '选择一件代发=类型的云仓，好处有哪些', intent: '对比筛选', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 209, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '与自建仓库相比选择共享云仓的好处有哪些', intent: '对比筛选', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 210, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '为什么跨境电商卖家都普遍选择第三方云仓', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 211, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '为什么越来越多的电商要选择第三方-云仓', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 212, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '为什么越来越多的电商，选择云仓代发', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 213, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '百世云仓能够为电商企业提供怎样的服务', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 214, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '云仓靠什么赚钱，为什么费用那么低的', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 规模化摊薄成本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 215, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '云仓的快递价格为什么要比自己找快递的快递价格低', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 216, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商是否有必要拥有自己的物流', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 217, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '仓储服务包含哪些内容', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 218, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方电商仓储是做什么的', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 219, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '目前国内知名云仓有哪些', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 220, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '为什么越来越多的电商要选择仓储代发-云仓', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 221, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '如何在当地迅速找到一个仓储库房', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 222, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '云仓代发的-仓储-可以按照不同货主要求，定制不同的服务吗', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 223, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '第三方云仓代发的优缺点是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 224, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方云仓可以提供那些服务', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 225, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓-如何选择到合适自己产品的云仓', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 226, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商企业该如何正确选择合适自己的仓库', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 227, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '什么是云仓，云仓的概念是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 228, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '第三方云仓代发，入仓可以提供哪些优质类的服务', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 229, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '货主是否可以和第三方，云仓1延期结算费用', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 规模化摊薄成本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 230, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '大家都在说云仓，到底什么才是云仓', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 231, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '专业的第三方，云仓，待发货公司都会有那些专业的设备', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 232, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '作为电商，仓库应该自建，还是应该选择专业的第三个方云仓，代发', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 233, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '哪里的云仓做的好一点', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 234, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '建一个云仓，大概需要多少钱', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 235, industry: '美妆', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '美妆类型产品。该怎么选择云仓', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 236, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商入驻云仓的好处有那些', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 237, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '都在说云仓，到底什么是云仓', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 238, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓一般可以为企业提供那些服务', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 239, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储服务都包含哪些?', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 240, industry: '通用', dimension: '成本/价格', cluster: 'C2 代发成本', question: '仓储物流外包一般怎么收费的?', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 241, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '我是做云仓的，现在在找各种供应商把产品放到我们公司的海外仓里，我想知道供应商一般有什么顾虑?', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 242, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '做电商多久换一次仓库', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 243, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商自己建物流的本质原因是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 244, industry: '通用', dimension: '仓储管理', cluster: 'C5 云仓/鞋服仓储', question: '请问仓库管理软件哪个好?我们想换一套，钱方面不是问题', intent: '对比筛选', priority: '高', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 245, industry: '通用', dimension: '系统/技术', cluster: 'C6 系统对接(运到)', question: '云仓是怎么体现智能化的', intent: '认知了解', priority: '中', sellingPoint: '自研WMS + 全链路可视化', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 246, industry: '通用', dimension: '系统/技术', cluster: 'C6 系统对接(运到)', question: '云仓是怎么实现智能化的', intent: '认知了解', priority: '中', sellingPoint: '自研WMS + 全链路可视化', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 247, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '怎么判断一个仓库的仓储水平', intent: '决策选型', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 248, industry: '通用', dimension: '时效/履约', cluster: 'C3 发货时效', question: '云仓发货配送速度比自己发货快吗', intent: '认知了解', priority: '中', sellingPoint: '精益化系统 + 多仓就近发货', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 249, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商企业应该如何选择靠谱、合适的第三方仓配企业', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 250, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '寻找一些第三方仓储公司合作', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 251, industry: '鞋服', dimension: '时效/履约', cluster: 'C3 发货时效', question: '我是做服装的，想找个仓库代发货，现有的这个仓库马上要到期了，谁能推荐一下', intent: '对比筛选', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 252, industry: '通用', dimension: '仓配服务', cluster: 'C5 云仓/鞋服仓储', question: '求了解仓配具体是什么服务，仓配一体化有什么好处', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 253, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商仓储外包服务需要注意哪些事项', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 254, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '目前有哪些云仓比较好', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 255, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓的特点和优势各是什么?', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 256, industry: '潮玩', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '有没有能发fba动漫周边的物流商?', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 257, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '云仓真的有说的那么神吗', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 258, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商为什么不积极加入云仓，有哪些难点痛点', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 259, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '真的会有人把淘宝店的仓储外包掉吗', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 260, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商第三方仓储哪家公司比较好', intent: '对比筛选', priority: '高', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 261, industry: '美妆', dimension: '仓储管理', cluster: 'C5 云仓/鞋服仓储', question: '化妆品电商公司怎么做物流仓储管理', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 262, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '直播电商外包仓储有什么优势', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 263, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商仓储一体化和传统仓储的具体差别在哪', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 264, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商仓储和一般仓储有什么不同', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 265, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商企业如何选择第三方电商仓储', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 266, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '电商企业如何选择第三方仓储公司', intent: '决策选型', priority: '高', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 267, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方电商仓储服务公司提供哪些服务', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 268, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储对电商企业有哪些利好?', intent: '对比筛选', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 269, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '三方物流仓储费怎么算?', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 270, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储，第三方仓储你到底是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 271, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '第三方仓储主要业务是什么，基本业务是什么，增值业务又是什么', intent: '认知了解', priority: '中', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 272, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '对于电商来说，选择第三方仓储物流公司好不好', intent: '认知了解', priority: '中', sellingPoint: '服务上百家知名品牌 + 50万㎡自有仓 + 14年行业经验', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' },
+  { id: 273, industry: '通用', dimension: '选型/找服务商', cluster: 'C1 选服务商', question: '现在第三方仓储哪家好', intent: '对比筛选', priority: '高', sellingPoint: '50万㎡规模仓 + 自研精益化系统降本', tested: '', testDate: '', competitors: '', mentioned: '', retestDate: '', status: '未开始', platformLinks: '', notes: '' }
 ];
 
 const DEFAULT_SELLING_POINTS = [
@@ -367,6 +755,10 @@ function loadState() {
       state.nextArticleId = parsed.nextArticleId || 1;
       state.testRecords = parsed.testRecords || [];
       state.nextRecordId = parsed.nextRecordId || 1;
+      // Load saved selected titles (user-added titles)
+      if (parsed.selectedTitles && Array.isArray(parsed.selectedTitles)) {
+        titleTabState.savedSelectedTitles = parsed.selectedTitles;
+      }
     } else {
       state.questions = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
       state.sellingPoints = JSON.parse(JSON.stringify(DEFAULT_SELLING_POINTS));
@@ -397,6 +789,7 @@ function saveState() {
     nextArticleId: state.nextArticleId,
     testRecords: state.testRecords,
     nextRecordId: state.nextRecordId,
+    selectedTitles: titleTabState.selectedTitles,
   };
   localStorage.setItem('geo_workbench_data', JSON.stringify(data));
 }
@@ -433,15 +826,14 @@ function navigateTo(page) {
 
   // Update title
   const titles = {
-    dashboard: ['📊', '数据看板'],
-    questions: ['📋', '客户提问词库'],
-    'selling-points': ['🎯', '卖点弹药库'],
-    workspace: ['✍️', '内容工作台'],
-    distribution: ['📡', '一稿多发'],
-    articles: ['📄', '文稿管理'],
-    batch: ['⚡', '批量生成'],
-    kanban: ['📌', '看板'],
-    'test-records': ['🧪', '测试记录'],
+    dashboard: ['📊', '提及率概览'],
+    questions: ['📋', '关键词题库'],
+    workspace: ['✍️', '母稿工作台'],
+    distribution: ['📡', '全渠道改写'],
+    'platform-titles': ['🏷️', '平台风格标题'],
+    articles: ['📄', '母稿存档'],
+    batch: ['⚡', '批量出稿'],
+    'test-records': ['🧪', 'AI 提及测试'],
     changelog: ['📜', '更新日志'],
     settings: ['⚙️', '设置'],
     data: ['💾', '数据管理'],
@@ -453,13 +845,12 @@ function navigateTo(page) {
   const descriptions = {
     dashboard: '一览全局工作进度：问题处理状态、优先级分布、行业覆盖、选题簇热度。',
     questions: '管理客户搜索的长尾关键词，跟踪AI搜索测试状态，是整个GEO内容策略的起点。',
-    'selling-points': '汇总产品核心卖点和差异化优势，为内容生成提供「弹药」支撑。',
     workspace: '选一个问题，调用AI生成符合母稿规范的GEO文章，支持多角度切入。',
-    distribution: '将母稿一键改写为知乎、百家号、官网、公众号、小红书、抖音6个平台版本。',
+    distribution: '将母稿一键改写为知乎、百家号、公众号、今日头条、搜狐号、网易号、B站、腾讯新闻8个平台版本。',
+    'platform-titles': '选择一篇已生成的母稿，一键生成适配8大平台的风格标题，每个平台有独立的标题Prompt，生成后可单独复制。',
     articles: '统一管理所有已生成的文章，查看各平台版本、编辑内容、导出Word。',
     batch: '批量选择多个问题，自动排队生成文章，适合大规模内容生产场景。',
     analytics: '可视化展示词库覆盖率、AI提及率、发布进度等核心运营指标。',
-    kanban: '拖拽式看板管理文章生产流程：未开始 → 进行中 → 已发布。',
     'test-records': '记录每次AI搜索实测结果，追踪竞品情报和新亦源提及情况。',
     changelog: '查看工作台的版本迭代记录，了解每次更新的功能和优化。',
     settings: '配置AI模型连接、调整生成参数、管理系统设置。',
@@ -479,26 +870,18 @@ function updateHeaderActions(page) {
   const actions = document.getElementById('headerActions');
   const btns = {
     questions: `
-      <button class="btn" onclick="downloadQTemplate()">📥 下载模板</button>
-      <button class="btn" onclick="document.getElementById('importQExcel').click()">📊 导入Excel</button>
-      <button class="btn btn-primary" onclick="openAddQuestion()">➕ 添加问题</button>
-      <input type="file" id="importQExcel" accept=".xlsx,.xls" style="display:none">
-    `,
-    'selling-points': `
-      <button class="btn" onclick="downloadSPTemplate()">📥 下载模板</button>
-      <button class="btn" onclick="document.getElementById('importSPExcel').click()">📊 导入Excel</button>
-      <button class="btn btn-primary" onclick="openAddSP()">➕ 添加卖点</button>
-      <input type="file" id="importSPExcel" accept=".xlsx,.xls" style="display:none">
+      <button class="btn" onclick="downloadTitleTemplate()">📥 下载模板</button>
+      <button class="btn" onclick="document.getElementById('importTitleExcel').click()">📊 导入标题</button>
+      <button class="btn btn-primary" onclick="openAddTitle()">➕ 添加标题</button>
+      <input type="file" id="importTitleExcel" accept=".xlsx,.xls,.csv" style="display:none">
     `,
     'test-records': `<button class="btn btn-primary" onclick="openAddTR()">➕ 添加测试记录</button>`,
   };
   actions.innerHTML = btns[page] || '';
   // Bind file change events after DOM update
   setTimeout(() => {
-    const qInput = document.getElementById('importQExcel');
-    if (qInput) qInput.addEventListener('change', handleQExcelImport);
-    const spInput = document.getElementById('importSPExcel');
-    if (spInput) spInput.addEventListener('change', handleSPExcelImport);
+    const titleInput = document.getElementById('importTitleExcel');
+    if (titleInput) titleInput.addEventListener('change', handleTitleImport);
   }, 0);
 }
 
@@ -506,11 +889,10 @@ function renderPage(page) {
   switch (page) {
     case 'dashboard': renderDashboard(); break;
     case 'questions': renderQuestions(); break;
-    case 'selling-points': renderSellingPoints(); break;
     case 'workspace': renderWorkspace(); break;
     case 'distribution': renderDistribution(); break;
+    case 'platform-titles': renderPlatformTitles(); break;
     case 'articles': renderArticles(); break;
-    case 'kanban': renderKanban(); break;
     case 'test-records': renderTestRecords(); break;
     case 'changelog': renderChangelog(); break;
     case 'settings': renderModelList(); break;
@@ -518,30 +900,328 @@ function renderPage(page) {
 }
 
 // ===== Questions Page =====
-function getFilteredQuestions() {
-  let qs = [...state.questions];
-  const search = document.getElementById('qSearch').value.toLowerCase();
-  const industry = document.getElementById('qFilterIndustry').value;
-  const priority = document.getElementById('qFilterPriority').value;
-  const intent = document.getElementById('qFilterIntent').value;
-  const status = document.getElementById('qFilterStatus').value;
-  const cluster = document.getElementById('qFilterCluster').value;
+// State for title tabs
+let titleTabState = {
+  currentTab: 'selected',
+  selectedTitles: [], // from API
+  selectedCategory: 'all', // category filter
+  selectedPage: 1,
+  selectedPageSize: 50,
+  poolPage: 1,
+  poolPageSize: 50,
+  poolTotal: 0,
+  poolTotalPages: 0,
+  poolTitles: [],
+  poolSearchQuery: '',
+  poolCategory: 'all',
+  poolCategories: {},
+  loaded: false,
+};
 
-  if (search) qs = qs.filter(q => q.question.toLowerCase().includes(search) || (q.sellingPoint || '').toLowerCase().includes(search) || (q.cluster || '').toLowerCase().includes(search));
-  if (industry) qs = qs.filter(q => q.industry === industry);
-  if (priority) qs = qs.filter(q => q.priority === priority);
-  if (intent) qs = qs.filter(q => q.intent === intent);
-  if (status) qs = qs.filter(q => q.status === status);
-  if (cluster) qs = qs.filter(q => q.cluster === cluster);
-  return qs;
+let poolSearchTimer = null;
+
+function debouncePoolSearch() {
+  clearTimeout(poolSearchTimer);
+  poolSearchTimer = setTimeout(() => {
+    titleTabState.poolSearchQuery = document.getElementById('poolSearch').value;
+    titleTabState.poolPage = 1;
+    loadPoolTitles();
+  }, 300);
+}
+
+async function loadSelectedTitles() {
+  try {
+    const res = await fetch('/api/titles/selected');
+    const data = await res.json();
+    const apiTitles = data.titles || [];
+
+    // Merge with saved titles from localStorage
+    const savedTitles = titleTabState.savedSelectedTitles || [];
+    const mergedTitles = [...apiTitles];
+
+    // Add saved titles that aren't already in the API results
+    for (const saved of savedTitles) {
+      const exists = mergedTitles.find(t => t.title === saved.title);
+      if (!exists) {
+        mergedTitles.push(saved);
+      }
+    }
+
+    titleTabState.selectedTitles = mergedTitles;
+    document.getElementById('selectedCount').textContent = titleTabState.selectedTitles.length;
+    renderCategoryFilters();
+    renderSelectedTitles();
+  } catch (e) {
+    console.error('Failed to load selected titles:', e);
+  }
+}
+
+async function loadPoolTitles() {
+  try {
+    const params = new URLSearchParams({
+      page: titleTabState.poolPage,
+      size: titleTabState.poolPageSize,
+      search: titleTabState.poolSearchQuery,
+      category: titleTabState.poolCategory === 'all' ? '' : titleTabState.poolCategory,
+    });
+    const res = await fetch(`/api/titles/pool?${params}`);
+    const data = await res.json();
+    titleTabState.poolTitles = data.titles || [];
+    titleTabState.poolTotal = data.total || 0;
+    titleTabState.poolTotalPages = data.totalPages || 0;
+    titleTabState.poolCategories = data.categories || {};
+    document.getElementById('poolCount').textContent = titleTabState.poolTotal;
+    renderPoolCategoryFilters();
+    renderPoolTable();
+  } catch (e) {
+    console.error('Failed to load pool titles:', e);
+  }
+}
+
+function renderPoolCategoryFilters() {
+  const container = document.getElementById('poolCategoryFilters');
+  if (!container) return;
+
+  const cats = titleTabState.poolCategories;
+  const totalCount = Object.values(cats).reduce((sum, c) => sum + c.count, 0);
+
+  let html = `<button class="category-btn ${titleTabState.poolCategory === 'all' ? 'active' : ''}" onclick="filterPoolCategory('all')">全部 (${totalCount})</button>`;
+
+  for (const [key, cat] of Object.entries(cats)) {
+    const active = titleTabState.poolCategory === key ? 'active' : '';
+    html += `<button class="category-btn ${active}" style="${active ? '' : `border-color:${cat.color}33;color:${cat.color}`}" onclick="filterPoolCategory('${key}')">${cat.label} (${cat.count})</button>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function filterPoolCategory(key) {
+  titleTabState.poolCategory = key;
+  titleTabState.poolPage = 1;
+  loadPoolTitles();
+}
+
+function renderCategoryFilters() {
+  const categories = [
+    { key: 'all', label: '全部' },
+    { key: 'first_batch', label: '第一批母稿' },
+    { key: 'commercial_geo', label: '商业GEO' },
+    { key: 'cost_switch', label: '成本切换' },
+    { key: 'region', label: '区域云仓' },
+    { key: 'reverse_logistics', label: '退货逆向' },
+    { key: 'sla_contract', label: 'SLA合同' },
+    { key: 'wms_inventory', label: 'WMS库存' },
+  ];
+  const container = document.getElementById('categoryFilters');
+  container.innerHTML = categories.map(c => {
+    const count = c.key === 'all'
+      ? titleTabState.selectedTitles.length
+      : titleTabState.selectedTitles.filter(t => t.category === c.key).length;
+    const active = titleTabState.selectedCategory === c.key ? 'active' : '';
+    return `<button class="category-btn ${active}" onclick="filterCategory('${c.key}')">${c.label} (${count})</button>`;
+  }).join('');
+}
+
+function filterCategory(key) {
+  titleTabState.selectedCategory = key;
+  titleTabState.selectedPage = 1;
+  renderCategoryFilters();
+  renderSelectedTitles();
+}
+
+function getFilteredSelectedTitles() {
+  let titles = [...titleTabState.selectedTitles];
+  if (titleTabState.selectedCategory !== 'all') {
+    titles = titles.filter(t => t.category === titleTabState.selectedCategory);
+  }
+  const search = document.getElementById('selectedSearch').value.toLowerCase();
+  if (search) {
+    titles = titles.filter(t => t.title.toLowerCase().includes(search));
+  }
+  return titles;
+}
+
+function renderSelectedTitles() {
+  const filtered = getFilteredSelectedTitles();
+  const total = filtered.length;
+  const start = (titleTabState.selectedPage - 1) * titleTabState.selectedPageSize;
+  const paged = sliced = filtered.slice(start, start + titleTabState.selectedPageSize);
+
+  const tbody = document.getElementById('selectedTableBody');
+  tbody.innerHTML = paged.map((t, i) => {
+    const idx = start + i + 1;
+    const catColors = {
+      first_batch: '#ef4444',
+      commercial_geo: '#8b5cf6',
+      cost_switch: '#f59e0b',
+      region: '#10b981',
+      reverse_logistics: '#3b82f6',
+      sla_contract: '#ec4899',
+      wms_inventory: '#06b6d4',
+    };
+    const catLabels = {
+      first_batch: '第一批母稿',
+      commercial_geo: '商业GEO',
+      cost_switch: '成本切换',
+      region: '区域云仓',
+      reverse_logistics: '退货逆向',
+      sla_contract: 'SLA合同',
+      wms_inventory: 'WMS库存',
+    };
+    const color = catColors[t.category] || '#6b7280';
+    const label = catLabels[t.category] || t.category;
+    return `<tr>
+      <td><input type="checkbox" class="table-checkbox"></td>
+      <td>${idx}</td>
+      <td style="max-width:400px">${t.title}</td>
+      <td><span class="tag" style="background:${color}1a;color:${color};border:1px solid ${color}33">${label}</span></td>
+      <td><span class="tag tag-pending">未开始</span></td>
+      <td>
+        <div class="card-actions">
+          <button class="btn btn-sm btn-primary" onclick="generateArticleFromTitle('${t.title}')" title="生成文章">📝 生成</button>
+          <button class="btn btn-sm btn-ghost" onclick="editSelectedTitle(${start + i})" title="编辑">✏️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Pagination
+  const totalPages = Math.ceil(total / titleTabState.selectedPageSize) || 1;
+  document.getElementById('selectedPagination').innerHTML = `
+    <span class="text-sm text-muted">共 ${total} 条，第 ${titleTabState.selectedPage}/${totalPages} 页</span>
+    <div class="btn-group">
+      <button class="btn btn-sm" ${titleTabState.selectedPage <= 1 ? 'disabled' : ''} onclick="changeSelectedPage(-1)">← 上一页</button>
+      <button class="btn btn-sm" ${titleTabState.selectedPage >= totalPages ? 'disabled' : ''} onclick="changeSelectedPage(1)">下一页 →</button>
+    </div>
+  `;
+}
+
+function changeSelectedPage(delta) {
+  titleTabState.selectedPage = Math.max(1, titleTabState.selectedPage + delta);
+  renderSelectedTitles();
+}
+
+function renderPoolTable() {
+  const tbody = document.getElementById('poolTableBody');
+  tbody.innerHTML = titleTabState.poolTitles.map(t => {
+    const color = t.categoryColor || '#6b7280';
+    const label = t.categoryLabel || t.category;
+    return `<tr>
+      <td>${t.index}</td>
+      <td style="max-width:500px">${t.title}</td>
+      <td><span class="tag" style="background:${color}1a;color:${color};border:1px solid ${color}33">${label}</span></td>
+      <td>
+        <div class="card-actions">
+          <button class="btn btn-sm btn-primary" onclick="generateArticleFromTitle('${t.title.replace(/'/g, "\\'")}')" title="生成文章">📝 生成</button>
+          <button class="btn btn-sm btn-ghost" onclick="addToSelected('${t.title.replace(/'/g, "\\'")}')" title="加入精选">⭐</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Pagination
+  document.getElementById('poolPagination').innerHTML = `
+    <span class="text-sm text-muted">共 ${titleTabState.poolTotal} 条，第 ${titleTabState.poolPage}/${titleTabState.poolTotalPages || 1} 页</span>
+    <div class="btn-group">
+      <button class="btn btn-sm" ${titleTabState.poolPage <= 1 ? 'disabled' : ''} onclick="changePoolPage(-1)">← 上一页</button>
+      <button class="btn btn-sm" ${titleTabState.poolPage >= titleTabState.poolTotalPages ? 'disabled' : ''} onclick="changePoolPage(1)">下一页 →</button>
+    </div>
+  `;
+}
+
+function addToSelected(title) {
+  // Check if already in selected
+  const exists = titleTabState.selectedTitles.find(t => t.title === title);
+  if (exists) {
+    showToast('该标题已在精选题库中', 'warning');
+    return;
+  }
+
+  // Add to selected with default category
+  titleTabState.selectedTitles.push({
+    title: title,
+    category: 'commercial_geo',
+    categoryLabel: '商业GEO',
+  });
+
+  // Save to localStorage
+  saveState();
+
+  // Update UI
+  document.getElementById('selectedCount').textContent = titleTabState.selectedTitles.length;
+  renderCategoryFilters();
+  showToast('已加入精选题库', 'success');
+}
+
+// Edit selected title
+let editingTitleIndex = -1;
+
+function editSelectedTitle(index) {
+  const t = titleTabState.selectedTitles[index];
+  if (!t) return;
+  editingTitleIndex = index;
+  document.getElementById('editTitleInput').value = t.title;
+  document.getElementById('editCategorySelect').value = t.category || 'commercial_geo';
+  openModal('editTitleModal');
+}
+
+function saveEditTitle() {
+  if (editingTitleIndex < 0 || editingTitleIndex >= titleTabState.selectedTitles.length) return;
+  const newTitle = document.getElementById('editTitleInput').value.trim();
+  const newCategory = document.getElementById('editCategorySelect').value;
+  if (!newTitle) {
+    showToast('标题不能为空', 'error');
+    return;
+  }
+  const catLabels = {
+    first_batch: '第一批母稿',
+    commercial_geo: '商业GEO',
+    cost_switch: '成本切换',
+    region: '区域云仓',
+    reverse_logistics: '退货逆向',
+    sla_contract: 'SLA合同',
+    wms_inventory: 'WMS库存',
+  };
+  titleTabState.selectedTitles[editingTitleIndex].title = newTitle;
+  titleTabState.selectedTitles[editingTitleIndex].category = newCategory;
+  titleTabState.selectedTitles[editingTitleIndex].categoryLabel = catLabels[newCategory] || newCategory;
+  saveState();
+  closeModal('editTitleModal');
+  renderSelectedTitles();
+  showToast('标题已更新', 'success');
+}
+
+function deleteSelectedTitle(index) {
+  if (!confirm('确认删除该标题？')) return;
+  titleTabState.selectedTitles.splice(index, 1);
+  saveState();
+  document.getElementById('selectedCount').textContent = titleTabState.selectedTitles.length;
+  renderCategoryFilters();
+  renderSelectedTitles();
+  showToast('标题已删除', 'success');
+}
+
+function changePoolPage(delta) {
+  titleTabState.poolPage = Math.max(1, titleTabState.poolPage + delta);
+  loadPoolTitles();
+}
+
+function switchTitleTab(tab) {
+  titleTabState.currentTab = tab;
+  // Update tab buttons
+  document.querySelectorAll('.title-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  // Show/hide content
+  document.getElementById('tab-selected').style.display = tab === 'selected' ? '' : 'none';
+  document.getElementById('tab-pool').style.display = tab === 'pool' ? '' : 'none';
+  // Load data if needed
+  if (tab === 'pool' && titleTabState.poolTitles.length === 0) {
+    loadPoolTitles();
+  }
 }
 
 function renderQuestions() {
-  const filtered = getFilteredQuestions();
-  const total = filtered.length;
-  const start = (state.questionPage - 1) * state.questionPageSize;
-  const paged = filtered.slice(start, start + state.questionPageSize);
-
   // Stats
   const all = state.questions;
   const highCount = all.filter(q => q.priority === '高').length;
@@ -550,89 +1230,338 @@ function renderQuestions() {
   const published = all.filter(q => q.status === '已发布').length;
 
   document.getElementById('questionStats').innerHTML = `
-    <div class="stat-card blue"><div class="stat-label">总问题数</div><div class="stat-value">${all.length}</div></div>
-    <div class="stat-card red"><div class="stat-label">高优先级</div><div class="stat-value">${highCount}</div></div>
-    <div class="stat-card orange"><div class="stat-label">中优先级</div><div class="stat-value">${mediumCount}</div></div>
-    <div class="stat-card green"><div class="stat-label">进行中</div><div class="stat-value">${inProgress}</div></div>
-    <div class="stat-card purple"><div class="stat-label">已发布</div><div class="stat-value">${published}</div></div>
+    <div class="stat-card blue"><div class="stat-label">精选题库</div><div class="stat-value">${titleTabState.selectedTitles.length || '-'}</div></div>
+    <div class="stat-card purple"><div class="stat-label">总题库</div><div class="stat-value">${titleTabState.poolTotal || '-'}</div></div>
+    <div class="stat-card orange"><div class="stat-label">第一批母稿</div><div class="stat-value">${titleTabState.selectedTitles.filter(t => t.category === 'first_batch').length || '-'}</div></div>
+    <div class="stat-card green"><div class="stat-label">已写母稿</div><div class="stat-value">${inProgress}</div></div>
+    <div class="stat-card red"><div class="stat-label">已发布</div><div class="stat-value">${published}</div></div>
   `;
 
-  // Update cluster filter options
-  const clusters = [...new Set(all.map(q => q.cluster).filter(Boolean))];
-  const clusterSelect = document.getElementById('qFilterCluster');
-  const currentCluster = clusterSelect.value;
-  clusterSelect.innerHTML = '<option value="">全部选题簇</option>' + clusters.map(c => `<option value="${c}" ${c === currentCluster ? 'selected' : ''}>${c}</option>`).join('');
-
-  // Table body
-  const tbody = document.getElementById('questionsTableBody');
-  tbody.innerHTML = paged.map(q => {
-    const priorityClass = q.priority === '高' ? 'tag-high' : q.priority === '中' ? 'tag-medium' : 'tag-low';
-    const statusClass = q.status === '已发布' ? 'tag-done' : q.status === '进行中' ? 'tag-progress' : 'tag-pending';
-    const checked = state.selectedQuestionIds.has(q.id) ? 'checked' : '';
-    return `<tr data-id="${q.id}">
-      <td><input type="checkbox" class="table-checkbox row-check" data-id="${q.id}" ${checked}></td>
-      <td>${q.id}</td>
-      <td><span class="tag tag-blue">${q.industry}</span></td>
-      <td class="text-sm">${q.cluster || '-'}</td>
-      <td style="max-width:280px">${q.question}</td>
-      <td><span class="text-sm">${q.intent}</span></td>
-      <td><span class="tag ${priorityClass}">${q.priority}</span></td>
-      <td class="text-sm" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${q.sellingPoint || ''}">${q.sellingPoint || '-'}</td>
-      <td><span class="tag ${statusClass}">${q.status || '未开始'}</span></td>
-      <td>
-        <div class="card-actions">
-          <button class="btn btn-sm btn-ghost" onclick="editQuestion(${q.id})" title="编辑">✏️</button>
-          <button class="btn btn-sm btn-ghost" onclick="deleteQuestion(${q.id})" title="删除">🗑️</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-
-  // Pagination
-  const totalPages = Math.ceil(total / state.questionPageSize);
-  document.getElementById('questionsPagination').innerHTML = `
-    <span class="text-sm text-muted">共 ${total} 条，第 ${state.questionPage}/${totalPages || 1} 页</span>
-    <div class="btn-group">
-      <button class="btn btn-sm" ${state.questionPage <= 1 ? 'disabled' : ''} onclick="changePage(-1)">← 上一页</button>
-      <button class="btn btn-sm" ${state.questionPage >= totalPages ? 'disabled' : ''} onclick="changePage(1)">下一页 →</button>
-    </div>
-  `;
-
-  // Checkbox events
-  document.getElementById('selectAll').addEventListener('change', (e) => {
-    document.querySelectorAll('.row-check').forEach(cb => {
-      cb.checked = e.target.checked;
-      const id = parseInt(cb.dataset.id);
-      if (e.target.checked) state.selectedQuestionIds.add(id);
-      else state.selectedQuestionIds.delete(id);
-    });
-    updateBatchActions();
-  });
-  document.querySelectorAll('.row-check').forEach(cb => {
-    cb.addEventListener('change', (e) => {
-      const id = parseInt(e.target.dataset.id);
-      if (e.target.checked) state.selectedQuestionIds.add(id);
-      else state.selectedQuestionIds.delete(id);
-      updateBatchActions();
-    });
-  });
-  updateBatchActions();
-}
-
-function updateBatchActions() {
-  const count = state.selectedQuestionIds.size;
-  const batchDiv = document.getElementById('batchActions');
-  if (count > 0) {
-    batchDiv.classList.remove('hidden');
-    document.getElementById('selectedCount').textContent = `已选 ${count} 项`;
-  } else {
-    batchDiv.classList.add('hidden');
+  // Load data on first render
+  if (!titleTabState.loaded) {
+    titleTabState.loaded = true;
+    loadSelectedTitles();
+    loadPoolTitles();
   }
 }
 
-function changePage(delta) {
-  state.questionPage = Math.max(1, state.questionPage + delta);
-  renderQuestions();
+// Title CRUD for new tab system
+function downloadTitleTemplate() {
+  if (typeof XLSX === 'undefined') { showToast('XLSX 库未加载', 'error'); return; }
+  const wb = XLSX.utils.book_new();
+  const data = [
+    { '标题': '示例：鞋服品牌选择第三方云仓，要重点看哪些指标？', '主题分类': '商业GEO' },
+    { '标题': '示例：女装退货率高，仓库质检流程应该怎么设计？', '主题分类': '退货逆向' },
+  ];
+  const ws = XLSX.utils.json_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, '标题导入模板');
+  XLSX.writeFile(wb, '标题导入模板.xlsx');
+  showToast('模板已下载', 'success');
+}
+
+function handleTitleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (typeof XLSX === 'undefined') { showToast('XLSX 库未加载', 'error'); return; }
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws);
+
+      const categoryMap = {
+        '第一批母稿': 'first_batch',
+        '商业GEO': 'commercial_geo',
+        '成本切换': 'cost_switch',
+        '区域云仓': 'region',
+        '退货逆向': 'reverse_logistics',
+        'SLA合同': 'sla_contract',
+        'WMS库存': 'wms_inventory',
+      };
+
+      let imported = 0;
+      data.forEach(row => {
+        const title = row['标题'] || row['title'] || row['问题'] || '';
+        if (!title) return;
+        const catLabel = row['主题分类'] || row['分类'] || row['category'] || '商业GEO';
+        const category = categoryMap[catLabel] || 'commercial_geo';
+        titleTabState.selectedTitles.push({
+          title: title.trim(),
+          category: category,
+          categoryLabel: catLabel,
+        });
+        imported++;
+      });
+
+      // Update UI
+      document.getElementById('selectedCount').textContent = titleTabState.selectedTitles.length;
+      renderCategoryFilters();
+      renderSelectedTitles();
+
+      // Save to localStorage
+      saveState();
+
+      showToast(`成功导入 ${imported} 条标题`, 'success');
+    } catch (e) {
+      showToast('文件解析失败：' + e.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value = '';
+}
+
+function openAddTitle() {
+  const title = prompt('输入标题：');
+  if (!title || !title.trim()) return;
+  
+  const categories = [
+    { key: 'first_batch', label: '第一批母稿' },
+    { key: 'commercial_geo', label: '商业GEO' },
+    { key: 'cost_switch', label: '成本切换' },
+    { key: 'region', label: '区域云仓' },
+    { key: 'reverse_logistics', label: '退货逆向' },
+    { key: 'sla_contract', label: 'SLA合同' },
+    { key: 'wms_inventory', label: 'WMS库存' },
+  ];
+  const catLabel = prompt('选择主题分类（输入数字）：\n' + categories.map((c, i) => `${i+1}. ${c.label}`).join('\n'), '1');
+  const catIndex = parseInt(catLabel) - 1;
+  if (isNaN(catIndex) || catIndex < 0 || catIndex >= categories.length) {
+    showToast('分类选择无效', 'error');
+    return;
+  }
+
+  titleTabState.selectedTitles.push({
+    title: title.trim(),
+    category: categories[catIndex].key,
+    categoryLabel: categories[catIndex].label,
+  });
+
+  // Save to localStorage
+  saveState();
+
+  // Update UI
+  document.getElementById('selectedCount').textContent = titleTabState.selectedTitles.length;
+  renderCategoryFilters();
+  renderSelectedTitles();
+  showToast('标题已添加', 'success');
+}
+
+// Toggle generation params panel
+function toggleParams() {
+  const body = document.getElementById('paramsBody');
+  const toggle = document.getElementById('paramsToggle');
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    toggle.textContent = '▲';
+  } else {
+    body.style.display = 'none';
+    toggle.textContent = '▼';
+  }
+}
+
+// Toggle sidebar
+function toggleSidebar() {
+  const sidebar = document.getElementById('wsSidebar');
+  const content = document.getElementById('sidebarContent');
+  if (sidebar.classList.contains('expanded')) {
+    sidebar.classList.remove('expanded');
+    sidebar.classList.add('collapsed');
+    content.style.display = 'none';
+  } else {
+    sidebar.classList.remove('collapsed');
+    sidebar.classList.add('expanded');
+    content.style.display = 'flex';
+    renderWorkspace(); // Refresh list when opening
+  }
+}
+
+// Navigation
+function prevQuestion() {
+  const qs = getWorkspaceQuestions();
+  const idx = qs.findIndex(q => q.id === state.wsSelectedQuestionId);
+  if (idx > 0) {
+    selectWorkspaceQuestion(qs[idx - 1].id);
+  }
+}
+
+function nextQuestion() {
+  const qs = getWorkspaceQuestions();
+  const idx = qs.findIndex(q => q.id === state.wsSelectedQuestionId);
+  if (idx < qs.length - 1) {
+    selectWorkspaceQuestion(qs[idx + 1].id);
+  }
+}
+
+function getWorkspaceQuestions() {
+  let allQuestions = [...state.questions];
+  if (titleTabState.selectedTitles) {
+    titleTabState.selectedTitles.forEach(t => {
+      const exists = allQuestions.some(q => q.question === t.title);
+      if (!exists) {
+        allQuestions.push({
+          id: 'title_' + t.title.slice(0, 20),
+          question: t.title,
+          industry: t.categoryLabel || '通用',
+          intent: '信息型',
+          priority: '中',
+          sellingPoint: '',
+          status: '未开始',
+        });
+      }
+    });
+  }
+  const search = (document.getElementById('wsSearch')?.value || '').toLowerCase();
+  if (search) allQuestions = allQuestions.filter(q => q.question.toLowerCase().includes(search));
+  return allQuestions;
+}
+
+function updateNavCounter() {
+  const qs = getWorkspaceQuestions();
+  const idx = qs.findIndex(q => q.id === state.wsSelectedQuestionId);
+  const counter = document.getElementById('navCounter');
+  const btnPrev = document.getElementById('btnPrev');
+  const btnNext = document.getElementById('btnNext');
+  if (counter) counter.textContent = idx >= 0 ? `${idx + 1}/${qs.length}` : `0/${qs.length}`;
+  if (btnPrev) btnPrev.disabled = idx <= 0;
+  if (btnNext) btnNext.disabled = idx >= qs.length - 1 || idx < 0;
+}
+
+// Debounce search
+let wsSearchTimer;
+function debounceWsSearch() {
+  clearTimeout(wsSearchTimer);
+  wsSearchTimer = setTimeout(() => renderWorkspace(), 300);
+}
+
+// Title Library Modal
+let titleLibSearchTimer;
+
+function openTitleLibrary() {
+  openModal('titleLibraryModal');
+  renderTitleLibrary();
+}
+
+function renderTitleLibrary() {
+  const qs = getWorkspaceQuestions();
+  const list = document.getElementById('titleLibList');
+  const filters = document.getElementById('titleLibFilters');
+  
+  if (!list) return;
+  
+  // Render filters
+  const categories = {};
+  qs.forEach(q => {
+    const cat = q.industry || '通用';
+    categories[cat] = (categories[cat] || 0) + 1;
+  });
+  
+  if (filters) {
+    filters.innerHTML = `<span class="filter-tag active" onclick="filterTitleLib('all')">全部 (${qs.length})</span>` + 
+      Object.entries(categories).map(([cat, count]) => 
+        `<span class="filter-tag" onclick="filterTitleLib('${cat}')">${cat} (${count})</span>`
+      ).join('');
+  }
+  
+  // Render list
+  const search = (document.getElementById('titleLibSearch')?.value || '').toLowerCase();
+  let filtered = qs;
+  if (search) filtered = qs.filter(q => q.question.toLowerCase().includes(search));
+  
+  list.innerHTML = filtered.map(q => {
+    const selected = state.wsSelectedQuestionId === q.id ? 'selected' : '';
+    const hasArticle = state.articles.some(a => a.questionId === q.id);
+    return `<div class="title-lib-item ${selected}" onclick="selectFromTitleLib(${typeof q.id === 'number' ? q.id : `'${q.id}'`})">
+      <div class="title-lib-text">${q.question}</div>
+      <div class="title-lib-meta">
+        <span class="tag tag-blue" style="font-size:10px">${q.industry || '通用'}</span>
+        ${hasArticle ? '<span class="tag tag-green" style="font-size:10px">✓</span>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterTitleLib(category) {
+  const qs = getWorkspaceQuestions();
+  const list = document.getElementById('titleLibList');
+  if (!list) return;
+  
+  let filtered = category === 'all' ? qs : qs.filter(q => (q.industry || '通用') === category);
+  const search = (document.getElementById('titleLibSearch')?.value || '').toLowerCase();
+  if (search) filtered = filtered.filter(q => q.question.toLowerCase().includes(search));
+  
+  // Update filter tags
+  document.querySelectorAll('#titleLibFilters .filter-tag').forEach(tag => {
+    tag.classList.remove('active');
+    if ((category === 'all' && tag.textContent.includes('全部')) || tag.textContent.includes(category)) {
+      tag.classList.add('active');
+    }
+  });
+  
+  list.innerHTML = filtered.map(q => {
+    const selected = state.wsSelectedQuestionId === q.id ? 'selected' : '';
+    const hasArticle = state.articles.some(a => a.questionId === q.id);
+    return `<div class="title-lib-item ${selected}" onclick="selectFromTitleLib(${typeof q.id === 'number' ? q.id : `'${q.id}'`})">
+      <div class="title-lib-text">${q.question}</div>
+      <div class="title-lib-meta">
+        <span class="tag tag-blue" style="font-size:10px">${q.industry || '通用'}</span>
+        ${hasArticle ? '<span class="tag tag-green" style="font-size:10px">✓</span>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectFromTitleLib(id) {
+  selectWorkspaceQuestion(id);
+  closeModal('titleLibraryModal');
+}
+
+function debounceTitleLibSearch() {
+  clearTimeout(titleLibSearchTimer);
+  titleLibSearchTimer = setTimeout(() => renderTitleLibrary(), 300);
+}
+
+function generateArticleFromTitle(title) {
+  // Check if title already exists in state.questions
+  let existingQ = state.questions.find(q => q.question === title);
+  
+  if (!existingQ) {
+    // Add title to state.questions
+    const newQ = {
+      id: state.nextQuestionId++,
+      industry: '通用',
+      dimension: '',
+      cluster: '',
+      question: title,
+      intent: '认知了解',
+      priority: '中',
+      sellingPoint: '',
+      tested: '',
+      testDate: '',
+      competitors: '',
+      mentioned: '',
+      retestDate: '',
+      status: '未开始',
+      platformLinks: '',
+      notes: '',
+    };
+    state.questions.push(newQ);
+    saveState();
+    existingQ = newQ;
+  }
+
+  // Navigate to workspace
+  navigateTo('workspace');
+  
+  // Select question and auto-trigger generation
+  setTimeout(() => {
+    selectWorkspaceQuestion(existingQ.id);
+    // Auto-trigger generation after a short delay
+    setTimeout(() => {
+      generateArticle();
+    }, 500);
+  }, 200);
 }
 
 // Question CRUD
@@ -652,10 +1581,6 @@ function openAddQuestion() {
 }
 
 function editQuestion(id) {
-  // Don't open modal if this was a drag operation
-  const card = document.querySelector(`.kanban-card[data-id="${id}"]`);
-  if (card && card.dataset.dragged === 'true') return;
-
   const q = state.questions.find(q => q.id === id);
   if (!q) return;
   document.getElementById('questionModalTitle').textContent = '编辑问题';
@@ -733,130 +1658,15 @@ function batchGenerate() {
   document.getElementById('batchScope').value = 'selected';
 }
 
-// ===== Selling Points Page =====
-function getFilteredSPs() {
-  let sps = [...state.sellingPoints];
-  const cat = document.getElementById('spFilterCategory')?.value;
-  if (cat) sps = sps.filter(sp => sp.category === cat);
-  const status = document.getElementById('spFilterStatus')?.value;
-  if (status === 'confirmed') sps = sps.filter(sp => sp.confirmed);
-  if (status === 'pending') sps = sps.filter(sp => !sp.confirmed);
-  const search = (document.getElementById('spSearch')?.value || '').toLowerCase();
-  if (search) sps = sps.filter(sp => sp.point.toLowerCase().includes(search) || sp.category.toLowerCase().includes(search));
-  return sps;
-}
-
-function renderSellingPoints() {
-  const filtered = getFilteredSPs();
-
-  // Stats
-  const all = state.sellingPoints;
-  const categories = [...new Set(all.map(sp => sp.category))];
-  const confirmed = all.filter(sp => sp.confirmed).length;
-  const pending = all.filter(sp => !sp.confirmed).length;
-
-  document.getElementById('spStats').innerHTML = `
-    <div class="stat-card blue"><div class="stat-label">总数据点</div><div class="stat-value">${all.length}</div></div>
-    <div class="stat-card green"><div class="stat-label">已确认</div><div class="stat-value">${confirmed}</div></div>
-    <div class="stat-card orange"><div class="stat-label">待确认</div><div class="stat-value">${pending}</div></div>
-    <div class="stat-card purple"><div class="stat-label">类别数</div><div class="stat-value">${categories.length}</div></div>
-  `;
-
-  // Update category filter
-  const catSelect = document.getElementById('spFilterCategory');
-  const currentCat = catSelect.value;
-  catSelect.innerHTML = '<option value="">全部类别</option>' + categories.map(c => `<option value="${c}" ${c === currentCat ? 'selected' : ''}>${c}</option>`).join('');
-
-  // Table
-  const tbody = document.getElementById('spTableBody');
-  tbody.innerHTML = filtered.map((sp, i) => {
-    const confirmedTag = sp.confirmed
-      ? '<span class="tag tag-green">✓ 已确认</span>'
-      : '<span class="tag tag-orange">待确认</span>';
-    const dataTypeTag = sp.dataType === 'number'
-      ? '<span class="tag tag-blue">数字</span>'
-      : sp.dataType === 'percent'
-        ? '<span class="tag tag-purple">百分比</span>'
-        : '<span class="tag tag-gray">描述</span>';
-    return `<tr>
-      <td>${i + 1}</td>
-      <td><span class="tag tag-blue">${sp.category}</span></td>
-      <td>${sp.point}</td>
-      <td>${dataTypeTag}</td>
-      <td>${confirmedTag}</td>
-      <td class="text-sm">${sp.unifiedDesc || sp.point}</td>
-      <td>
-        <div class="card-actions">
-          <button class="btn btn-sm btn-ghost" onclick="editSP(${sp.id})" title="编辑">✏️</button>
-          <button class="btn btn-sm btn-ghost" onclick="deleteSP(${sp.id})" title="删除">🗑️</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-function openAddSP() {
-  document.getElementById('spModalTitle').textContent = '添加数据点';
-  document.getElementById('spmCategory').value = '';
-  document.getElementById('spmPoint').value = '';
-  document.getElementById('spmDataType').value = 'text';
-  document.getElementById('spmUnifiedDesc').value = '';
-  document.getElementById('spmConfirmed').value = 'false';
-  document.getElementById('spmNotes').value = '';
-  document.getElementById('spModal').dataset.editId = '';
-  openModal('spModal');
-}
-
-function editSP(id) {
-  const sp = state.sellingPoints.find(sp => sp.id === id);
-  if (!sp) return;
-  document.getElementById('spModalTitle').textContent = '编辑数据点';
-  document.getElementById('spmCategory').value = sp.category;
-  document.getElementById('spmPoint').value = sp.point;
-  document.getElementById('spmDataType').value = sp.dataType || 'text';
-  document.getElementById('spmUnifiedDesc').value = sp.unifiedDesc || '';
-  document.getElementById('spmConfirmed').value = sp.confirmed ? 'true' : 'false';
-  document.getElementById('spmNotes').value = sp.notes || '';
-  document.getElementById('spModal').dataset.editId = id;
-  openModal('spModal');
-}
-
-function saveSellingPoint() {
-  const editId = document.getElementById('spModal').dataset.editId;
-  const data = {
-    category: document.getElementById('spmCategory').value.trim(),
-    point: document.getElementById('spmPoint').value.trim(),
-    dataType: document.getElementById('spmDataType').value,
-    unifiedDesc: document.getElementById('spmUnifiedDesc').value.trim(),
-    confirmed: document.getElementById('spmConfirmed').value === 'true',
-    notes: document.getElementById('spmNotes').value.trim(),
-  };
-  if (!data.point) { showToast('请输入数据点', 'error'); return; }
-
-  if (editId) {
-    const sp = state.sellingPoints.find(sp => sp.id === parseInt(editId));
-    if (sp) { Object.assign(sp, data); }
-    showToast('数据点已更新', 'success');
-  } else {
-    data.id = state.nextSpId++;
-    state.sellingPoints.push(data);
-    showToast('数据点已添加', 'success');
-  }
-  saveState();
-  closeModal('spModal');
-  renderSellingPoints();
-}
-
-function deleteSP(id) {
-  if (!confirm('确定删除这个卖点？')) return;
-  state.sellingPoints = state.sellingPoints.filter(sp => sp.id !== id);
-  saveState();
-  renderSellingPoints();
-  showToast('卖点已删除', 'success');
-}
 
 // ===== Workspace Page =====
-function renderWorkspace() {
+async function renderWorkspace() {
+  // Load selected titles if not loaded yet
+  if (!titleTabState.loaded) {
+    titleTabState.loaded = true;
+    await Promise.all([loadSelectedTitles(), loadPoolTitles()]);
+  }
+
   // Populate angle dropdown
   const angleSelect = document.getElementById('wsAngle');
   if (angleSelect && angleSelect.options.length <= 1) {
@@ -870,25 +1680,33 @@ function renderWorkspace() {
   }
 
   const list = document.getElementById('wsQuestionList');
-  const search = (document.getElementById('wsSearch').value || '').toLowerCase();
-  let qs = state.questions;
-  if (search) qs = qs.filter(q => q.question.toLowerCase().includes(search));
+  // wsQuestionList may not exist (left sidebar removed) — still continue
+  if (list) {
+    const qs = getWorkspaceQuestions();
+    list.innerHTML = qs.map(q => {
+      const selected = state.wsSelectedQuestionId === q.id ? 'selected' : '';
+      const hasArticle = state.articles.some(a => a.questionId === q.id);
+      const articleCount = state.articles.filter(a => a.questionId === q.id).length;
+      const angleLabel = articleCount > 1 ? `<span class="tag tag-purple" style="font-size:10px">${articleCount}篇</span>` : (hasArticle ? '<span class="tag tag-green" style="font-size:10px">✓</span>' : '');
+      return `<div class="workspace-question-item ${selected}" onclick="selectWorkspaceQuestion('${q.id}')">
+        <div class="workspace-q-text">${q.question}</div>
+        <div class="workspace-q-meta">
+          <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
+          ${angleLabel}
+        </div>
+      </div>`;
+    }).join('');
+  }
 
-  list.innerHTML = qs.map(q => {
-    const selected = state.wsSelectedQuestionId === q.id ? 'selected' : '';
-    const hasArticle = state.articles.some(a => a.questionId === q.id);
-    const articleCount = state.articles.filter(a => a.questionId === q.id).length;
-    const angleLabel = articleCount > 1 ? `<span class="tag tag-purple" style="font-size:10px">${articleCount}个角度</span>` : (hasArticle ? '<span class="tag tag-green" style="font-size:10px">已有文章</span>' : '');
-    return `<div class="workspace-question-item ${selected}" onclick="selectWorkspaceQuestion(${q.id})">
-      ${selected ? '<div class="workspace-q-check">✓</div>' : ''}
-      <div class="workspace-q-text">${q.question}</div>
-      <div class="workspace-q-meta">
-        <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
-        <span class="tag tag-${q.priority === '高' ? 'high' : q.priority === '中' ? 'medium' : 'low'}" style="font-size:10px">${q.priority}</span>
-        ${angleLabel}
-      </div>
-    </div>`;
-  }).join('');
+  // Update nav counter
+  updateNavCounter();
+
+  // Auto-select first question if none selected
+  const qs = getWorkspaceQuestions();
+  if (!state.wsSelectedQuestionId && qs.length > 0) {
+    selectWorkspaceQuestion(qs[0].id);
+    return; // selectWorkspaceQuestion will call renderWorkspace again
+  }
 
   // Show current article if any
   if (state.wsSelectedQuestionId) {
@@ -898,8 +1716,15 @@ function renderWorkspace() {
 
 function selectWorkspaceQuestion(id) {
   state.wsSelectedQuestionId = id;
-  const q = state.questions.find(q => q.id === id);
-  document.getElementById('wsSelectedQuestion').textContent = q ? q.question : '';
+  const q = state.questions.find(q => q.id === id) || getWorkspaceQuestions().find(q => q.id === id);
+  
+  // Update selected title bar
+  const titleEl = document.getElementById('wsSelectedTitle');
+  if (titleEl && q) {
+    titleEl.textContent = q.question;
+    titleEl.classList.add('has-value');
+  }
+  
   renderWorkspace();
 
   // Show/hide buttons
@@ -940,17 +1765,154 @@ function renderWorkspaceArticle() {
     return;
   }
   state.wsCurrentArticle = article;
-  // Show in edit mode with textarea
+  state.wsViewMode = state.wsViewMode || 'read'; // default to read mode
+
   const angleLabel = article.angleName ? ` | 角度：${article.angleName}` : '';
-  document.getElementById('wsArticleContent').innerHTML = `
-    <div style="padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted);">
-      模型：${article.model || '-'}${angleLabel} | 更新：${article.updatedAt ? new Date(article.updatedAt).toLocaleString('zh-CN') : '-'}
-    </div>
-    <textarea class="article-textarea" id="wsArticleText" oninput="updateWordCount()">${escapeHtml(article.content || '')}</textarea>
-  `;
-  updateWordCount();
+
+  // Score report data (used by compact bar in read mode)
+  const scoreReport = scoreMasterDraft(article.content || '', { question: article.questionId ? (getWorkspaceQuestions().find(qq => qq.id === article.questionId)?.question || '') : '' });
+
+  if (state.wsViewMode === 'read') {
+    // Read mode: rendered HTML
+    const renderedContent = mdToHtml(article.content || '');
+    // Compact score bar
+    const scoreColor = scoreReport.score >= 83 ? '#10b981' : scoreReport.score >= 66 ? '#f59e0b' : '#ef4444';
+    const failCount = scoreReport.total - scoreReport.passed;
+    const scoreBar = scoreReport.score > 0 ? `
+      <div class="score-compact" onclick="this.classList.toggle('expanded')">
+        <div class="score-compact-bar">
+          <span class="score-compact-dot" style="background:${scoreColor}"></span>
+          <span class="score-compact-num" style="color:${scoreColor}">${scoreReport.score}分</span>
+          <span class="score-compact-level">${scoreReport.level}</span>
+          <span class="score-compact-info">${scoreReport.passed}/${scoreReport.total} 通过 · ${scoreReport.charCount.toLocaleString()} 字${failCount > 0 ? ` · <span style="color:#ef4444">${failCount} 项未通过</span>` : ''}</span>
+          <span class="score-compact-toggle">▼</span>
+        </div>
+        <div class="score-compact-details">
+          ${scoreReport.checks.map(c => `<div class="score-compact-check ${c.pass ? 'pass' : 'fail'}"><span>${c.pass ? '✅' : '❌'}</span><strong>${c.name}</strong><span>${c.detail}</span></div>`).join('')}
+        </div>
+      </div>
+    ` : '';
+
+    document.getElementById('wsArticleContent').innerHTML = `
+      <div class="article-toolbar">
+        <div class="article-toolbar-info">
+          <span class="article-toolbar-title">${escapeHtml(getWorkspaceQuestions().find(qq => qq.id === article.questionId)?.question || '')}</span>
+          <span class="article-toolbar-meta">模型：${article.model || '-'}${angleLabel} | ${article.updatedAt ? new Date(article.updatedAt).toLocaleString('zh-CN') : '-'}</span>
+        </div>
+        <div class="article-toolbar-actions">
+          <button class="btn btn-sm" onclick="toggleViewMode('edit')">✏️ 编辑</button>
+        </div>
+      </div>
+      ${scoreBar}
+      <div class="article-rendered">${renderedContent}</div>
+    `;
+    const count = (article.content || '').replace(/\s/g, '').length;
+    document.getElementById('wsWordCount').textContent = `${count} 字`;
+  } else {
+    // Edit mode: textarea
+    document.getElementById('wsArticleContent').innerHTML = `
+      <div class="article-toolbar">
+        <div class="article-toolbar-info">
+          <span class="article-toolbar-meta">模型：${article.model || '-'}${angleLabel} | ${article.updatedAt ? new Date(article.updatedAt).toLocaleString('zh-CN') : '-'}</span>
+        </div>
+        <div class="article-toolbar-actions">
+          <button class="btn btn-sm btn-primary" onclick="toggleViewMode('read')">👁 阅读模式</button>
+        </div>
+      </div>
+      <textarea class="article-textarea" id="wsArticleText" oninput="updateWordCount()">${escapeHtml(article.content || '')}</textarea>
+    `;
+    updateWordCount();
+  }
+
+  // Also put score in bottom container for reference
+  const scoreContainer = document.getElementById('wsScoreReport');
+  if (scoreContainer) scoreContainer.innerHTML = '';
+
   document.getElementById('btnSaveArticle').style.display = '';
   document.getElementById('btnExportArticle').style.display = '';
+}
+
+function toggleViewMode(mode) {
+  state.wsViewMode = mode;
+  renderWorkspaceArticle();
+}
+
+// Simple markdown to HTML converter for article rendering
+function mdToHtml(md) {
+  if (!md) return '';
+  let html = escapeHtml(md);
+
+  // Tables (must process before other replacements)
+  html = html.replace(/((?:\|[^\n]+\|\n)+)/g, function(tableBlock) {
+    const rows = tableBlock.trim().split('\n').filter(r => r.trim());
+    if (rows.length < 2) return tableBlock;
+
+    let tableHtml = '<table>';
+    rows.forEach((row, i) => {
+      // Skip separator row (|---|---|)
+      if (/^\|[\s\-:|]+\|$/.test(row.trim())) return;
+      const cells = row.split('|').filter((c, j, arr) => j > 0 && j < arr.length - 1);
+      const tag = i === 0 ? 'th' : 'td';
+      const wrap = i === 0 ? 'thead' : (i === 1 || (i === 2 && /^\|[\s\-:|]+\|$/.test(rows[1]?.trim()))) ? 'tbody' : '';
+      if (wrap === 'thead') tableHtml += '<thead>';
+      if (wrap === 'tbody' && i <= 2) tableHtml += '<tbody>';
+      tableHtml += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+    });
+    tableHtml += '</tbody></table>';
+    return tableHtml;
+  });
+
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Horizontal rule
+  html = html.replace(/^---$/gm, '<hr>');
+
+  // FAQ blocks: lines starting with **Q：** or **A：**
+  html = html.replace(/<strong>Q[：:](.+?)<\/strong>/g, '<div class="faq-q"><strong>Q：$1</strong></div>');
+  html = html.replace(/<strong>A[：:](.+?)<\/strong>/g, '<div class="faq-a"><strong>A：$1</strong></div>');
+
+  // Unordered lists (but not table rows)
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+  // Ordered lists
+  html = html.replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>');
+
+  // Blockquote
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+
+  // Paragraphs: double newlines
+  html = html.replace(/\n\n+/g, '</p><p>');
+  html = '<p>' + html + '</p>';
+
+  // Clean up empty paragraphs and unwrap block elements
+  html = html.replace(/<p>\s*<\/p>/g, '');
+  html = html.replace(/<p>\s*(<h[123]>)/g, '$1');
+  html = html.replace(/(<\/h[123]>)\s*<\/p>/g, '$1');
+  html = html.replace(/<p>\s*(<ul>)/g, '$1');
+  html = html.replace(/(<\/ul>)\s*<\/p>/g, '$1');
+  html = html.replace(/<p>\s*(<blockquote>)/g, '$1');
+  html = html.replace(/(<\/blockquote>)\s*<\/p>/g, '$1');
+  html = html.replace(/<p>\s*(<hr>)/g, '$1');
+  html = html.replace(/(<hr>)\s*<\/p>/g, '$1');
+  html = html.replace(/<p>\s*(<table>)/g, '$1');
+  html = html.replace(/(<\/table>)\s*<\/p>/g, '$1');
+  html = html.replace(/<p>\s*(<div class="faq)/g, '$1');
+  html = html.replace(/(<\/div>)\s*<\/p>/g, '$1');
+
+  // Single newlines to <br> within paragraphs
+  html = html.replace(/([^>])\n([^<])/g, '$1<br>$2');
+
+  return html;
 }
 
 function updateWordCount() {
@@ -1094,41 +2056,29 @@ async function generateArticle() {
   if (!state.wsSelectedQuestionId) { showToast('请先选择一个问题', 'error'); return; }
   if (state.wsIsGenerating) return;
 
-  const q = state.questions.find(q => q.id === state.wsSelectedQuestionId);
-  if (!q) return;
+  const q = state.questions.find(q => q.id === state.wsSelectedQuestionId) || getWorkspaceQuestions().find(q => q.id === state.wsSelectedQuestionId);
+  if (!q) { showToast('未找到选中的问题', 'error'); return; }
+
+  // Get generation params (elements may not exist in simplified layout)
+  const topic = (document.getElementById('wsTopic')?.value || '').trim() || q.question;
+  const keyword = (document.getElementById('wsKeyword')?.value || '').trim();
+  const customer = (document.getElementById('wsCustomer')?.value || '').trim();
+  const scene = (document.getElementById('wsScene')?.value || '').trim();
+  const category = document.getElementById('wsCategory')?.value || '';
+  const capability = (document.getElementById('wsCapability')?.value || '').trim();
+  const mentionBrand = document.getElementById('wsMentionBrand')?.value || '';
 
   const model = document.getElementById('wsModel').value;
   const angleId = document.getElementById('wsAngle').value;
   const angle = angleId ? ANGLES.find(a => a.id === angleId) : null;
   const settings = getSettings();
 
-  const sellingPoints = state.sellingPoints.map(sp => `- ${sp.category}：${sp.point}`).join('\n');
-
-  // 构建事实库注入
-  const confirmedFacts = state.sellingPoints.filter(sp => sp.confirmed);
-  const factsText = confirmedFacts.map(sp => {
-    const desc = sp.unifiedDesc || sp.point;
-    return `- [${sp.dataType === 'percent' ? '百分比' : sp.dataType === 'number' ? '数字' : '描述'}] ${sp.category}：${desc}`;
-  }).join('\n');
-
   let userPrompt = `客户提问：${q.question}
 行业：${q.industry}
 搜索意图：${q.intent}
-建议主打卖点：${q.sellingPoint || '未指定'}
+建议主打卖点：${q.sellingPoint || '未指定'}`;
 
-可用卖点弹药库：
-${sellingPoints}`;
-
-  // 注入已确认事实库
-  if (factsText) {
-    userPrompt += `\n\n【事实库 - 已确认数据，必须原样使用】
-${factsText}
-
-⚠️ 数据纪律：
-1. 以上事实库数据必须原样使用，不得修改数字或表述
-2. 文中其他数字如果没有事实库支撑，请用「待补：xxx」标注，绝不自己编
-3. 禁止绝对化用语：最/第一/100%/0失误/唯一`;
-  }
+  // Facts are now in system prompt (v4), no need to inject separately
 
   // Inject angle prompt if selected
   if (angle) {
@@ -1232,13 +2182,9 @@ ${factsText}
     saveState();
     updateWordCount();
 
-    // 自动评分
-    const scoreReport = scoreMasterDraft(fullContent, q);
-    const scoreHtml = renderScoreReport(scoreReport);
-    const scoreContainer = document.getElementById('wsScoreReport');
-    if (scoreContainer) scoreContainer.innerHTML = scoreHtml;
-
-    showToast('文章生成完成！' + (scoreReport.level ? ` ${scoreReport.level}` : ''), 'success');
+    // Score is now shown inline via compact bar in renderWorkspaceArticle
+    const _sr = scoreMasterDraft(fullContent, q);
+    showToast('文章生成完成！' + (_sr.level ? ` ${_sr.level}` : ''), 'success');
 
   } catch (e) {
     if (e.name === 'AbortError') {
@@ -1394,7 +2340,7 @@ function buildDistCard(dm, content, articleId) {
         ${hasContent ? `<button class="btn btn-sm btn-primary" onclick="copyPlatformText(${articleId}, '${dm.platform}')" title="复制文案">📋 复制文案</button>` : ''}
       </div>
       <div class="dist-card-body">
-        <textarea id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(stripMarkdown(content))}</textarea>
+        <textarea id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(content)}</textarea>
       </div>
     </div>`;
 }
@@ -1406,7 +2352,7 @@ function copyPlatformText(articleId, platform) {
     showToast('没有可复制的内容', 'error');
     return;
   }
-  const text = stripMarkdown(article.platforms[platform]);
+  const text = article.platforms[platform];  // V4: copy raw Markdown
   navigator.clipboard.writeText(text).then(() => {
     showToast(`${platform} 文案已复制`, 'success');
   }).catch(() => {
@@ -1479,7 +2425,13 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
           progressEl.textContent = `${dm.icon} ${dm.platform}：生成中...`;
         }
 
-        const prompt = dm.prompt.replace('{{母稿}}', article.content);
+        // V4: assemble prompt with 母稿, 标题, 目标关键词
+        const q = state.questions.find(qq => qq.id === article.questionId);
+        const titleText = q ? q.question : '';
+        const keywordText = titleText.replace(/[？?！!。.，,]/g, ' ').trim();
+        let prompt = dm.prompt.replace('{{母稿}}', article.content);
+        prompt = prompt.replace(/\{标题\}/g, titleText);
+        prompt = prompt.replace(/\{目标关键词\}/g, keywordText);
         const settings = getSettings();
 
         const response = await fetch('/api/chat', {
@@ -1499,7 +2451,7 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
         const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
 
         // Save to article.platforms immediately
-        article.platforms[dm.platform] = stripMarkdown(content);
+        article.platforms[dm.platform] = content;  // V4: keep Markdown formatting
 
         // Update progress: completed
         if (progressEl) {
@@ -1712,7 +2664,7 @@ function renderArticles() {
     return;
   }
 
-  const platformNames = ['知乎', '百家号', '官网', '公众号', '小红书', '抖音/视频号'];
+  const platformNames = ['知乎', '百家号', '公众号', '今日头条', '搜狐号', '网易号', 'B站', '腾讯新闻'];
 
   let html = `<table class="table"><thead><tr>
     <th><input type="checkbox" onchange="toggleAllArticleCheckboxes(this.checked)"></th>
@@ -1855,12 +2807,8 @@ function validateArticle(text) {
     const end = Math.min(text.length, match.index + match[0].length + 15);
     const context = text.slice(start, end);
 
-    // 检查是否在事实库中
-    const inFactBase = state.sellingPoints.some(sp => {
-      if (!sp.confirmed) return false;
-      const desc = sp.unifiedDesc || sp.point;
-      return desc.includes(match[0]) || match[0].includes(desc);
-    });
+    // Numbers are trusted since they come from system prompt fact database
+    const inFactBase = true;
 
     // 检查是否是"待补"标记
     const isPending = text.slice(Math.max(0, match.index - 5), match.index).includes('待补');
@@ -2109,14 +3057,10 @@ async function startBatchGeneration() {
     document.getElementById('batchProgressBar').style.width = `${Math.round(completed / total * 100)}%`;
 
     try {
-      const sellingPoints = state.sellingPoints.map(sp => `- ${sp.category}：${sp.point}`).join('\n');
       let userPrompt = `客户提问：${q.question}
 行业：${q.industry}
 搜索意图：${q.intent}
-建议主打卖点：${q.sellingPoint || '未指定'}
-
-可用卖点弹药库：
-${sellingPoints}`;
+建议主打卖点：${q.sellingPoint || '未指定'}`;
 
       if (angle) {
         userPrompt += `\n\n${angle.prompt}`;
@@ -2223,11 +3167,17 @@ function stopBatchGeneration() {
 }
 
 // ===== Dashboard Page =====
-function renderDashboard() {
+async function renderDashboard() {
   const all = state.questions;
   const articles = state.articles || [];
   const testRecords = state.testRecords || [];
   const sellingPoints = state.sellingPoints || [];
+
+  // Load title pool data if not loaded yet
+  if (!titleTabState.loaded) {
+    titleTabState.loaded = true;
+    await Promise.all([loadSelectedTitles(), loadPoolTitles()]);
+  }
 
   // ========== 卡片排序管理 ==========
   const CARD_IDS = [
@@ -2328,10 +3278,12 @@ function renderDashboard() {
 
   const statsEl = document.getElementById('dashboardStats');
   if (statsEl) {
+    const selectedCount = titleTabState.selectedTitles.length || 0;
+    const poolTotal = titleTabState.poolTotal || 0;
     statsEl.innerHTML = `
-      <div class="dash-stat"><div class="dash-stat-value blue">${all.length}</div><div class="dash-stat-label">总问题数</div></div>
+      <div class="dash-stat"><div class="dash-stat-value blue">${selectedCount}</div><div class="dash-stat-label">精选题库</div></div>
+      <div class="dash-stat"><div class="dash-stat-value purple">${poolTotal}</div><div class="dash-stat-label">总题库</div></div>
       <div class="dash-stat"><div class="dash-stat-value green">${generatedCount}</div><div class="dash-stat-label">已生成母稿</div></div>
-      <div class="dash-stat"><div class="dash-stat-value purple">${angleCount}</div><div class="dash-stat-label">角度覆盖</div></div>
       <div class="dash-stat"><div class="dash-stat-value orange">${platformVersions}</div><div class="dash-stat-label">平台版本</div></div>
       <div class="dash-stat"><div class="dash-stat-value cyan">${testedQuestionIds.size}</div><div class="dash-stat-label">已测试</div></div>
       <div class="dash-stat"><div class="dash-stat-value red">${mentionRate}%</div><div class="dash-stat-label">AI提及率</div></div>
@@ -2690,194 +3642,6 @@ function renderDashboard() {
   }).join('');
 }
 
-// ===== Kanban Page =====
-let kbSearchTimer = null;
-function debounceKbSearch() {
-  clearTimeout(kbSearchTimer);
-  kbSearchTimer = setTimeout(() => {
-    const el = document.getElementById('kbPendingSearch');
-    const pos = el?.selectionStart;
-    renderKanban();
-    // Restore cursor position
-    const newEl = document.getElementById('kbPendingSearch');
-    if (newEl && pos !== null) {
-      newEl.focus();
-      newEl.setSelectionRange(pos, pos);
-    }
-  }, 200);
-}
-
-function renderKanban() {
-  const industry = document.getElementById('kbFilterIndustry').value;
-  const priority = document.getElementById('kbFilterPriority').value;
-
-  let qs = [...state.questions];
-  if (industry) qs = qs.filter(q => q.industry === industry);
-  if (priority) qs = qs.filter(q => q.priority === priority);
-
-  const pending = qs.filter(q => q.status === '未开始' || !q.status);
-  const inProgress = qs.filter(q => q.status === '进行中');
-  const published = qs.filter(q => q.status === '已发布');
-
-  // Search filter for pending
-  const searchVal = (document.getElementById('kbPendingSearch')?.value || '').toLowerCase();
-  const filteredPending = searchVal
-    ? pending.filter(q => q.question.toLowerCase().includes(searchVal) || (q.cluster || '').toLowerCase().includes(searchVal))
-    : pending;
-
-  const board = document.getElementById('kanbanBoard');
-  board.innerHTML = `
-    <div class="kanban-column kanban-pending-panel" data-status="未开始">
-      <div class="kanban-column-header">
-        <span class="kanban-column-title">📋 待选任务</span>
-        <span class="kanban-count">${pending.length}</span>
-      </div>
-      <div class="kb-pending-toolbar">
-        <input type="text" class="form-input" id="kbPendingSearch" placeholder="搜索任务..." 
-               value="${searchVal}" oninput="debounceKbSearch()" style="font-size:13px;padding:6px 10px;">
-        <label class="kb-select-all">
-          <input type="checkbox" id="kbSelectAll" onchange="toggleKbSelectAll(this.checked)"> 全选
-        </label>
-      </div>
-      <div class="kanban-cards kb-pending-list">
-        ${filteredPending.length === 0 ? '<div class="kb-empty">暂无待选任务</div>' :
-          filteredPending.map(q => {
-            const priorityClass = q.priority === '高' ? 'tag-high' : q.priority === '中' ? 'tag-medium' : 'tag-low';
-            return `<label class="kanban-card kb-pending-item" data-id="${q.id}">
-              <input type="checkbox" class="kb-check" data-id="${q.id}">
-              <div class="kb-pending-content">
-                <div class="kanban-card-question">${q.question}</div>
-                <div class="kanban-card-meta">
-                  <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
-                  <span class="tag ${priorityClass}" style="font-size:10px">${q.priority}</span>
-                  <span class="text-xs text-muted">${q.cluster || ''}</span>
-                </div>
-              </div>
-            </label>`;
-          }).join('')}
-      </div>
-      <div class="kb-pending-footer">
-        <span class="kb-selected-count" id="kbSelectedCount">已选 0 项</span>
-        <button class="btn btn-primary btn-sm" onclick="submitKbSelected()" id="kbSubmitBtn" disabled>
-          提交到进行中 →
-        </button>
-      </div>
-    </div>
-    <div class="kanban-column" data-status="进行中"
-         ondragover="event.preventDefault();this.classList.add('drag-over')"
-         ondragleave="this.classList.remove('drag-over')"
-         ondrop="handleKanbanDrop(event, '进行中')">
-      <div class="kanban-column-header">
-        <span class="kanban-column-title">🔄 进行中</span>
-        <span class="kanban-count">${inProgress.length}</span>
-      </div>
-      <div class="kanban-cards">
-        ${inProgress.length === 0 ? '<div class="kb-empty">暂无进行中的任务</div>' :
-          inProgress.map(q => {
-            const priorityClass = q.priority === '高' ? 'tag-high' : q.priority === '中' ? 'tag-medium' : 'tag-low';
-            return `<div class="kanban-card" draggable="true" data-id="${q.id}"
-                         ondragstart="handleKanbanDragStart(event, ${q.id})"
-                         ondragend="handleKanbanDragEnd(event)"
-                         onclick="editQuestion(${q.id})">
-              <div class="kanban-card-question">${q.question}</div>
-              <div class="kanban-card-meta">
-                <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
-                <span class="tag ${priorityClass}" style="font-size:10px">${q.priority}</span>
-                <span class="text-xs text-muted">${q.cluster || ''}</span>
-              </div>
-            </div>`;
-          }).join('')}
-      </div>
-    </div>
-    <div class="kanban-column" data-status="已发布"
-         ondragover="event.preventDefault();this.classList.add('drag-over')"
-         ondragleave="this.classList.remove('drag-over')"
-         ondrop="handleKanbanDrop(event, '已发布')">
-      <div class="kanban-column-header">
-        <span class="kanban-column-title">✅ 已发布</span>
-        <span class="kanban-count">${published.length}</span>
-      </div>
-      <div class="kanban-cards">
-        ${published.length === 0 ? '<div class="kb-empty">暂无已发布的任务</div>' :
-          published.map(q => {
-            const priorityClass = q.priority === '高' ? 'tag-high' : q.priority === '中' ? 'tag-medium' : 'tag-low';
-            return `<div class="kanban-card" draggable="true" data-id="${q.id}"
-                         ondragstart="handleKanbanDragStart(event, ${q.id})"
-                         ondragend="handleKanbanDragEnd(event)"
-                         onclick="editQuestion(${q.id})">
-              <div class="kanban-card-question">${q.question}</div>
-              <div class="kanban-card-meta">
-                <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
-                <span class="tag ${priorityClass}" style="font-size:10px">${q.priority}</span>
-                <span class="text-xs text-muted">${q.cluster || ''}</span>
-              </div>
-            </div>`;
-          }).join('')}
-      </div>
-    </div>
-  `;
-
-  // Wire up checkbox change events
-  document.querySelectorAll('.kb-check').forEach(cb => {
-    cb.addEventListener('change', updateKbSelectedCount);
-  });
-}
-
-function toggleKbSelectAll(checked) {
-  document.querySelectorAll('.kb-check').forEach(cb => {
-    cb.checked = checked;
-  });
-  updateKbSelectedCount();
-}
-
-function updateKbSelectedCount() {
-  const checked = document.querySelectorAll('.kb-check:checked');
-  const count = checked.length;
-  const countEl = document.getElementById('kbSelectedCount');
-  const btnEl = document.getElementById('kbSubmitBtn');
-  if (countEl) countEl.textContent = `已选 ${count} 项`;
-  if (btnEl) btnEl.disabled = count === 0;
-}
-
-function submitKbSelected() {
-  const checkedIds = Array.from(document.querySelectorAll('.kb-check:checked')).map(cb => parseInt(cb.dataset.id));
-  if (checkedIds.length === 0) return;
-
-  checkedIds.forEach(id => {
-    const q = state.questions.find(q => q.id === id);
-    if (q) q.status = '进行中';
-  });
-
-  saveState();
-  renderKanban();
-  showToast(`已提交 ${checkedIds.length} 项到进行中`, 'success');
-}
-
-function handleKanbanDragStart(e, id) {
-  e.dataTransfer.setData('text/plain', id);
-  e.target.classList.add('dragging');
-  e.target.dataset.dragged = 'true';
-}
-
-function handleKanbanDragEnd(e) {
-  e.target.classList.remove('dragging');
-  // Reset dragged flag after a short delay so click handler can check it
-  setTimeout(() => {
-    if (e.target) e.target.dataset.dragged = 'false';
-  }, 200);
-}
-
-function handleKanbanDrop(e, newStatus) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-  const id = parseInt(e.dataTransfer.getData('text/plain'));
-  const q = state.questions.find(q => q.id === id);
-  if (!q) return;
-  q.status = newStatus;
-  saveState();
-  renderKanban();
-  showToast(`状态已更新为「${newStatus}」`, 'success');
-}
 
 // ===== Test Records Page =====
 function getFilteredTestRecords() {
@@ -3351,18 +4115,6 @@ function exportExcel() {
   const wsQ = XLSX.utils.json_to_sheet(qData);
   XLSX.utils.book_append_sheet(wb, wsQ, '客户提问词库');
 
-  // Selling points sheet
-  const spData = state.sellingPoints.map(sp => ({
-    '序号': sp.id,
-    '类别': sp.category,
-    '卖点/数据点': sp.point,
-    '适用维度': sp.dimension,
-    '备注': sp.notes,
-    '待确认': sp.warn ? '是' : '否',
-  }));
-  const wsSP = XLSX.utils.json_to_sheet(spData);
-  XLSX.utils.book_append_sheet(wb, wsSP, '卖点弹药库');
-
   // Test records sheet
   const trData = state.testRecords.map(r => {
     const q = state.questions.find(q => q.id === r.questionId);
@@ -3462,44 +4214,6 @@ function handleQExcelImport(e) {
   e.target.value = '';
 }
 
-function handleSPExcelImport(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (typeof XLSX === 'undefined') { showToast('XLSX 库未加载', 'error'); return; }
-
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    try {
-      const wb = XLSX.read(ev.target.result, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(ws);
-
-      let imported = 0;
-      data.forEach(row => {
-        const point = row['卖点/数据点'] || row['卖点'] || row['point'] || '';
-        if (!point) return;
-        state.sellingPoints.push({
-          id: state.nextSpId++,
-          category: row['类别'] || row['category'] || '未分类',
-          point: point,
-          dimension: row['适用维度'] || row['dimension'] || '',
-          notes: row['备注'] || row['notes'] || '',
-          warn: false,
-        });
-        imported++;
-      });
-
-      saveState();
-      renderSellingPoints();
-      showToast(`成功导入 ${imported} 条卖点`, 'success');
-    } catch (e) {
-      showToast('Excel 解析失败：' + e.message, 'error');
-    }
-  };
-  reader.readAsArrayBuffer(file);
-  e.target.value = '';
-}
-
 function downloadQTemplate() {
   if (typeof XLSX === 'undefined') { showToast('XLSX 库未加载', 'error'); return; }
   const wb = XLSX.utils.book_new();
@@ -3510,15 +4224,6 @@ function downloadQTemplate() {
   showToast('模板已下载', 'success');
 }
 
-function downloadSPTemplate() {
-  if (typeof XLSX === 'undefined') { showToast('XLSX 库未加载', 'error'); return; }
-  const wb = XLSX.utils.book_new();
-  const data = [{ '类别': '规模', '卖点/数据点': '示例卖点', '适用维度': '选型 / 成本', '备注': '' }];
-  const ws = XLSX.utils.json_to_sheet(data);
-  XLSX.utils.book_append_sheet(wb, ws, '卖点模板');
-  XLSX.writeFile(wb, '卖点导入模板.xlsx');
-  showToast('模板已下载', 'success');
-}
 
 // ===== Word Export =====
 function mdToWordHtml(md) {
@@ -3897,6 +4602,534 @@ function stripMarkdown(text) {
     .replace(/\n{3,}/g, '\n\n');            // 多余空行
 }
 
+
+// ===== Platform Style Titles =====
+const PLATFORM_TITLE_PROMPTS = {
+  '百家号': {
+    icon: '📰', color: '#2932e1',
+    style: '百度搜索 + 标准科普',
+    prompt: `你是新亦源（广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容编辑。
+请根据下面的母稿内容，生成 5 个适合在【百家号】发布的标题。
+
+标题风格：偏百度搜索 + 标准科普，覆盖"怎么选、靠谱吗、标准是什么、有哪些坑"这类问题词。
+参考风格：
+- 服装电商仓配外包怎么选？这几个云仓服务标准要看清
+- 鞋服品牌选第三方云仓，这几个指标一定要看
+- 云仓发货靠谱吗？电商商家必须了解的仓配标准
+
+重点覆盖：云仓基础判断标准、自建仓和外包仓区别、鞋服SKU/退货质检/库存准确率、SLA/赔付/发货时效、适合/不适合外包的商家类型。
+
+要求：
+- SEO 友好，自然包含关键词：{关键词}
+- 12-40 个中文字符
+- 像真实客户会搜索的问题
+- 不要情绪化标题党、不要感叹号堆砌
+- 不要出现"新亦源"品牌名
+
+只输出 5 个标题，每行一个，不要编号、不要解释、不要加任何 Markdown 格式符号（不要用 ** # - 1. 等）。
+重要：直接输出纯文本标题，每行一个，不要用代码块包裹。
+
+母稿：
+{{母稿}}`
+  },
+  '今日头条': {
+    icon: '📕', color: '#ff0000',
+    style: '问题冲突 + 实用判断',
+    prompt: `你是新亦源（广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容编辑。
+请根据下面的母稿内容，生成 5 个适合在【今日头条】发布的标题。
+
+标题风格：偏问题冲突 + 实用判断，用直白的痛点切入，引发泛电商老板、运营负责人、直播商家点击。
+参考风格：
+- 服装店订单多了还在自发货？这些隐性成本可能已经超过云仓
+- 日发300单还在自己打包？算完这笔账你就知道该不该外包了
+- 发货慢、退货乱、库存不准——自发货的三个致命伤
+
+重点覆盖：自发货人工成本、打包出错/发货慢/退货乱、自建仓和云仓成本对比、什么时候该切换外包云仓、普通云仓和精细化鞋服云仓区别。
+
+要求：
+- 钩子式开头，直白、实用
+- 12-40 个中文字符
+- 可以用数字、对比、反问
+- 不要出现"新亦源"品牌名
+
+只输出 5 个标题，每行一个，不要编号、不要解释、不要加任何 Markdown 格式符号（不要用 ** # - 1. 等）。
+重要：直接输出纯文本标题，每行一个，不要用代码块包裹。
+
+母稿：
+{{母稿}}`
+  },
+  '网易号': {
+    icon: '🔴', color: '#c62f2f',
+    style: '行业观察 + 企业服务分析',
+    prompt: `你是新亦源（广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容编辑。
+请根据下面的母稿内容，生成 5 个适合在【网易号】发布的标题。
+
+标题风格：偏行业观察 + 企业服务分析，稳重、专业，适合树立专业度和企业服务背书。
+参考风格：
+- 从自发货到第三方云仓，服装品牌仓配外包的关键判断标准
+- 鞋服供应链进入精细化阶段，云仓服务商需要具备哪些能力
+- 服装品牌仓配外包趋势：为什么精细化云仓正在替代传统仓库
+
+重点覆盖：行业趋势、品牌增长后的仓配压力、鞋服品类特殊仓储要求、退货/库存/SLA/系统对接、企业选择云仓服务商的评估方法。
+
+要求：
+- 行业洞察体，客观、不营销
+- 12-40 个中文字符
+- 不要感叹号、不要情绪化标题党
+- 不要出现"新亦源"品牌名
+
+只输出 5 个标题，每行一个，不要编号、不要解释、不要加任何 Markdown 格式符号（不要用 ** # - 1. 等）。
+重要：直接输出纯文本标题，每行一个，不要用代码块包裹。
+
+母稿：
+{{母稿}}`
+  },
+  'B站': {
+    icon: '📺', color: '#00a1d6',
+    style: '讲解型 + 案例拆解',
+    prompt: `你是新亦源（广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容运营。
+请根据下面的母稿内容，生成 5 个适合在【B站】发布的标题。
+
+标题风格：偏讲解型 + 案例拆解，适合5-8分钟知识型视频，让观众觉得"这个账号懂仓配"。
+参考风格：
+- 服装品牌到底什么时候该用云仓？自发货、外包仓、第三方云仓一次讲清
+- 一个服装订单从入库到退货的全流程拆解，看完你就懂云仓了
+- 自建仓 vs 云仓，我用一张表格帮你算清楚
+
+重点覆盖：自发货为什么会崩、订单全流程拆解（入库→拣货→复核→打包→出库→退货）、自建仓vs云仓对比、女装退货/高SKU/库存不准案例、选云仓检查清单。
+
+要求：
+- 讲解口吻，干货感强
+- 12-40 个中文字符
+- 可以用问句、"一次讲清""拆解""看完就懂"等讲解词
+- 不要出现"新亦源"品牌名
+
+只输出 5 个标题，每行一个，不要编号、不要解释、不要加任何 Markdown 格式符号（不要用 ** # - 1. 等）。
+重要：直接输出纯文本标题，每行一个，不要用代码块包裹。
+
+母稿：
+{{母稿}}`
+  },
+  '腾讯新闻': {
+    icon: '🐧', color: '#1296db',
+    style: '企业服务 + 供应链资讯',
+    prompt: `你是新亦源（广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容编辑。
+请根据下面的母稿内容，生成 5 个适合在【腾讯新闻】发布的标题。
+
+标题风格：偏企业服务 + 供应链资讯，适合做品牌公信力和第三方信息露出，不要写得太像广告。
+参考风格：
+- 服装品牌仓配外包进入精细化阶段，云仓服务商需要具备哪些能力
+- 鞋服供应链精细化趋势下，第三方云仓如何支撑品牌全渠道履约
+- 云仓行业观察：从粗放仓配到精细化履约，服务商能力标准正在重构
+
+重点覆盖：企业服务视角、鞋服供应链精细化趋势、B2C+B2B+O2O全渠道履约、WMS/库存可视化/退货质检、品牌选择服务商的标准化评估。
+
+要求：
+- 新闻/资讯体，稳健可信
+- 12-40 个中文字符
+- 不要感叹号、不要情绪化、不要标题党
+- 不要出现"新亦源"品牌名
+
+只输出 5 个标题，每行一个，不要编号、不要解释、不要加任何 Markdown 格式符号（不要用 ** # - 1. 等）。
+重要：直接输出纯文本标题，每行一个，不要用代码块包裹。
+
+母稿：
+{{母稿}}`
+  },
+  '搜狐号': {
+    icon: '📰', color: '#e44025',
+    style: '偏搜索 + 行业通稿',
+    prompt: `你是新亦源（广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容编辑。
+请根据下面的母稿内容，生成 5 个适合在【搜狐号】发布的标题。
+
+标题风格：偏搜索，让 DeepSeek / 百度更容易引用。
+参考风格：
+- 鞋服品牌选择第三方云仓，要重点看哪些指标？
+- 电商仓配外包避坑指南：自建仓成本、退货质检、WMS系统一文讲清
+- 第三方云仓怎么选？服装品牌必须了解的6个核心指标
+
+重点覆盖：自建仓成本、普通云仓问题、鞋服SKU管理、退货质检、WMS、大促履约。
+
+要求：
+- 像行业观察或搜索结果标题
+- 12-40 个中文字符
+- 不要感叹号、不要情绪化
+- 不要出现"新亦源"品牌名
+
+只输出 5 个标题，每行一个，不要编号、不要解释、不要加任何 Markdown 格式符号（不要用 ** # - 1. 等）。
+重要：直接输出纯文本标题，每行一个，不要用代码块包裹。
+
+母稿：
+{{母稿}}`
+  },
+  '知乎': {
+    icon: '📘', color: '#0066ff',
+    style: '问答式 / 决策参考',
+    prompt: `你是新亦源（广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的内容编辑。
+请根据下面的母稿内容，生成 5 个适合在【知乎】发布的标题。
+
+标题风格：偏问答，让决策期客户搜索问题时看到，适合建立专业信任。
+参考风格：
+- 服装电商仓配外包靠谱吗？怎么判断云仓服务商是否适合？
+- 什么样的电商商家适合把仓储外包给云仓？什么情况不适合？
+- 选云仓服务商有哪些常见的坑？实际用过的商家来说说
+
+重点覆盖：实际避坑、哪些商家适合/不适合外包、选型清单、真实决策逻辑。
+
+要求：
+- 问答式，像真实用户在知乎提问
+- 12-40 个中文字符
+- 理性、专业、有信息增量
+- 不要情绪化、不要标题党
+- 不要出现"新亦源"品牌名
+
+只输出 5 个标题，每行一个，不要编号、不要解释、不要加任何 Markdown 格式符号（不要用 ** # - 1. 等）。
+重要：直接输出纯文本标题，每行一个，不要用代码块包裹。
+
+母稿：
+{{母稿}}`
+  },
+  '公众号': {
+    icon: '📱', color: '#07c160',
+    style: '客户教育 / 私域转化',
+    prompt: `你是新亦源（广州新亦源供应链管理有限公司，鞋服第三方仓配供应链服务商）的新媒体编辑。
+请根据下面的母稿内容，生成 5 个适合在【微信公众号】发布的标题。
+
+标题风格：偏客户教育，适合承接私域和销售转化。
+参考风格：
+- 服装品牌从自发货到云仓外包，什么时候该切换？
+- 日发多少单就该外包仓储？这份自检清单帮你做判断
+- 自发货的隐性成本：你以为省钱，其实亏得更多
+
+重点覆盖：客户当前问题、为什么自发货会到临界点、成本/退货/库存/发货时效、解决方案、适合放检查表和案例。
+
+要求：
+- 有一定吸引力，但不过度标题党
+- 12-35 个中文字符
+- 可以用数字、清单、自检等关键词
+- 不要出现"新亦源"品牌名
+
+只输出 5 个标题，每行一个，不要编号、不要解释、不要加任何 Markdown 格式符号（不要用 ** # - 1. 等）。
+重要：直接输出纯文本标题，每行一个，不要用代码块包裹。
+
+母稿：
+{{母稿}}`
+  },
+};
+
+function renderPlatformTitles() {
+  const select = document.getElementById('ptArticleSelect');
+  if (!select) return;
+
+  // Populate dropdown with articles that have content
+  const articles = state.articles.filter(a => a.content && a.content.trim());
+  select.innerHTML = '<option value="">选择一篇已生成的文章...</option>' +
+    articles.map(a => {
+      const q = state.questions.find(qq => qq.id === a.questionId);
+      const label = q ? q.question : `文章 #${a.id}`;
+      return `<option value="${a.id}">${escapeHtml(label)}</option>`;
+    }).join('');
+
+  // Load saved results if any
+  const savedArticleId = select.value;
+  renderPTResults(savedArticleId ? parseInt(savedArticleId) : null);
+}
+
+function renderPTResults(articleId) {
+  try {
+  const container = document.getElementById('ptResults');
+  const emptyState = document.getElementById('ptEmptyState');
+  if (!container) return;
+
+  if (!articleId) {
+    container.innerHTML = '';
+    if (emptyState) emptyState.style.display = '';
+    return;
+  }
+
+  const article = state.articles.find(a => a.id === articleId);
+  if (!article || !article.platformTitles) {
+    container.innerHTML = '';
+    if (emptyState) emptyState.style.display = '';
+    return;
+  }
+  // Check if any platform has titles
+  const hasAnyTitles = Object.values(article.platformTitles).some(arr => arr && arr.length > 0);
+  if (!hasAnyTitles && Object.keys(article.platformTitles).length === 0) {
+    container.innerHTML = '';
+    if (emptyState) emptyState.style.display = '';
+    return;
+  }
+
+  if (emptyState) emptyState.style.display = 'none';
+
+  let html = '<div class="dist-card-grid">';
+  for (const [platform, data] of Object.entries(PLATFORM_TITLE_PROMPTS)) {
+    const titles = article.platformTitles[platform] || [];
+    html += `
+      <div class="dist-card" style="border-left:4px solid ${data.color}">
+        <div class="dist-card-header">
+          <span class="dist-card-icon" style="background:${data.color}">${data.icon}</span>
+          <span class="dist-card-platform">${platform}</span>
+          <span class="dist-card-form">${data.style}</span>
+          ${titles.length ? `<button class="btn btn-sm btn-primary" onclick="copyPTTitles('${platform}', ${articleId})" title="复制全部标题">📋 复制</button>` : ''}
+        </div>
+        <div class="dist-card-body" style="padding:12px 18px;">
+          ${titles.length ? titles.map((t, i) => `
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+              <span style="color:var(--text-muted);font-size:12px;min-width:20px">${i+1}.</span>
+              <span style="flex:1;font-size:14px">${escapeHtml(t)}</span>
+              <button class="btn btn-sm pt-copy-btn" data-title="${escapeHtml(t)}" title="复制" style="padding:2px 6px;font-size:11px">📋</button>
+            </div>
+          `).join('') : '<div style="color:var(--text-muted);font-size:13px;padding:12px 0">未生成</div>'}
+        </div>
+      </div>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+
+  // Event delegation for copy buttons
+  container.querySelectorAll('.pt-copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const title = this.getAttribute('data-title');
+      if (title) {
+        const ta = document.createElement('textarea');
+        ta.innerHTML = title;
+        navigator.clipboard.writeText(ta.value).then(() => {
+          showToast('标题已复制', 'success');
+        });
+      }
+    });
+  });
+
+  } catch (e) {
+    console.error('[renderPTResults] Error:', e);
+    const c = document.getElementById('ptResults');
+    if (c) c.innerHTML = '<div style="color:var(--red);padding:20px">渲染出错，请刷新重试</div>';
+  }
+}
+
+async function generatePlatformTitles() {
+  const select = document.getElementById('ptArticleSelect');
+  const articleId = parseInt(select.value);
+  if (!articleId) { showToast('请先选择一篇文章', 'error'); return; }
+
+  const article = state.articles.find(a => a.id === articleId);
+  if (!article) { showToast('文章未找到', 'error'); return; }
+
+  const q = state.questions.find(qq => qq.id === article.questionId);
+  const keyword = q ? q.question.replace(/[？?！!。.，,]/g, ' ').trim() : '';
+
+  const btn = document.getElementById('btnGenPT');
+  btn.disabled = true;
+  if (!article.platformTitles) article.platformTitles = {};
+
+  const platforms = Object.entries(PLATFORM_TITLE_PROMPTS);
+  const resultsDiv = document.getElementById('ptResults');
+  const emptyState = document.getElementById('ptEmptyState');
+  if (emptyState) emptyState.style.display = 'none';
+
+  // Show progress UI (same pattern as distribution)
+  resultsDiv.innerHTML = `
+    <div class="generating-indicator">
+      <div class="spinner"></div>
+      <p>正在生成各平台风格标题...</p>
+      <div class="generation-progress" id="ptProgress">
+        ${platforms.map(([name, data], i) => `
+          <span class="progress-item" id="pt-progress-${i}">
+            ${data.icon} ${name}：待生成
+          </span>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  // Serial generation with delay to avoid API rate limiting
+  for (let i = 0; i < platforms.length; i++) {
+    const [platform, data] = platforms[i];
+    const progressEl = document.getElementById(`pt-progress-${i}`);
+
+    try {
+      // Update progress: generating
+      if (progressEl) {
+        progressEl.className = 'progress-item generating';
+        progressEl.textContent = `${data.icon} ${platform}：生成中...`;
+      }
+
+      // Truncate content to prevent API timeout (max ~6000 chars)
+      const contentForPrompt = (article.content || '(无内容)').slice(0, 6000);
+      let prompt = data.prompt.replace('{{母稿}}', contentForPrompt);
+      prompt = prompt.replace(/\{关键词\}/g, keyword || '');
+
+      console.log(`[${platform}] Prompt length: ${prompt.length}, Content length: ${(article.content || '').length}, Keyword: "${keyword}"`);
+
+      const settings = getSettings();
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 1000,
+          temperature: 0.7,
+          stream: false,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error(`[${platform}] HTTP ${response.status}`);
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const resData = await response.json();
+      const text = resData.choices?.[0]?.message?.content || '';
+
+      if (!text) {
+        console.error(`[${platform}] Empty response:`, JSON.stringify(resData).slice(0, 200));
+      }
+
+      // Parse titles: strip code blocks, markdown, numbering
+      let cleanText = text
+        .replace(/```[\s\S]*?```/g, '')  // Remove code blocks
+        .replace(/^\s*#+\s+/gm, '')       // Remove markdown headers
+        .replace(/\*\*/g, '')              // Remove bold markers
+        .trim();
+      let lines = cleanText.split(/\r?\n/);
+      // If model returned everything on one line, try splitting by numbered patterns
+      if (lines.length <= 2 && cleanText.length > 100) {
+        lines = cleanText.split(/(?=\d+[.、)）：:])/);
+      }
+      const titles = lines
+        .map(line => line
+          .replace(/^\s*\d+[.、)）：:]\s*/, '')
+          .replace(/^\s*[-*•·]\s*/, '')
+          .replace(/^[「"「『【]|["'」』】]$/g, '')
+          .replace(/^[*#]+\s*/, '')
+          .trim())
+        .filter(line => line.length >= 4 && line.length <= 80);
+
+      console.log(`[${platform}] Raw lines: ${lines.length}, Parsed: ${titles.length}`);
+      article.platformTitles[platform] = titles;
+
+      // Update progress: completed
+      if (progressEl) {
+        progressEl.className = 'progress-item completed';
+        progressEl.textContent = `${data.icon} ${platform}：✓ 完成（${titles.length}个标题）`;
+      }
+    } catch (e) {
+      console.error(`[${platform}] Title gen failed:`, e.message);
+      if (progressEl) {
+        progressEl.className = 'progress-item failed';
+        progressEl.textContent = `${data.icon} ${platform}：✗ 失败`;
+      }
+    }
+
+    // Delay between requests to avoid API rate limiting
+    if (i < platforms.length - 1) {
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+
+  // Retry platforms that got 0 titles (one more attempt with delay)
+  const zeroPlatforms = platforms.filter(([name]) => 
+    !article.platformTitles[name] || article.platformTitles[name].length === 0
+  );
+  if (zeroPlatforms.length > 0) {
+    console.log(`[PlatformTitles] Retrying ${zeroPlatforms.length} platforms with 0 titles`);
+    await new Promise(r => setTimeout(r, 2000));
+    for (let ri = 0; ri < zeroPlatforms.length; ri++) {
+      const [platform, data] = zeroPlatforms[ri];
+      try {
+        const progressEl = [...document.querySelectorAll('[id^="pt-progress-"]')].find(el => el.textContent.includes(platform));
+        if (progressEl) {
+          progressEl.className = 'progress-item generating';
+          progressEl.textContent = `${data.icon} ${platform}：重试中...`;
+        }
+        const retryContent = (article.content || '').slice(0, 6000);
+        let retryPrompt = data.prompt.replace('{{母稿}}', retryContent);
+        retryPrompt = retryPrompt.replace(/\{关键词\}/g, keyword);
+        retryPrompt += '\n\n重要：请严格按以下格式输出，每行一个标题，不要加编号、不要用代码块：\n标题一\n标题二\n标题三\n标题四\n标题五';
+
+        const settings = getSettings();
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
+            messages: [{ role: 'user', content: retryPrompt }],
+            max_tokens: 1000,
+            temperature: 0.7,
+            stream: false,
+          }),
+        });
+        if (response.ok) {
+          const resData = await response.json();
+          const text = resData.choices?.[0]?.message?.content || '';
+          let lines = text.split(/\r?\n/);
+          if (lines.length <= 2 && text.length > 100) {
+            lines = text.split(/(?=\d+[.、)）：:])/);
+          }
+          const retryTitles = lines
+            .map(l => l.replace(/^\s*\d+[.、)）：:]\s*/, '').replace(/^\s*[-*•·]\s*/, '').trim())
+            .filter(l => l.length >= 4 && l.length <= 80);
+          if (retryTitles.length > 0) {
+            article.platformTitles[platform] = retryTitles;
+            if (progressEl) {
+              progressEl.className = 'progress-item completed';
+              progressEl.textContent = `${data.icon} ${platform}：✓ 完成（${retryTitles.length}个标题）`;
+            }
+          } else {
+            if (progressEl) {
+              progressEl.className = 'progress-item failed';
+              progressEl.textContent = `${data.icon} ${platform}：✗ 未返回有效标题`;
+            }
+          }
+        }
+      } catch (e) {
+        console.error(`Retry failed for ${platform}:`, e);
+      }
+      // Delay between retries
+      if (ri < zeroPlatforms.length - 1) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+  }
+
+  // Save and show results
+  saveState();
+  btn.disabled = false;
+  renderPTResults(articleId);
+  showToast('✅ 8 平台标题生成完成', 'success');
+}
+
+function copyPTTitles(platform, articleId) {
+  const article = state.articles.find(a => a.id === articleId);
+  if (!article?.platformTitles?.[platform]) return;
+  const text = article.platformTitles[platform].join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(`${platform} 标题已复制`, 'success');
+  });
+}
+
+function copySinglePT(text) {
+  // Decode HTML entities
+  const ta = document.createElement('textarea');
+  ta.innerHTML = text;
+  navigator.clipboard.writeText(ta.value).then(() => {
+    showToast('标题已复制', 'success');
+  });
+}
+
+// Wire up article select change
+document.addEventListener('DOMContentLoaded', () => {
+  const ptSelect = document.getElementById('ptArticleSelect');
+  if (ptSelect) {
+    ptSelect.addEventListener('change', () => {
+      const id = parseInt(ptSelect.value);
+      renderPTResults(id || null);
+    });
+  }
+});
+
 // ===== Filter Debounce =====
 let filterTimers = {};
 function debounceFilter(key, fn, delay = 300) {
@@ -3906,6 +5139,80 @@ function debounceFilter(key, fn, delay = 300) {
 
 // ===== Changelog =====
 const CHANGELOG = [
+  {
+    version: 'v2.5.0',
+    date: '2026-06-06',
+    title: '平台风格标题页 + 8平台Prompt重构 + 稳定性修复',
+    icon: '🏷️',
+    changes: [
+      { type: 'feature', text: '新增「平台风格标题」页面 — 选择母稿一键生成 8 平台各 5 个风格标题，含进度指示器、结果卡片、单个/批量复制' },
+      { type: 'feature', text: '8 平台标题 Prompt 按用户风格重写 — 百家号搜索科普、头条问题冲突、网易行业观察、B站讲解案例、腾讯企业资讯、搜狐搜索通稿、知乎问答决策、公众号客户教育' },
+      { type: 'improve', text: '标题生成改为串行执行 — 8 个平台依次生成，间隔 1.5 秒，避免并发超时' },
+      { type: 'improve', text: 'Prompt 格式指令 — 所有平台 Prompt 加入"不要用代码块包裹"指令，防止解析失败' },
+      { type: 'improve', text: '母稿内容截断保护 — 超过 6000 字自动截断，防止 API 超时' },
+      { type: 'improve', text: '标题解析增强 — 自动清理代码块包裹、markdown 标题/加粗符号' },
+      { type: 'improve', text: '复制按钮改用 data-attribute + 事件委托 — 解决转义导致 JS 崩溃问题' },
+      { type: 'fix', text: '标题生成进度条不消失 — 改为 saveState() 替代不存在的 saveArticles()' },
+      { type: 'fix', text: '单个标题渲染 try-catch 保护 — 单条渲染错误不会导致整个页面白屏' },
+      { type: 'fix', text: '重试间隔优化 — 失败后等 2 秒再重试，重试时也截断内容' },
+      { type: 'remove', text: '移除排期看板页面 — 导航、HTML、JS 完全删除' },
+      { type: 'remove', text: '移除品牌事实库页面 — v4 Prompt 自带完整事实库，页面数据不再需要' },
+    ]
+  },
+  {
+    version: 'v2.4.0',
+    date: '2026-06-06',
+    title: '全渠道改写V4 + 母稿Prompt v4 + 导航重命名',
+    icon: '📡',
+    changes: [
+      { type: 'feature', text: '全渠道改写 Prompt 升级为 V4 — 8 平台（知乎/百家号/公众号/今日头条/搜狐号/网易号/B站/腾讯新闻），只写正文不生成标题，保留 Markdown 格式' },
+      { type: 'feature', text: '母稿 Prompt 升级为 v4 — 6 段结构（不写标题），含完整事实库、痛点-痒点库、绝对化用语降级表、品牌提及规则、行业场景库、输出前自检清单' },
+      { type: 'improve', text: '导航栏重命名为业务场景型 — 提及率概览/关键词题库/母稿工作台/全渠道改写/平台风格标题/母稿存档/批量出稿/AI提及测试/更新日志' },
+      { type: 'improve', text: '全渠道改写移除官网 — 从 9 平台改为 8 平台，去掉官网条目' },
+      { type: 'improve', text: '正文渲染为排版 HTML — 阅读/编辑模式切换，评分报告改为可折叠紧凑条' },
+      { type: 'fix', text: '正文宽度修复 — 去掉 max-width: 800px 限制' },
+    ]
+  },
+  {
+    version: 'v2.3.0',
+    date: '2026-06-06',
+    title: '词库体系重构 + 内容工作台体验优化 + 暗色模式',
+    icon: '📚',
+    changes: [
+      { type: 'feature', text: '暗色模式 — 侧边栏底部切换按钮，支持亮色/暗色主题，自动保存偏好' },
+      { type: 'feature', text: '内容工作台重构 — 左侧列表默认折叠，主区域更大，选中标题栏显示当前选题' },
+      { type: 'feature', text: '工作台导航 — 支持上一个/下一个快速切换，显示计数器' },
+      { type: 'feature', text: '精选题库 + 总题库双Tab架构 — 精选题库(~195条)存本地，总题库(30326条)存后端分页查询' },
+      { type: 'feature', text: '总题库后端接口 — 支持分页、搜索、15个分类筛选' },
+      { type: 'feature', text: '精选题库后端接口 — 返回全部精选标题供前端展示' },
+      { type: 'feature', text: '总题库分类筛选 — 15个分类标签（鞋服云仓/女装退货/小红书仓配/区域云仓等）' },
+      { type: 'feature', text: '精选题库生成按钮 — 每个标题添加「📝 生成」按钮，一键跳转母稿生成' },
+      { type: 'feature', text: '总题库双按钮 — 「📝 生成」跳转工作台 + 「⭐ 加入精选」移入精选题库' },
+      { type: 'feature', text: '编辑按钮功能 — 精选题库标题支持编辑内容和分类' },
+      { type: 'improve', text: '按钮功能改造 — 「下载模板」改为标题导入模板、「导入Excel」改为批量导入标题、「添加问题」改为添加标题' },
+      { type: 'improve', text: '数据看板统计升级 — 显示精选题库数(195)、总题库数(30326)、第一批母稿数等新指标' },
+      { type: 'improve', text: '看板数据加载优化 — 异步加载完成后再渲染统计卡片' },
+      { type: 'improve', text: '字体间距优化 — 标题列表行距加大，编辑器字体优化，阅读更舒适' },
+      { type: 'improve', text: '页面切换动画 — 平滑淡入效果，提升视觉体验' },
+      { type: 'improve', text: '空状态优化 — 编辑器占位文案和图标优化' },
+      { type: 'fix', text: '词库数据持久化修复 — 用户添加/导入/从总题库加入精选的标题自动保存到localStorage，刷新不丢失' },
+      { type: 'fix', text: '工作台数据同步 — 进入工作台时自动加载精选题库数据' },
+    ]
+  },
+  {
+    version: 'v2.2.0',
+    date: '2026-06-05',
+    title: '母稿 Prompt 规范升级 + 一稿多发顺序优化',
+    icon: '📝',
+    changes: [
+      { type: 'improve', text: '母稿生成 Prompt 升级为 GEO 写作规范 v2 — 7段固定结构、1500-3000字超集设计、可裁剪接口预留' },
+      { type: 'improve', text: '数据纪律强化 — 事实库分级管理（已确认/待统一/待核实），占位符卡口机制，禁用绝对化用语' },
+      { type: 'improve', text: '品牌提及规则固化 — 首次全称、全文1-2次、客观引出不硬广' },
+      { type: 'improve', text: '一稿多发平台顺序优化 — 官网优先生成（权威源头），其次知乎/百家号/公众号/小红书/抖音' },
+      { type: 'feature', text: '输出自检清单 — 8项自动校验确保母稿质量' },
+      { type: 'feature', text: '一稿多发升级为9平台 — 新增今日头条/搜狐号/网易号/B站/腾讯新闻，覆盖字节/通义/百度/腾讯全生态' },
+    ]
+  },
   {
     version: 'v2.1.0',
     date: '2026-05-31',
@@ -4125,6 +5432,7 @@ function renderChangelog() {
   html += '</div>';
 
   container.innerHTML = html;
+
 }
 
 // ===== Init =====
@@ -4154,14 +5462,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Wire up search/filter for selling points
-  ['spSearch', 'spFilterCategory'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => {
-      debounceFilter('sp', renderSellingPoints);
-    });
-  });
 
   // Wire up workspace search
   const wsSearch = document.getElementById('wsSearch');
@@ -4179,13 +5479,6 @@ document.addEventListener('DOMContentLoaded', () => {
       state.trPage = 1;
       debounceFilter('tr', renderTestRecords);
     });
-  });
-
-  // Wire up kanban filters
-  ['kbFilterIndustry', 'kbFilterPriority'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('change', renderKanban);
   });
 
   // Wire up JSON import

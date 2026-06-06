@@ -20,36 +20,33 @@
     </div>
     <nav class="sidebar-nav">
       <button class="nav-item active" data-page="dashboard">
-        <span class="nav-icon">📊</span> 数据看板
+        <span class="nav-icon">📊</span> 提及率概览
       </button>
       <div class="nav-section">
-        <div class="nav-section-title">内容管理</div>
+        <div class="nav-section-title">内容链路</div>
         <button class="nav-item" data-page="questions">
-          <span class="nav-icon">📋</span> 客户提问词库
-        </button>
-        <button class="nav-item" data-page="selling-points">
-          <span class="nav-icon">🎯</span> 卖点弹药库
+          <span class="nav-icon">📋</span> 关键词题库
         </button>
         <button class="nav-item" data-page="workspace">
-          <span class="nav-icon">✍️</span> 内容工作台
+          <span class="nav-icon">✍️</span> 母稿工作台
         </button>
         <button class="nav-item" data-page="distribution">
-          <span class="nav-icon">📡</span> 一稿多发
+          <span class="nav-icon">📡</span> 全渠道改写
+        </button>
+        <button class="nav-item" data-page="platform-titles">
+          <span class="nav-icon">🏷️</span> 平台风格标题
         </button>
         <button class="nav-item" data-page="articles">
-          <span class="nav-icon">📄</span> 文稿管理
+          <span class="nav-icon">📄</span> 母稿存档
         </button>
       </div>
       <div class="nav-section">
-        <div class="nav-section-title">工具</div>
+        <div class="nav-section-title">运营工具</div>
         <button class="nav-item" data-page="batch">
-          <span class="nav-icon">⚡</span> 批量生成
-        </button>
-        <button class="nav-item" data-page="kanban">
-          <span class="nav-icon">📌</span> 看板
+          <span class="nav-icon">⚡</span> 批量出稿
         </button>
         <button class="nav-item" data-page="test-records">
-          <span class="nav-icon">🧪</span> 测试记录
+          <span class="nav-icon">🧪</span> AI 提及测试
         </button>
         <button class="nav-item" data-page="changelog">
           <span class="nav-icon">📜</span> 更新日志
@@ -57,6 +54,9 @@
       </div>
     </nav>
     <div class="sidebar-footer">
+      <button class="nav-item" onclick="toggleTheme()" title="切换暗色/亮色模式">
+        <span class="nav-icon" id="themeIcon">🌙</span> <span id="themeText">暗色模式</span>
+      </button>
       <button class="nav-item" data-page="settings">
         <span class="nav-icon">⚙️</span> 设置
       </button>
@@ -90,126 +90,96 @@
       <!-- ====== Page: Questions ====== -->
       <div class="page" id="page-questions">
         <div class="stats-row" id="questionStats"></div>
-        <div class="filter-bar">
-          <div class="search-input">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="qSearch" placeholder="搜索问题、卖点、关键词...">
-          </div>
-          <select class="filter-select" id="qFilterIndustry">
-            <option value="">全部行业</option>
-            <option value="通用">通用</option>
-            <option value="鞋服">鞋服</option>
-            <option value="美妆">美妆</option>
-            <option value="潮玩">潮玩</option>
-            <option value="箱包">箱包</option>
-          </select>
-          <select class="filter-select" id="qFilterPriority">
-            <option value="">全部优先级</option>
-            <option value="高">高</option>
-            <option value="中">中</option>
-            <option value="低">低</option>
-          </select>
-          <select class="filter-select" id="qFilterIntent">
-            <option value="">全部意图</option>
-            <option value="决策选型">决策选型</option>
-            <option value="对比筛选">对比筛选</option>
-            <option value="认知了解">认知了解</option>
-          </select>
-          <select class="filter-select" id="qFilterStatus">
-            <option value="">全部状态</option>
-            <option value="未开始">未开始</option>
-            <option value="进行中">进行中</option>
-            <option value="已发布">已发布</option>
-          </select>
-          <select class="filter-select" id="qFilterCluster">
-            <option value="">全部选题簇</option>
-          </select>
+        <div class="title-tabs">
+          <button class="title-tab active" data-tab="selected" onclick="switchTitleTab('selected')">精选题库 <span class="tab-count" id="selectedCount">-</span></button>
+          <button class="title-tab" data-tab="pool" onclick="switchTitleTab('pool')">总题库 <span class="tab-count" id="poolCount">-</span></button>
         </div>
-        <div id="batchActions" class="hidden mb-16">
-          <div class="btn-group">
-            <span class="text-muted text-sm" style="line-height:34px;margin-right:4px;" id="selectedCount">已选 0 项</span>
-            <button class="btn btn-sm btn-primary" onclick="batchGenerate()">⚡ 批量生成文章</button>
-            <button class="btn btn-sm btn-danger" onclick="batchDeleteQuestions()">🗑️ 批量删除</button>
+        <div id="tab-selected" class="title-tab-content">
+          <div class="filter-bar">
+            <div class="search-input">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="selectedSearch" placeholder="搜索精选标题..." oninput="renderSelectedTitles()">
+            </div>
+            <div class="category-filters" id="categoryFilters"></div>
           </div>
+          <div class="table-container">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:36px"><input type="checkbox" class="table-checkbox" id="selectAllSelected"></th>
+                    <th style="width:50px">序号</th>
+                    <th>标题</th>
+                    <th style="width:100px">主题分类</th>
+                    <th style="width:80px">状态</th>
+                    <th style="width:80px">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="selectedTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="selectedPagination" class="flex items-center justify-between mt-16"></div>
         </div>
-        <div class="table-container">
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th style="width:36px"><input type="checkbox" class="table-checkbox" id="selectAll"></th>
-                  <th>序号</th>
-                  <th>行业</th>
-                  <th>选题簇</th>
-                  <th>客户提问</th>
-                  <th>搜索意图</th>
-                  <th>优先级</th>
-                  <th>建议主打卖点</th>
-                  <th>内容状态</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody id="questionsTableBody"></tbody>
-            </table>
+        <div id="tab-pool" class="title-tab-content" style="display:none">
+          <div class="filter-bar">
+            <div class="search-input">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="poolSearch" placeholder="搜索总题库..." oninput="debouncePoolSearch()">
+            </div>
+            <div class="category-filters" id="poolCategoryFilters"></div>
           </div>
-        </div>
-        <div id="questionsPagination" class="flex items-center justify-between mt-16"></div>
-      </div>
-
-      <!-- ====== Page: Selling Points ====== -->
-      <div class="page" id="page-selling-points">
-        <div class="stats-row" id="spStats"></div>
-        <div class="filter-bar">
-          <div class="search-input">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="spSearch" placeholder="搜索卖点...">
+          <div class="table-container">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:50px">序号</th>
+                    <th>标题</th>
+                    <th style="width:100px">分类</th>
+                    <th style="width:130px">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="poolTableBody"></tbody>
+              </table>
+            </div>
           </div>
-          <select class="filter-select" id="spFilterCategory">
-            <option value="">全部类别</option>
-          </select>
-        </div>
-        <div class="table-container">
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th style="width:40px">序号</th>
-                  <th style="width:80px">类别</th>
-                  <th>卖点 / 数据点</th>
-                  <th style="width:80px">数据类型</th>
-                  <th style="width:80px">确认状态</th>
-                  <th>统一口径</th>
-                  <th style="width:80px">操作</th>
-                </tr>
-              </thead>
-              <tbody id="spTableBody"></tbody>
-            </table>
-          </div>
+          <div id="poolPagination" class="flex items-center justify-between mt-16"></div>
         </div>
       </div>
 
       <!-- ====== Page: Content Workspace ====== -->
       <div class="page page-workspace" id="page-workspace">
         <div class="workspace-layout">
-          <div class="workspace-sidebar">
-            <div class="workspace-sidebar-header">
-              <input type="text" class="form-input" id="wsSearch" placeholder="搜索问题...">
+          <!-- 主区域 -->
+          <div class="workspace-main" style="width:100%">
+            <!-- 选中标题栏 -->
+            <div class="selected-title-bar" id="selectedTitleBar">
+              <div class="selected-title-info">
+                <span class="selected-label">当前选题</span>
+                <span class="selected-title" id="wsSelectedTitle">点击右侧「标题库」选择标题</span>
+              </div>
+              <div class="selected-actions">
+                <button class="btn btn-sm" onclick="prevQuestion()" title="上一个" id="btnPrev" disabled>◀</button>
+                <span class="nav-counter" id="navCounter">0/0</span>
+                <button class="btn btn-sm" onclick="nextQuestion()" title="下一个" id="btnNext" disabled>▶</button>
+                <button class="btn btn-sm btn-primary" onclick="openTitleLibrary()" title="打开标题库">📋 标题库</button>
+              </div>
             </div>
-            <div class="workspace-question-list" id="wsQuestionList"></div>
-          </div>
-          <div class="workspace-main">
+
+            <!-- 生成控制栏 -->
             <div class="generation-controls">
               <div class="control-group">
-                <label>生成模型</label>
-                <select class="filter-select" id="wsModel" style="min-width:160px">
+                <label>模型</label>
+                <select class="filter-select" id="wsModel" style="min-width:140px">
                   <option value="mimo-v2.5-pro">mimo-v2.5-pro ⭐</option>
                   <option value="mimo-v2.5">mimo-v2.5</option>
                 </select>
               </div>
               <div class="control-group">
-                <label>切入角度</label>
-                <select class="filter-select" id="wsAngle" style="min-width:140px" onchange="renderWorkspaceArticle()">
-                  <option value="">默认（母稿）</option>
+                <label>角度</label>
+                <select class="filter-select" id="wsAngle" style="min-width:120px" onchange="renderWorkspaceArticle()">
+                  <option value="">默认</option>
                 </select>
               </div>
               <button class="btn btn-primary" id="btnGenerate" onclick="generateArticle()">
@@ -218,6 +188,7 @@
               <button class="btn btn-danger hidden" id="btnStopGenerate" onclick="stopGeneration()">
                 ⏹ 停止
               </button>
+              <div class="control-spacer"></div>
               <button class="btn" id="btnSaveArticle" onclick="saveArticle()" style="display:none">
                 💾 保存
               </button>
@@ -225,20 +196,38 @@
                 📄 导出Word
               </button>
             </div>
+
+            <!-- 文章编辑区 -->
             <div class="article-editor">
               <div class="article-editor-header">
-                <span class="text-muted text-sm" id="wsSelectedQuestion">← 从左侧选择一个问题开始</span>
                 <span class="text-muted text-sm" id="wsWordCount"></span>
               </div>
               <div class="article-content" id="wsArticleContent">
                 <div class="article-placeholder">
                   <div class="icon">✍️</div>
-                  <p>选择一个问题，然后点击「生成文章」</p>
+                  <p>点击「标题库」选择标题，或从词库点击「生成」跳转</p>
                   <p class="text-sm text-muted mt-8">AI 将根据 GEO 模板结构自动生成内容</p>
                 </div>
               </div>
               <div id="wsScoreReport"></div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 标题库弹窗 -->
+      <div class="modal-overlay" id="titleLibraryModal">
+        <div class="modal modal-lg">
+          <div class="modal-header">
+            <h3>📋 标题库</h3>
+            <button class="modal-close" onclick="closeModal('titleLibraryModal')">✕</button>
+          </div>
+          <div class="modal-body" style="padding:0">
+            <div class="title-lib-search">
+              <input type="text" class="form-input" id="titleLibSearch" placeholder="搜索标题..." oninput="debounceTitleLibSearch()">
+            </div>
+            <div class="title-lib-filters" id="titleLibFilters"></div>
+            <div class="title-lib-list" id="titleLibList"></div>
           </div>
         </div>
       </div>
@@ -263,12 +252,31 @@
         <div id="distMatrixInfo" class="mb-16">
           <div class="dist-empty-card">
             <div class="dist-empty-icon">📡</div>
-            <div class="dist-empty-title">选择一篇文章后，一键生成 6 个平台版本</div>
-            <div class="dist-empty-desc">📘 知乎 → 📰 百家号 → 🌐 官网 → 📱 公众号 → 📕 小红书 → 🎬 抖音/视频号</div>
+            <div class="dist-empty-title">选择一篇文章后，一键生成 8 个平台版本</div>
+            <div class="dist-empty-desc">📘 知乎 → 📰 百家号 → 📱 公众号 → 📕 今日头条 → 📰 搜狐号 → 🔴 网易号 → 📺 B站 → 🐧 腾讯新闻</div>
             <div class="dist-empty-desc" style="margin-top:8px;font-size:12px;">每个平台使用专属改写 Prompt，内容自动保存，刷新不丢失</div>
           </div>
         </div>
         <div id="distPlatforms"></div>
+      </div>
+
+      <!-- ====== Page: Platform Titles ====== -->
+      <div class="page" id="page-platform-titles">
+        <div class="filter-bar mb-16">
+          <select class="filter-select" id="ptArticleSelect" style="min-width:300px">
+            <option value="">选择一篇已生成的文章...</option>
+          </select>
+          <button class="btn btn-primary" onclick="generatePlatformTitles()" id="btnGenPT">🏷️ 生成 8 平台风格标题</button>
+        </div>
+        <div id="ptEmptyState">
+          <div class="dist-empty-card">
+            <div class="dist-empty-icon">🏷️</div>
+            <div class="dist-empty-title">为母稿生成 8 个平台的风格标题</div>
+            <div class="dist-empty-desc">📰 百家号搜索科普 → 📕 头条痛点冲突 → 🔴 网易行业观察 → 📺 B站讲解拆解 → 🐧 腾讯企业资讯 → 📰 搜狐搜索通稿 → 📘 知乎问答决策 → 📱 公众号客户教育</div>
+            <div class="dist-empty-desc" style="margin-top:8px;font-size:12px;">每个平台使用专属标题 Prompt，一键生成后可单独复制</div>
+          </div>
+        </div>
+        <div id="ptResults"></div>
       </div>
 
       <!-- ====== Page: Article Management ====== -->
@@ -348,27 +356,6 @@
           </div>
         </div>
         <div id="batchResults"></div>
-      </div>
-
-      <!-- ====== Page: Kanban ====== -->
-      <div class="page" id="page-kanban">
-        <div class="filter-bar mb-16">
-          <select class="filter-select" id="kbFilterIndustry">
-            <option value="">全部行业</option>
-            <option value="通用">通用</option>
-            <option value="鞋服">鞋服</option>
-            <option value="美妆">美妆</option>
-            <option value="潮玩">潮玩</option>
-            <option value="箱包">箱包</option>
-          </select>
-          <select class="filter-select" id="kbFilterPriority">
-            <option value="">全部优先级</option>
-            <option value="高">高</option>
-            <option value="中">中</option>
-            <option value="低">低</option>
-          </select>
-        </div>
-        <div class="kanban-board" id="kanbanBoard"></div>
       </div>
 
       <!-- ====== Page: Test Records ====== -->
@@ -657,55 +644,6 @@
   </div>
 </div>
 
-<!-- Selling Point Modal -->
-<div class="modal-overlay" id="spModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 id="spModalTitle">添加数据点</h3>
-      <button class="modal-close" onclick="closeModal('spModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">类别</label>
-        <input type="text" class="form-input" id="spmCategory" placeholder="例如：规模、团队、网络">
-      </div>
-      <div class="form-group">
-        <label class="form-label">数据点 / 事实</label>
-        <textarea class="form-textarea" id="spmPoint" rows="2" placeholder="例如：50万平米自有仓库"></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">数据类型</label>
-          <select class="form-input" id="spmDataType">
-            <option value="text">描述</option>
-            <option value="number">数字</option>
-            <option value="percent">百分比</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">确认状态</label>
-          <select class="form-input" id="spmConfirmed">
-            <option value="false">待确认</option>
-            <option value="true">已确认</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">统一口径（标准表述）</label>
-        <input type="text" class="form-input" id="spmUnifiedDesc" placeholder="统一后的标准表述，留空则使用原始数据点">
-      </div>
-      <div class="form-group">
-        <label class="form-label">备注</label>
-        <input type="text" class="form-input" id="spmNotes" placeholder="数据来源、核对情况等">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('spModal')">取消</button>
-      <button class="btn btn-primary" onclick="saveSellingPoint()">保存</button>
-    </div>
-  </div>
-</div>
-
 <!-- Article View Modal -->
 <div class="modal-overlay" id="articleModal">
   <div class="modal modal-xl">
@@ -716,6 +654,38 @@
     <div class="modal-body" id="articleModalBody"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('articleModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Title Modal -->
+<div class="modal-overlay" id="editTitleModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>✏️ 编辑标题</h3>
+      <button class="modal-close" onclick="closeModal('editTitleModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">标题内容</label>
+        <textarea class="form-textarea" id="editTitleInput" rows="3" placeholder="输入标题..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">主题分类</label>
+        <select class="form-select" id="editCategorySelect">
+          <option value="first_batch">第一批母稿</option>
+          <option value="commercial_geo">商业GEO</option>
+          <option value="cost_switch">成本切换</option>
+          <option value="region">区域云仓</option>
+          <option value="reverse_logistics">退货逆向</option>
+          <option value="sla_contract">SLA合同</option>
+          <option value="wms_inventory">WMS库存</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('editTitleModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveEditTitle()">💾 保存</button>
     </div>
   </div>
 </div>
