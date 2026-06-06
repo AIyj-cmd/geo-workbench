@@ -3,7 +3,18 @@ const path = require('path');
 const { ROOT_DIR } = require('../config');
 
 const DATA_DIR = path.join(ROOT_DIR, 'data');
-const KEYWORD_DIR = '/root/keyword_title_outputs';
+const DEFAULT_KEYWORD_DIR = path.join(ROOT_DIR, 'keyword_title_outputs');
+const AGGREGATE_POOL_CATEGORY = {
+  key: 'all_titles',
+  label: '总题库',
+  color: '#6b7280',
+};
+const FALLBACK_POOL_FILES = [
+  path.join(DEFAULT_KEYWORD_DIR, 'all_titles.txt'),
+  path.join(DATA_DIR, 'all_titles.txt'),
+  path.join(DATA_DIR, 'selected_top_1000.txt'),
+  path.join(DATA_DIR, 'selected_top_100.txt'),
+];
 
 const SELECTED_FILES = [
   { key: 'first_batch', file: 'selected_first_batch_15.txt', label: '第一批母稿', color: '#ef4444' },
@@ -45,17 +56,29 @@ function readTitlesFile(filePath) {
 
 let poolWithCategoryCache = null;
 let poolCacheTime = 0;
+let poolCacheKey = '';
+let poolSourceCache = { type: 'none', name: 'none' };
 const CACHE_TTL = 60000; // 1 minute
 
-function getPoolWithCategories() {
-  const now = Date.now();
-  if (poolWithCategoryCache && (now - poolCacheTime) < CACHE_TTL) {
-    return poolWithCategoryCache;
-  }
+function resolveRootPath(filePath) {
+  if (!filePath) return '';
+  return path.isAbsolute(filePath) ? filePath : path.resolve(ROOT_DIR, filePath);
+}
 
+function getConfiguredKeywordDir() {
+  return process.env.KEYWORD_TITLE_OUTPUTS_DIR
+    ? resolveRootPath(process.env.KEYWORD_TITLE_OUTPUTS_DIR)
+    : DEFAULT_KEYWORD_DIR;
+}
+
+function getPoolCacheKey() {
+  return getConfiguredKeywordDir();
+}
+
+function readCategorizedPoolFromDir(dirPath) {
   const result = [];
   for (const cat of POOL_CATEGORIES) {
-    const titles = readTitlesFile(path.join(KEYWORD_DIR, cat.file));
+    const titles = readTitlesFile(path.join(dirPath, cat.file));
     for (const title of titles) {
       result.push({
         title,
@@ -65,10 +88,107 @@ function getPoolWithCategories() {
       });
     }
   }
-
-  poolWithCategoryCache = result;
-  poolCacheTime = now;
   return result;
+}
+
+function readAggregatePoolFile(filePath) {
+  return readTitlesFile(filePath).map(title => ({
+    title,
+    category: AGGREGATE_POOL_CATEGORY.key,
+    categoryLabel: AGGREGATE_POOL_CATEGORY.label,
+    categoryColor: AGGREGATE_POOL_CATEGORY.color,
+  }));
+}
+
+function getPoolSourceCandidates() {
+  const configuredDir = getConfiguredKeywordDir();
+  const aggregateFiles = [];
+
+  if (process.env.KEYWORD_TITLE_OUTPUTS_DIR) {
+    aggregateFiles.push(path.join(configuredDir, 'all_titles.txt'));
+  }
+
+  for (const filePath of FALLBACK_POOL_FILES) {
+    if (!aggregateFiles.includes(filePath)) {
+      aggregateFiles.push(filePath);
+    }
+  }
+
+  return {
+    categoryDir: configuredDir,
+    aggregateFiles,
+  };
+}
+
+function describePoolFile(filePath) {
+  const relativePath = path.relative(ROOT_DIR, filePath);
+  if (relativePath && !relativePath.startsWith('..') && !path.isAbsolute(relativePath)) {
+    return relativePath.replace(/\\/g, '/');
+  }
+  return path.basename(filePath);
+}
+
+function loadPoolWithCategories() {
+  const candidates = getPoolSourceCandidates();
+  const categorized = readCategorizedPoolFromDir(candidates.categoryDir);
+  if (categorized.length > 0) {
+    poolSourceCache = {
+      type: 'category_files',
+      name: process.env.KEYWORD_TITLE_OUTPUTS_DIR ? 'KEYWORD_TITLE_OUTPUTS_DIR' : 'keyword_title_outputs',
+    };
+    return categorized;
+  }
+
+  for (const filePath of candidates.aggregateFiles) {
+    const titles = readAggregatePoolFile(filePath);
+    if (titles.length > 0) {
+      poolSourceCache = {
+        type: 'aggregate_file',
+        name: describePoolFile(filePath),
+      };
+      return titles;
+    }
+  }
+
+  poolSourceCache = { type: 'none', name: 'none' };
+  return [];
+}
+
+function getPoolWithCategories() {
+  const now = Date.now();
+  const cacheKey = getPoolCacheKey();
+  if (poolWithCategoryCache && poolCacheKey === cacheKey && (now - poolCacheTime) < CACHE_TTL) {
+    return poolWithCategoryCache;
+  }
+
+  poolWithCategoryCache = loadPoolWithCategories();
+  poolCacheTime = now;
+  poolCacheKey = cacheKey;
+  return poolWithCategoryCache;
+}
+
+function buildCategoryStats(allTitles) {
+  const categoryStats = {};
+  for (const cat of POOL_CATEGORIES) {
+    const count = allTitles.filter(t => t.category === cat.key).length;
+    if (count > 0) {
+      categoryStats[cat.key] = {
+        label: cat.label,
+        color: cat.color,
+        count,
+      };
+    }
+  }
+
+  const aggregateCount = allTitles.filter(t => t.category === AGGREGATE_POOL_CATEGORY.key).length;
+  if (aggregateCount > 0 || Object.keys(categoryStats).length === 0) {
+    categoryStats[AGGREGATE_POOL_CATEGORY.key] = {
+      label: AGGREGATE_POOL_CATEGORY.label,
+      color: AGGREGATE_POOL_CATEGORY.color,
+      count: aggregateCount,
+    };
+  }
+  return categoryStats;
 }
 
 function handleSelectedTitles(req, res) {
@@ -122,14 +242,7 @@ function handlePoolTitles(req, res) {
 
   // Category stats
   const allTitles = getPoolWithCategories();
-  const categoryStats = {};
-  for (const cat of POOL_CATEGORIES) {
-    categoryStats[cat.key] = {
-      label: cat.label,
-      color: cat.color,
-      count: allTitles.filter(t => t.category === cat.key).length,
-    };
-  }
+  const categoryStats = buildCategoryStats(allTitles);
 
   res.writeHead(200, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -142,6 +255,7 @@ function handlePoolTitles(req, res) {
     totalPages,
     titles: paged,
     categories: categoryStats,
+    source: poolSourceCache,
   }));
 }
 
@@ -150,4 +264,10 @@ module.exports = {
   handlePoolTitles,
   SELECTED_FILES,
   POOL_CATEGORIES,
+  AGGREGATE_POOL_CATEGORY,
+  buildCategoryStats,
+  getConfiguredKeywordDir,
+  getPoolWithCategories,
+  readAggregatePoolFile,
+  resolveRootPath,
 };

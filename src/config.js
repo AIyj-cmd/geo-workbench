@@ -27,6 +27,12 @@ function splitList(value) {
   return String(value).split(',').map(v => v.trim()).filter(Boolean);
 }
 
+function parseBoolean(value, defaultValue = false) {
+  if (value === undefined || value === null || value === '') return defaultValue;
+  if (typeof value === 'boolean') return value;
+  return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
+}
+
 function readJsonFile(filePath) {
   try {
     return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -61,6 +67,7 @@ function normalizeConfig(options = {}) {
     upstreamTimeoutMs: Number(options.upstreamTimeoutMs || process.env.UPSTREAM_TIMEOUT_MS || fileConfig.upstreamTimeoutMs || DEFAULT_UPSTREAM_TIMEOUT_MS),
     rateLimitWindowMs: Number(options.rateLimitWindowMs || process.env.RATE_LIMIT_WINDOW_MS || fileConfig.rateLimitWindowMs || DEFAULT_RATE_LIMIT_WINDOW_MS),
     rateLimitMax: Number(options.rateLimitMax || process.env.RATE_LIMIT_MAX || fileConfig.rateLimitMax || DEFAULT_RATE_LIMIT_MAX),
+    trustProxy: parseBoolean(options.trustProxy ?? process.env.TRUST_PROXY ?? fileConfig.trustProxy, false),
     allowedChatModels: allowedChatModels.length ? allowedChatModels : DEFAULT_ALLOWED_CHAT_MODELS,
     allowedOrigins,
   };
@@ -71,4 +78,5 @@ module.exports = {
   DEFAULT_API_URL,
   MODEL_CATALOG,
   normalizeConfig,
+  parseBoolean,
 };

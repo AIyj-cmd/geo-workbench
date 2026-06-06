@@ -1,7 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const http = require('node:http');
+const os = require('node:os');
+const path = require('node:path');
+const vm = require('node:vm');
 const { createServer, validateChatPayload, buildChatCompletionUrl } = require('../server');
+const { createRateLimiter } = require('../src/http/rate-limit');
 
 function listen(server) {
   return new Promise((resolve, reject) => {
@@ -173,4 +178,134 @@ test('POST /api/chat enforces body size and rate limits', async () => {
 test('buildChatCompletionUrl preserves base paths', () => {
   assert.equal(buildChatCompletionUrl('https://example.test/v1').toString(), 'https://example.test/v1/chat/completions');
   assert.equal(buildChatCompletionUrl('https://example.test/v1/').toString(), 'https://example.test/v1/chat/completions');
+});
+
+test('package main points to the server module', () => {
+  const pkg = require('..');
+  assert.equal(typeof pkg.createServer, 'function');
+});
+
+test('GET /api/titles/pool falls back to bundled data/all_titles.txt', async () => {
+  const previousDir = process.env.KEYWORD_TITLE_OUTPUTS_DIR;
+  delete process.env.KEYWORD_TITLE_OUTPUTS_DIR;
+
+  const server = createServer();
+  const port = await listen(server);
+
+  try {
+    const selectedRes = await request(port, { path: '/api/titles/selected' });
+    assert.equal(selectedRes.statusCode, 200);
+    assert.equal(JSON.parse(selectedRes.body).total, 195);
+
+    const res = await request(port, { path: '/api/titles/pool?size=10' });
+    assert.equal(res.statusCode, 200);
+
+    const body = JSON.parse(res.body);
+    assert.ok(body.total > 0);
+    assert.equal(body.titles.length, 10);
+    assert.equal(body.source.type, 'aggregate_file');
+    assert.equal(body.source.name, 'data/all_titles.txt');
+  } finally {
+    if (previousDir === undefined) delete process.env.KEYWORD_TITLE_OUTPUTS_DIR;
+    else process.env.KEYWORD_TITLE_OUTPUTS_DIR = previousDir;
+    await close(server);
+  }
+});
+
+test('GET /api/titles/pool supports KEYWORD_TITLE_OUTPUTS_DIR all_titles.txt', async () => {
+  const previousDir = process.env.KEYWORD_TITLE_OUTPUTS_DIR;
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'geo-title-pool-'));
+  fs.writeFileSync(path.join(tempDir, 'all_titles.txt'), '自定义标题 A\n自定义标题 B\n', 'utf-8');
+  process.env.KEYWORD_TITLE_OUTPUTS_DIR = tempDir;
+
+  const server = createServer();
+  const port = await listen(server);
+
+  try {
+    const res = await request(port, { path: '/api/titles/pool?size=10' });
+    assert.equal(res.statusCode, 200);
+
+    const body = JSON.parse(res.body);
+    assert.equal(body.total, 2);
+    assert.deepEqual(body.titles.map(t => t.title), ['自定义标题 A', '自定义标题 B']);
+    assert.equal(body.source.type, 'aggregate_file');
+  } finally {
+    if (previousDir === undefined) delete process.env.KEYWORD_TITLE_OUTPUTS_DIR;
+    else process.env.KEYWORD_TITLE_OUTPUTS_DIR = previousDir;
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    await close(server);
+  }
+});
+
+test('rate limiter ignores x-forwarded-for unless trustProxy is enabled', () => {
+  const req = (remoteAddress, forwardedFor) => ({
+    headers: forwardedFor ? { 'x-forwarded-for': forwardedFor } : {},
+    socket: { remoteAddress },
+  });
+
+  const defaultLimiter = createRateLimiter({ rateLimitMax: 1, rateLimitWindowMs: 60000 });
+  assert.equal(defaultLimiter(req('10.0.0.1', '203.0.113.10')).allowed, true);
+  assert.equal(defaultLimiter(req('10.0.0.1', '203.0.113.11')).allowed, false);
+
+  const proxyLimiter = createRateLimiter({ rateLimitMax: 1, rateLimitWindowMs: 60000, trustProxy: true });
+  assert.equal(proxyLimiter(req('10.0.0.1', '203.0.113.10')).allowed, true);
+  assert.equal(proxyLimiter(req('10.0.0.1', '203.0.113.11')).allowed, true);
+});
+
+test('rate limiter can clean expired buckets', () => {
+  const limiter = createRateLimiter({ rateLimitMax: 1, rateLimitWindowMs: 5 });
+  assert.equal(limiter({ headers: {}, socket: { remoteAddress: '10.0.0.2' } }).allowed, true);
+  assert.equal(limiter._bucketCount(), 1);
+
+  limiter._cleanup(Date.now() + 10);
+  assert.equal(limiter._bucketCount(), 0);
+});
+
+test('frontend helpers escape dangerous title text and save platform edits by data-platform', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
+  const context = {
+    console: { ...console, warn: () => {} },
+    document: {
+      documentElement: {
+        getAttribute: () => 'light',
+        setAttribute: () => {},
+      },
+      addEventListener: () => {},
+      getElementById: () => null,
+      querySelectorAll: () => [],
+    },
+    localStorage: {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    },
+  };
+  vm.runInNewContext(source, context);
+
+  assert.equal(context.escapeHtml('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
+  assert.equal(context.escapeHtml('hello "world" & `test`'), 'hello &quot;world&quot; &amp; &#96;test&#96;');
+  assert.equal(context.escapeHtml('line1\nline2'), 'line1\nline2');
+  assert.equal(
+    context.extractChatMessageContent({ choices: [{ message: { content: 'ok', reasoning_content: 'hidden' } }] }),
+    'ok'
+  );
+  assert.throws(() => context.requireGeneratedContent('', '平台生成'), /返回空内容/);
+  assert.equal(source.includes('onclick="generateArticleFromTitle(\'${t.title'), false);
+  assert.equal(source.includes('onclick="addToSelected(\'${t.title'), false);
+  assert.equal(source.includes('onclick="selectFromTitleLib'), false);
+  assert.equal(source.includes('onclick="selectWorkspaceQuestion(\'${q.id}'), false);
+  assert.equal(source.includes('<div class="title-lib-text">${q.question}</div>'), false);
+  assert.equal(source.includes('<div class="workspace-q-text">${q.question}</div>'), false);
+
+  const article = { platforms: { '知乎': 'old zhihu', '网易号': 'old netease' } };
+  const textareas = [
+    { dataset: { platform: '网易号' }, value: 'new netease' },
+    { dataset: { platform: '知乎' }, value: 'new zhihu' },
+    { dataset: { platform: '未知平台' }, value: 'should not save' },
+  ];
+  const saved = context.savePlatformTextareaValues(article, textareas, new Set(['知乎', '网易号']));
+  assert.equal(saved, 2);
+  assert.equal(article.platforms['网易号'], 'new netease');
+  assert.equal(article.platforms['知乎'], 'new zhihu');
+  assert.equal(article.platforms['未知平台'], undefined);
 });
