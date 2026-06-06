@@ -718,53 +718,106 @@ const DEFAULT_SELLING_POINTS = [
 ];
 
 // ===== State =====
-let state = {
-  questions: [],
-  sellingPoints: [],
-  articles: [],
-  selectedQuestionIds: new Set(),
-  currentPage: 'questions',
-  questionPage: 1,
-  questionPageSize: 20,
-  wsSelectedQuestionId: null,
-  wsCurrentArticle: null,
-  wsIsGenerating: false,
-  wsAbortController: null,
-  batchRunning: false,
-  batchAbortController: null,
-  nextQuestionId: 50,
-  nextSpId: 15,
-  nextArticleId: 1,
-  testRecords: [],
-  nextRecordId: 1,
-  trPage: 1,
-  trPageSize: 15,
-};
+const STATE_VERSION = 1;
+
+function clonePlainData(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function createDefaultState() {
+  return {
+    version: STATE_VERSION,
+    questions: clonePlainData(DEFAULT_QUESTIONS),
+    sellingPoints: clonePlainData(DEFAULT_SELLING_POINTS),
+    articles: [],
+    selectedQuestionIds: new Set(),
+    currentPage: 'questions',
+    questionPage: 1,
+    questionPageSize: 20,
+    wsSelectedQuestionId: null,
+    wsCurrentArticle: null,
+    wsIsGenerating: false,
+    wsAbortController: null,
+    batchRunning: false,
+    batchAbortController: null,
+    nextQuestionId: 50,
+    nextSpId: 15,
+    nextArticleId: 1,
+    testRecords: [],
+    nextRecordId: 1,
+    trPage: 1,
+    trPageSize: 15,
+  };
+}
+
+function safeNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function migrateState(rawState) {
+  if (!rawState || typeof rawState !== 'object') {
+    return createDefaultState();
+  }
+
+  const defaults = createDefaultState();
+  const migrated = {
+    ...defaults,
+    ...rawState,
+    version: STATE_VERSION,
+    questions: Array.isArray(rawState.questions) ? rawState.questions : defaults.questions,
+    sellingPoints: Array.isArray(rawState.sellingPoints) ? rawState.sellingPoints : defaults.sellingPoints,
+    articles: Array.isArray(rawState.articles) ? rawState.articles : defaults.articles,
+    testRecords: Array.isArray(rawState.testRecords) ? rawState.testRecords : defaults.testRecords,
+    nextQuestionId: safeNumber(rawState.nextQuestionId, defaults.nextQuestionId),
+    nextSpId: safeNumber(rawState.nextSpId, defaults.nextSpId),
+    nextArticleId: safeNumber(rawState.nextArticleId, defaults.nextArticleId),
+    nextRecordId: safeNumber(rawState.nextRecordId, defaults.nextRecordId),
+    questionPage: safeNumber(rawState.questionPage, defaults.questionPage),
+    questionPageSize: safeNumber(rawState.questionPageSize, defaults.questionPageSize),
+    trPage: safeNumber(rawState.trPage, defaults.trPage),
+    trPageSize: safeNumber(rawState.trPageSize, defaults.trPageSize),
+    wsIsGenerating: false,
+    wsAbortController: null,
+    batchRunning: false,
+    batchAbortController: null,
+  };
+
+  if (rawState.selectedQuestionIds instanceof Set) {
+    migrated.selectedQuestionIds = new Set(rawState.selectedQuestionIds);
+  } else if (Array.isArray(rawState.selectedQuestionIds)) {
+    migrated.selectedQuestionIds = new Set(rawState.selectedQuestionIds);
+  } else {
+    migrated.selectedQuestionIds = defaults.selectedQuestionIds;
+  }
+
+  return migrated;
+}
+
+let state = createDefaultState();
 
 // ===== Persistence =====
 function loadState() {
+  let parsed = null;
   try {
     const saved = localStorage.getItem('geo_workbench_data');
     if (saved) {
-      const parsed = JSON.parse(saved);
-      state.questions = parsed.questions || [];
-      state.sellingPoints = parsed.sellingPoints || [];
-      state.articles = parsed.articles || [];
-      state.nextQuestionId = parsed.nextQuestionId || 50;
-      state.nextSpId = parsed.nextSpId || 15;
-      state.nextArticleId = parsed.nextArticleId || 1;
-      state.testRecords = parsed.testRecords || [];
-      state.nextRecordId = parsed.nextRecordId || 1;
+      parsed = JSON.parse(saved);
+      state = migrateState(parsed);
       // Load saved selected titles (user-added titles)
       if (parsed.selectedTitles && Array.isArray(parsed.selectedTitles)) {
         titleTabState.savedSelectedTitles = parsed.selectedTitles;
       }
     } else {
-      state.questions = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
-      state.sellingPoints = JSON.parse(JSON.stringify(DEFAULT_SELLING_POINTS));
-      state.articles = [];
+      state = createDefaultState();
     }
-    // Load settings (non-sensitive only)
+  } catch (e) {
+    console.error('Load state error:', e);
+    state = createDefaultState();
+  }
+
+  // Load settings (non-sensitive only)
+  try {
     const settings = localStorage.getItem('geo_workbench_settings');
     if (settings) {
       const s = JSON.parse(settings);
@@ -773,14 +826,14 @@ function loadState() {
       document.getElementById('settingsTemperature').value = s.temperature || 0.7;
     }
   } catch (e) {
-    console.error('Load state error:', e);
-    state.questions = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
-    state.sellingPoints = JSON.parse(JSON.stringify(DEFAULT_SELLING_POINTS));
+    console.error('Load settings error:', e);
   }
 }
 
 function saveState() {
+  state.version = STATE_VERSION;
   const data = {
+    version: STATE_VERSION,
     questions: state.questions,
     sellingPoints: state.sellingPoints,
     articles: state.articles,
@@ -1041,14 +1094,87 @@ function getFilteredSelectedTitles() {
   return titles;
 }
 
+function appendTextCell(row, text, maxWidth) {
+  const cell = document.createElement('td');
+  if (maxWidth) cell.style.maxWidth = maxWidth;
+  cell.textContent = text == null ? '' : String(text);
+  row.appendChild(cell);
+  return cell;
+}
+
+function createCategoryTag(label, color) {
+  const tag = document.createElement('span');
+  tag.className = 'tag';
+  tag.style.background = `${color}1a`;
+  tag.style.color = color;
+  tag.style.border = `1px solid ${color}33`;
+  tag.textContent = label == null ? '' : String(label);
+  return tag;
+}
+
+function createTitleActionButton(className, label, title, tooltip, handler) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = className;
+  button.dataset.title = title == null ? '' : String(title);
+  button.title = tooltip;
+  button.textContent = label;
+  button.addEventListener('click', handler);
+  return button;
+}
+
+function clearChildren(element) {
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+}
+
+function replaceSelectOptions(select, options) {
+  if (!select) return;
+  clearChildren(select);
+  options.forEach(item => {
+    const option = document.createElement('option');
+    option.value = item.value == null ? '' : String(item.value);
+    option.textContent = item.label == null ? '' : String(item.label);
+    if (item.selected) option.selected = true;
+    select.appendChild(option);
+  });
+}
+
+function createSmallTag(className, text) {
+  const tag = document.createElement('span');
+  tag.className = className;
+  tag.style.fontSize = '10px';
+  tag.textContent = text == null ? '' : String(text);
+  return tag;
+}
+
+function extractChatMessageContent(data) {
+  const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  return typeof content === 'string' ? content : '';
+}
+
+function requireGeneratedContent(content, label) {
+  if (typeof content !== 'string' || !content.trim()) {
+    throw new Error(`${label}返回空内容`);
+  }
+  return content.trim();
+}
+
+function extractRequiredChatContent(data, contextLabel = 'AI response') {
+  return requireGeneratedContent(extractChatMessageContent(data), contextLabel);
+}
+
 function renderSelectedTitles() {
   const filtered = getFilteredSelectedTitles();
   const total = filtered.length;
   const start = (titleTabState.selectedPage - 1) * titleTabState.selectedPageSize;
-  const paged = sliced = filtered.slice(start, start + titleTabState.selectedPageSize);
+  const paged = filtered.slice(start, start + titleTabState.selectedPageSize);
 
   const tbody = document.getElementById('selectedTableBody');
-  tbody.innerHTML = paged.map((t, i) => {
+  tbody.innerHTML = '';
+
+  paged.forEach((t, i) => {
     const idx = start + i + 1;
     const catColors = {
       first_batch: '#ef4444',
@@ -1070,20 +1196,56 @@ function renderSelectedTitles() {
     };
     const color = catColors[t.category] || '#6b7280';
     const label = catLabels[t.category] || t.category;
-    return `<tr>
-      <td><input type="checkbox" class="table-checkbox"></td>
-      <td>${idx}</td>
-      <td style="max-width:400px">${t.title}</td>
-      <td><span class="tag" style="background:${color}1a;color:${color};border:1px solid ${color}33">${label}</span></td>
-      <td><span class="tag tag-pending">未开始</span></td>
-      <td>
-        <div class="card-actions">
-          <button class="btn btn-sm btn-primary" onclick="generateArticleFromTitle('${t.title}')" title="生成文章">📝 生成</button>
-          <button class="btn btn-sm btn-ghost" onclick="editSelectedTitle(${start + i})" title="编辑">✏️</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
+    const title = t.title == null ? '' : String(t.title);
+    const sourceIndex = titleTabState.selectedTitles.indexOf(t);
+
+    const row = document.createElement('tr');
+
+    const checkboxCell = document.createElement('td');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'table-checkbox';
+    checkboxCell.appendChild(checkbox);
+    row.appendChild(checkboxCell);
+
+    appendTextCell(row, idx);
+    appendTextCell(row, title, '400px');
+
+    const categoryCell = document.createElement('td');
+    categoryCell.appendChild(createCategoryTag(label, color));
+    row.appendChild(categoryCell);
+
+    const statusCell = document.createElement('td');
+    const status = document.createElement('span');
+    status.className = 'tag tag-pending';
+    status.textContent = '未开始';
+    statusCell.appendChild(status);
+    row.appendChild(statusCell);
+
+    const actionCell = document.createElement('td');
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+    actions.appendChild(createTitleActionButton(
+      'btn btn-sm btn-primary',
+      '📝 生成',
+      title,
+      '生成文章',
+      () => generateArticleFromTitle(title)
+    ));
+    const editButton = createTitleActionButton(
+      'btn btn-sm btn-ghost',
+      '✏️',
+      title,
+      '编辑',
+      () => editSelectedTitle(sourceIndex)
+    );
+    editButton.disabled = sourceIndex < 0;
+    actions.appendChild(editButton);
+    actionCell.appendChild(actions);
+    row.appendChild(actionCell);
+
+    tbody.appendChild(row);
+  });
 
   // Pagination
   const totalPages = Math.ceil(total / titleTabState.selectedPageSize) || 1;
@@ -1103,21 +1265,43 @@ function changeSelectedPage(delta) {
 
 function renderPoolTable() {
   const tbody = document.getElementById('poolTableBody');
-  tbody.innerHTML = titleTabState.poolTitles.map(t => {
+  tbody.innerHTML = '';
+
+  titleTabState.poolTitles.forEach(t => {
     const color = t.categoryColor || '#6b7280';
     const label = t.categoryLabel || t.category;
-    return `<tr>
-      <td>${t.index}</td>
-      <td style="max-width:500px">${t.title}</td>
-      <td><span class="tag" style="background:${color}1a;color:${color};border:1px solid ${color}33">${label}</span></td>
-      <td>
-        <div class="card-actions">
-          <button class="btn btn-sm btn-primary" onclick="generateArticleFromTitle('${t.title.replace(/'/g, "\\'")}')" title="生成文章">📝 生成</button>
-          <button class="btn btn-sm btn-ghost" onclick="addToSelected('${t.title.replace(/'/g, "\\'")}')" title="加入精选">⭐</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
+    const title = t.title == null ? '' : String(t.title);
+
+    const row = document.createElement('tr');
+    appendTextCell(row, t.index);
+    appendTextCell(row, title, '500px');
+
+    const categoryCell = document.createElement('td');
+    categoryCell.appendChild(createCategoryTag(label, color));
+    row.appendChild(categoryCell);
+
+    const actionCell = document.createElement('td');
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+    actions.appendChild(createTitleActionButton(
+      'btn btn-sm btn-primary',
+      '📝 生成',
+      title,
+      '生成文章',
+      () => generateArticleFromTitle(title)
+    ));
+    actions.appendChild(createTitleActionButton(
+      'btn btn-sm btn-ghost',
+      '⭐',
+      title,
+      '加入精选',
+      () => addToSelected(title)
+    ));
+    actionCell.appendChild(actions);
+    row.appendChild(actionCell);
+
+    tbody.appendChild(row);
+  });
 
   // Pagination
   document.getElementById('poolPagination').innerHTML = `
@@ -1458,10 +1642,7 @@ function renderTitleLibrary() {
   });
   
   if (filters) {
-    filters.innerHTML = `<span class="filter-tag active" onclick="filterTitleLib('all')">全部 (${qs.length})</span>` + 
-      Object.entries(categories).map(([cat, count]) => 
-        `<span class="filter-tag" onclick="filterTitleLib('${cat}')">${cat} (${count})</span>`
-      ).join('');
+    renderTitleLibraryFilters(filters, categories, 'all', qs.length);
   }
   
   // Render list
@@ -1469,17 +1650,54 @@ function renderTitleLibrary() {
   let filtered = qs;
   if (search) filtered = qs.filter(q => q.question.toLowerCase().includes(search));
   
-  list.innerHTML = filtered.map(q => {
-    const selected = state.wsSelectedQuestionId === q.id ? 'selected' : '';
+  renderTitleLibraryItems(list, filtered);
+}
+
+function renderTitleLibraryFilters(filters, categories, activeCategory, totalCount) {
+  clearChildren(filters);
+
+  const allTag = document.createElement('span');
+  allTag.className = `filter-tag${activeCategory === 'all' ? ' active' : ''}`;
+  allTag.dataset.category = 'all';
+  allTag.textContent = `全部 (${totalCount})`;
+  allTag.addEventListener('click', () => filterTitleLib('all'));
+  filters.appendChild(allTag);
+
+  Object.entries(categories).forEach(([cat, count]) => {
+    const tag = document.createElement('span');
+    tag.className = `filter-tag${activeCategory === cat ? ' active' : ''}`;
+    tag.dataset.category = cat;
+    tag.textContent = `${cat} (${count})`;
+    tag.addEventListener('click', () => filterTitleLib(cat));
+    filters.appendChild(tag);
+  });
+}
+
+function renderTitleLibraryItems(list, questions) {
+  clearChildren(list);
+
+  questions.forEach(q => {
+    const item = document.createElement('div');
+    item.className = `title-lib-item${state.wsSelectedQuestionId === q.id ? ' selected' : ''}`;
+    item.addEventListener('click', () => selectFromTitleLib(q.id));
+
+    const text = document.createElement('div');
+    text.className = 'title-lib-text';
+    text.textContent = q.question || '';
+    item.appendChild(text);
+
+    const meta = document.createElement('div');
+    meta.className = 'title-lib-meta';
+    meta.appendChild(createSmallTag('tag tag-blue', q.industry || '通用'));
+
     const hasArticle = state.articles.some(a => a.questionId === q.id);
-    return `<div class="title-lib-item ${selected}" onclick="selectFromTitleLib(${typeof q.id === 'number' ? q.id : `'${q.id}'`})">
-      <div class="title-lib-text">${q.question}</div>
-      <div class="title-lib-meta">
-        <span class="tag tag-blue" style="font-size:10px">${q.industry || '通用'}</span>
-        ${hasArticle ? '<span class="tag tag-green" style="font-size:10px">✓</span>' : ''}
-      </div>
-    </div>`;
-  }).join('');
+    if (hasArticle) {
+      meta.appendChild(createSmallTag('tag tag-green', '✓'));
+    }
+
+    item.appendChild(meta);
+    list.appendChild(item);
+  });
 }
 
 function filterTitleLib(category) {
@@ -1492,24 +1710,17 @@ function filterTitleLib(category) {
   if (search) filtered = filtered.filter(q => q.question.toLowerCase().includes(search));
   
   // Update filter tags
-  document.querySelectorAll('#titleLibFilters .filter-tag').forEach(tag => {
-    tag.classList.remove('active');
-    if ((category === 'all' && tag.textContent.includes('全部')) || tag.textContent.includes(category)) {
-      tag.classList.add('active');
-    }
-  });
+  const filters = document.getElementById('titleLibFilters');
+  if (filters) {
+    const categories = {};
+    qs.forEach(q => {
+      const cat = q.industry || '通用';
+      categories[cat] = (categories[cat] || 0) + 1;
+    });
+    renderTitleLibraryFilters(filters, categories, category, qs.length);
+  }
   
-  list.innerHTML = filtered.map(q => {
-    const selected = state.wsSelectedQuestionId === q.id ? 'selected' : '';
-    const hasArticle = state.articles.some(a => a.questionId === q.id);
-    return `<div class="title-lib-item ${selected}" onclick="selectFromTitleLib(${typeof q.id === 'number' ? q.id : `'${q.id}'`})">
-      <div class="title-lib-text">${q.question}</div>
-      <div class="title-lib-meta">
-        <span class="tag tag-blue" style="font-size:10px">${q.industry || '通用'}</span>
-        ${hasArticle ? '<span class="tag tag-green" style="font-size:10px">✓</span>' : ''}
-      </div>
-    </div>`;
-  }).join('');
+  renderTitleLibraryItems(list, filtered);
 }
 
 function selectFromTitleLib(id) {
@@ -1683,19 +1894,7 @@ async function renderWorkspace() {
   // wsQuestionList may not exist (left sidebar removed) — still continue
   if (list) {
     const qs = getWorkspaceQuestions();
-    list.innerHTML = qs.map(q => {
-      const selected = state.wsSelectedQuestionId === q.id ? 'selected' : '';
-      const hasArticle = state.articles.some(a => a.questionId === q.id);
-      const articleCount = state.articles.filter(a => a.questionId === q.id).length;
-      const angleLabel = articleCount > 1 ? `<span class="tag tag-purple" style="font-size:10px">${articleCount}篇</span>` : (hasArticle ? '<span class="tag tag-green" style="font-size:10px">✓</span>' : '');
-      return `<div class="workspace-question-item ${selected}" onclick="selectWorkspaceQuestion('${q.id}')">
-        <div class="workspace-q-text">${q.question}</div>
-        <div class="workspace-q-meta">
-          <span class="tag tag-blue" style="font-size:10px">${q.industry}</span>
-          ${angleLabel}
-        </div>
-      </div>`;
-    }).join('');
+    renderWorkspaceQuestionList(list, qs);
   }
 
   // Update nav counter
@@ -1712,6 +1911,35 @@ async function renderWorkspace() {
   if (state.wsSelectedQuestionId) {
     renderWorkspaceArticle();
   }
+}
+
+function renderWorkspaceQuestionList(list, questions) {
+  clearChildren(list);
+
+  questions.forEach(q => {
+    const item = document.createElement('div');
+    item.className = `workspace-question-item${state.wsSelectedQuestionId === q.id ? ' selected' : ''}`;
+    item.addEventListener('click', () => selectWorkspaceQuestion(q.id));
+
+    const text = document.createElement('div');
+    text.className = 'workspace-q-text';
+    text.textContent = q.question || '';
+    item.appendChild(text);
+
+    const meta = document.createElement('div');
+    meta.className = 'workspace-q-meta';
+    meta.appendChild(createSmallTag('tag tag-blue', q.industry || '通用'));
+
+    const articleCount = state.articles.filter(a => a.questionId === q.id).length;
+    if (articleCount > 1) {
+      meta.appendChild(createSmallTag('tag tag-purple', `${articleCount}篇`));
+    } else if (articleCount === 1) {
+      meta.appendChild(createSmallTag('tag tag-green', '✓'));
+    }
+
+    item.appendChild(meta);
+    list.appendChild(item);
+  });
 }
 
 function selectWorkspaceQuestion(id) {
@@ -2150,6 +2378,8 @@ async function generateArticle() {
       }
     }
 
+    requireGeneratedContent(fullContent, '模型');
+
     // Save article (match by questionId + angle)
     const angleKey = angle ? angle.id : '';
     const existing = state.articles.find(a =>
@@ -2234,13 +2464,20 @@ function exportCurrentArticle() {
 // ===== Distribution Page =====
 function renderDistribution() {
   const select = document.getElementById('distArticleSelect');
-  select.innerHTML = '<option value="">选择一篇已生成的文章...</option>' +
-    state.articles.map(a => {
+  const currentValue = select.value;
+  replaceSelectOptions(select, [
+    { value: '', label: '选择一篇已生成的文章...', selected: !currentValue },
+    ...state.articles.map(a => {
       const q = state.questions.find(q => q.id === a.questionId);
       const label = q ? q.question : `文章 #${a.id}`;
       const hasPlatforms = a.platforms && Object.keys(a.platforms).length > 0;
-      return `<option value="${a.id}">${hasPlatforms ? '✅ ' : ''}${label}</option>`;
-    }).join('');
+      return {
+        value: a.id,
+        label: `${hasPlatforms ? '✅ ' : ''}${label}`,
+        selected: String(a.id) === currentValue,
+      };
+    }),
+  ]);
   select.onchange = onDistributionArticleSelect;
 }
 
@@ -2322,12 +2559,54 @@ function renderDistributionCards(article, platformsDiv, articleId) {
   platformsDiv.innerHTML = html;
 }
 
+function getDistributionPlatformSet() {
+  return new Set(DISTRIBUTION_MATRIX.map(dm => dm.platform));
+}
+
+function platformDomKey(platform) {
+  const known = {
+    '知乎': 'zhihu',
+    '百家号': 'baijiahao',
+    '公众号': 'wechat',
+    '今日头条': 'toutiao',
+    '搜狐号': 'sohu',
+    '网易号': 'netease',
+    'B站': 'bilibili',
+    '腾讯新闻': 'tencent_news',
+  };
+  if (known[platform]) return known[platform];
+  return Array.from(String(platform || 'platform'))
+    .map(char => char.codePointAt(0).toString(36))
+    .join('_');
+}
+
+function savePlatformTextareaValues(article, textareas, validPlatforms = getDistributionPlatformSet()) {
+  if (!article) return 0;
+  if (!article.platforms) article.platforms = {};
+
+  let saved = 0;
+  textareas.forEach(ta => {
+    const platform = ta.dataset ? ta.dataset.platform : '';
+    if (!platform) return;
+
+    if (!validPlatforms.has(platform)) {
+      console.warn(`Unknown platform ignored while saving edits: ${platform}`);
+      return;
+    }
+
+    article.platforms[platform] = ta.value;
+    saved += 1;
+  });
+  return saved;
+}
+
 // Build a single distribution card HTML
 function buildDistCard(dm, content, articleId) {
   const hasContent = !!content;
   const statusTag = hasContent
     ? '<span class="badge badge-success">✓ 已保存</span>'
     : '<span class="badge badge-muted">未生成</span>';
+  const platformKey = platformDomKey(dm.platform);
 
   return `
     <div class="dist-card">
@@ -2340,7 +2619,7 @@ function buildDistCard(dm, content, articleId) {
         ${hasContent ? `<button class="btn btn-sm btn-primary" onclick="copyPlatformText(${articleId}, '${dm.platform}')" title="复制文案">📋 复制文案</button>` : ''}
       </div>
       <div class="dist-card-body">
-        <textarea id="dist_${dm.platform.replace(/[^a-zA-Z]/g, '')}" oninput="savePlatformEdits(${articleId})">${escapeHtml(content)}</textarea>
+        <textarea id="dist_${platformKey}" data-platform="${escapeHtml(dm.platform)}" data-platform-key="${escapeHtml(platformKey)}" oninput="savePlatformEdits(${articleId})">${escapeHtml(content)}</textarea>
       </div>
     </div>`;
 }
@@ -2448,7 +2727,7 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
+        const content = extractRequiredChatContent(data, `${dm.platform}生成`);
 
         // Save to article.platforms immediately
         article.platforms[dm.platform] = content;  // V4: keep Markdown formatting
@@ -2999,16 +3278,40 @@ function deleteSelectedArticles() {
 // Save platform edits when user manually edits textareas in 一稿多发
 function savePlatformEdits(articleId) {
   const article = state.articles.find(a => a.id === articleId);
-  if (!article || !article.platforms) return;
-  document.querySelectorAll('#distPlatforms textarea').forEach((ta, i) => {
-    if (DISTRIBUTION_MATRIX[i]) {
-      article.platforms[DISTRIBUTION_MATRIX[i].platform] = ta.value;
-    }
-  });
+  if (!article) return;
+  savePlatformTextareaValues(article, document.querySelectorAll('#distPlatforms textarea'));
   saveState();
 }
 
 // ===== Batch Generation =====
+function appendBatchResultCard(status, questionText, metaText) {
+  const container = document.getElementById('batchResults');
+  if (!container) return;
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.marginBottom = '8px';
+  card.style.borderLeft = `3px solid var(--${status === 'success' ? 'green' : 'red'})`;
+
+  const content = document.createElement('div');
+  content.style.padding = '12px 16px';
+  content.style.display = 'flex';
+  content.style.alignItems = 'center';
+  content.style.justifyContent = 'space-between';
+
+  const label = document.createElement('span');
+  label.textContent = `${status === 'success' ? '✅' : '❌'} ${questionText || ''}`;
+
+  const tag = document.createElement('span');
+  tag.className = status === 'success' ? 'tag tag-green' : 'tag tag-medium';
+  tag.textContent = metaText == null ? '' : String(metaText);
+
+  content.appendChild(label);
+  content.appendChild(tag);
+  card.appendChild(content);
+  container.appendChild(card);
+}
+
 async function startBatchGeneration() {
   if (state.batchRunning) return;
 
@@ -3086,7 +3389,7 @@ async function startBatchGeneration() {
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
+      const content = extractRequiredChatContent(data, '批量生成');
 
       // Save article (match by questionId + angle)
       const angleKey = angle ? angle.id : '';
@@ -3116,13 +3419,7 @@ async function startBatchGeneration() {
       succeeded++;
 
       // Add result entry
-      document.getElementById('batchResults').innerHTML += `
-        <div class="card" style="margin-bottom:8px;border-left:3px solid var(--green);">
-          <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
-            <span>✅ ${q.question}</span>
-            <span class="tag tag-green">${content.length} 字</span>
-          </div>
-        </div>`;
+      appendBatchResultCard('success', q.question, `${content.length} 字`);
 
     } catch (e) {
       if (e.name === 'AbortError') {
@@ -3130,13 +3427,7 @@ async function startBatchGeneration() {
         break;
       }
       failed++;
-      document.getElementById('batchResults').innerHTML += `
-        <div class="card" style="margin-bottom:8px;border-left:3px solid var(--red);">
-          <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
-            <span>❌ ${q.question}</span>
-            <span class="tag tag-medium">${e.message}</span>
-          </div>
-        </div>`;
+      appendBatchResultCard('error', q.question, e.message);
     }
 
     completed++;
@@ -3684,8 +3975,14 @@ function renderTestRecords() {
   const qSelect = document.getElementById('trFilterQuestion');
   if (qSelect) {
     const currentVal = qSelect.value;
-    qSelect.innerHTML = '<option value="">全部问题</option>' +
-      state.questions.map(q => `<option value="${q.id}" ${q.id.toString() === currentVal ? 'selected' : ''}>${q.question.slice(0, 40)}</option>`).join('');
+    replaceSelectOptions(qSelect, [
+      { value: '', label: '全部问题', selected: !currentVal },
+      ...state.questions.map(q => ({
+        value: q.id,
+        label: String(q.question || '').slice(0, 40),
+        selected: q.id.toString() === currentVal,
+      })),
+    ]);
   }
 
   const tbody = document.getElementById('trTableBody');
@@ -3743,7 +4040,10 @@ function openAddTR() {
   document.getElementById('trModalTitle').textContent = '添加测试记录';
   // Populate question dropdown
   const qSelect = document.getElementById('trmQuestionId');
-  qSelect.innerHTML = state.questions.map(q => `<option value="${q.id}">${q.question.slice(0, 50)}</option>`).join('');
+  replaceSelectOptions(qSelect, state.questions.map(q => ({
+    value: q.id,
+    label: String(q.question || '').slice(0, 50),
+  })));
   document.getElementById('trmTestDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('trmPlatform').value = '豆包';
   document.getElementById('trmMentioned').value = '否';
@@ -3766,7 +4066,11 @@ function editTR(id) {
   if (!r) return;
   document.getElementById('trModalTitle').textContent = '编辑测试记录';
   const qSelect = document.getElementById('trmQuestionId');
-  qSelect.innerHTML = state.questions.map(q => `<option value="${q.id}" ${q.id === r.questionId ? 'selected' : ''}>${q.question.slice(0, 50)}</option>`).join('');
+  replaceSelectOptions(qSelect, state.questions.map(q => ({
+    value: q.id,
+    label: String(q.question || '').slice(0, 50),
+    selected: q.id === r.questionId,
+  })));
   document.getElementById('trmTestDate').value = r.testDate || '';
   document.getElementById('trmPlatform').value = r.platform || '豆包';
   document.getElementById('trmMentioned').value = r.mentioned || '否';
@@ -4568,10 +4872,18 @@ function closeModal(id) {
 // ===== Toast Notifications =====
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
+  if (!container) return;
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-  toast.innerHTML = `<span class="toast-icon">${icons[type] || 'ℹ️'}</span><span class="toast-message">${message}</span>`;
+  const icon = document.createElement('span');
+  icon.className = 'toast-icon';
+  icon.textContent = icons[type] || 'ℹ️';
+  const text = document.createElement('span');
+  text.className = 'toast-message';
+  text.textContent = message == null ? '' : String(message);
+  toast.appendChild(icon);
+  toast.appendChild(text);
   container.appendChild(toast);
   // Auto remove
   setTimeout(() => {
@@ -4823,12 +5135,19 @@ function renderPlatformTitles() {
 
   // Populate dropdown with articles that have content
   const articles = state.articles.filter(a => a.content && a.content.trim());
-  select.innerHTML = '<option value="">选择一篇已生成的文章...</option>' +
-    articles.map(a => {
+  const currentValue = select.value;
+  replaceSelectOptions(select, [
+    { value: '', label: '选择一篇已生成的文章...', selected: !currentValue },
+    ...articles.map(a => {
       const q = state.questions.find(qq => qq.id === a.questionId);
       const label = q ? q.question : `文章 #${a.id}`;
-      return `<option value="${a.id}">${escapeHtml(label)}</option>`;
-    }).join('');
+      return {
+        value: a.id,
+        label,
+        selected: String(a.id) === currentValue,
+      };
+    }),
+  ]);
 
   // Load saved results if any
   const savedArticleId = select.value;
@@ -4837,75 +5156,138 @@ function renderPlatformTitles() {
 
 function renderPTResults(articleId) {
   try {
-  const container = document.getElementById('ptResults');
-  const emptyState = document.getElementById('ptEmptyState');
-  if (!container) return;
+    const container = document.getElementById('ptResults');
+    const emptyState = document.getElementById('ptEmptyState');
+    if (!container) return;
 
-  if (!articleId) {
-    container.innerHTML = '';
-    if (emptyState) emptyState.style.display = '';
-    return;
-  }
+    if (!articleId) {
+      clearChildren(container);
+      if (emptyState) emptyState.style.display = '';
+      return;
+    }
 
-  const article = state.articles.find(a => a.id === articleId);
-  if (!article || !article.platformTitles) {
-    container.innerHTML = '';
-    if (emptyState) emptyState.style.display = '';
-    return;
-  }
-  // Check if any platform has titles
-  const hasAnyTitles = Object.values(article.platformTitles).some(arr => arr && arr.length > 0);
-  if (!hasAnyTitles && Object.keys(article.platformTitles).length === 0) {
-    container.innerHTML = '';
-    if (emptyState) emptyState.style.display = '';
-    return;
-  }
+    const article = state.articles.find(a => a.id === articleId);
+    if (!article || !article.platformTitles) {
+      clearChildren(container);
+      if (emptyState) emptyState.style.display = '';
+      return;
+    }
+    // Check if any platform has titles
+    const hasAnyTitles = Object.values(article.platformTitles).some(arr => arr && arr.length > 0);
+    if (!hasAnyTitles && Object.keys(article.platformTitles).length === 0) {
+      clearChildren(container);
+      if (emptyState) emptyState.style.display = '';
+      return;
+    }
 
-  if (emptyState) emptyState.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
+    clearChildren(container);
 
-  let html = '<div class="dist-card-grid">';
-  for (const [platform, data] of Object.entries(PLATFORM_TITLE_PROMPTS)) {
-    const titles = article.platformTitles[platform] || [];
-    html += `
-      <div class="dist-card" style="border-left:4px solid ${data.color}">
-        <div class="dist-card-header">
-          <span class="dist-card-icon" style="background:${data.color}">${data.icon}</span>
-          <span class="dist-card-platform">${platform}</span>
-          <span class="dist-card-form">${data.style}</span>
-          ${titles.length ? `<button class="btn btn-sm btn-primary" onclick="copyPTTitles('${platform}', ${articleId})" title="复制全部标题">📋 复制</button>` : ''}
-        </div>
-        <div class="dist-card-body" style="padding:12px 18px;">
-          ${titles.length ? titles.map((t, i) => `
-            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
-              <span style="color:var(--text-muted);font-size:12px;min-width:20px">${i+1}.</span>
-              <span style="flex:1;font-size:14px">${escapeHtml(t)}</span>
-              <button class="btn btn-sm pt-copy-btn" data-title="${escapeHtml(t)}" title="复制" style="padding:2px 6px;font-size:11px">📋</button>
-            </div>
-          `).join('') : '<div style="color:var(--text-muted);font-size:13px;padding:12px 0">未生成</div>'}
-        </div>
-      </div>`;
-  }
-  html += '</div>';
-  container.innerHTML = html;
+    const grid = document.createElement('div');
+    grid.className = 'dist-card-grid';
 
-  // Event delegation for copy buttons
-  container.querySelectorAll('.pt-copy-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const title = this.getAttribute('data-title');
-      if (title) {
-        const ta = document.createElement('textarea');
-        ta.innerHTML = title;
-        navigator.clipboard.writeText(ta.value).then(() => {
-          showToast('标题已复制', 'success');
-        });
+    for (const [platform, data] of Object.entries(PLATFORM_TITLE_PROMPTS)) {
+      const titles = article.platformTitles[platform] || [];
+
+      const card = document.createElement('div');
+      card.className = 'dist-card';
+      card.style.borderLeft = `4px solid ${data.color}`;
+
+      const header = document.createElement('div');
+      header.className = 'dist-card-header';
+
+      const icon = document.createElement('span');
+      icon.className = 'dist-card-icon';
+      icon.style.background = data.color;
+      icon.textContent = data.icon;
+
+      const platformEl = document.createElement('span');
+      platformEl.className = 'dist-card-platform';
+      platformEl.textContent = platform;
+
+      const styleEl = document.createElement('span');
+      styleEl.className = 'dist-card-form';
+      styleEl.textContent = data.style;
+
+      header.appendChild(icon);
+      header.appendChild(platformEl);
+      header.appendChild(styleEl);
+
+      if (titles.length) {
+        const copyAll = document.createElement('button');
+        copyAll.type = 'button';
+        copyAll.className = 'btn btn-sm btn-primary';
+        copyAll.title = '复制全部标题';
+        copyAll.textContent = '📋 复制';
+        copyAll.addEventListener('click', () => copyPTTitles(platform, articleId));
+        header.appendChild(copyAll);
       }
-    });
-  });
+
+      const body = document.createElement('div');
+      body.className = 'dist-card-body';
+      body.style.padding = '12px 18px';
+
+      if (titles.length) {
+        titles.forEach((title, index) => {
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.alignItems = 'center';
+          row.style.gap = '8px';
+          row.style.padding = '6px 0';
+          row.style.borderBottom = '1px solid var(--border)';
+
+          const number = document.createElement('span');
+          number.style.color = 'var(--text-muted)';
+          number.style.fontSize = '12px';
+          number.style.minWidth = '20px';
+          number.textContent = `${index + 1}.`;
+
+          const text = document.createElement('span');
+          text.style.flex = '1';
+          text.style.fontSize = '14px';
+          text.textContent = title;
+
+          const copyOne = document.createElement('button');
+          copyOne.type = 'button';
+          copyOne.className = 'btn btn-sm pt-copy-btn';
+          copyOne.title = '复制';
+          copyOne.style.padding = '2px 6px';
+          copyOne.style.fontSize = '11px';
+          copyOne.textContent = '📋';
+          copyOne.addEventListener('click', () => copySinglePT(title));
+
+          row.appendChild(number);
+          row.appendChild(text);
+          row.appendChild(copyOne);
+          body.appendChild(row);
+        });
+      } else {
+        const empty = document.createElement('div');
+        empty.style.color = 'var(--text-muted)';
+        empty.style.fontSize = '13px';
+        empty.style.padding = '12px 0';
+        empty.textContent = '未生成';
+        body.appendChild(empty);
+      }
+
+      card.appendChild(header);
+      card.appendChild(body);
+      grid.appendChild(card);
+    }
+
+    container.appendChild(grid);
 
   } catch (e) {
     console.error('[renderPTResults] Error:', e);
     const c = document.getElementById('ptResults');
-    if (c) c.innerHTML = '<div style="color:var(--red);padding:20px">渲染出错，请刷新重试</div>';
+    if (c) {
+      clearChildren(c);
+      const error = document.createElement('div');
+      error.style.color = 'var(--red)';
+      error.style.padding = '20px';
+      error.textContent = '渲染出错，请刷新重试';
+      c.appendChild(error);
+    }
   }
 }
 
@@ -4981,11 +5363,7 @@ async function generatePlatformTitles() {
         throw new Error(`HTTP ${response.status}`);
       }
       const resData = await response.json();
-      const text = resData.choices?.[0]?.message?.content || '';
-
-      if (!text) {
-        console.error(`[${platform}] Empty response:`, JSON.stringify(resData).slice(0, 200));
-      }
+      const text = extractRequiredChatContent(resData, `${platform}标题生成`);
 
       // Parse titles: strip code blocks, markdown, numbering
       let cleanText = text
@@ -5008,6 +5386,9 @@ async function generatePlatformTitles() {
         .filter(line => line.length >= 4 && line.length <= 80);
 
       console.log(`[${platform}] Raw lines: ${lines.length}, Parsed: ${titles.length}`);
+      if (titles.length === 0) {
+        throw new Error(`${platform}标题解析为空`);
+      }
       article.platformTitles[platform] = titles;
 
       // Update progress: completed
@@ -5038,8 +5419,8 @@ async function generatePlatformTitles() {
     await new Promise(r => setTimeout(r, 2000));
     for (let ri = 0; ri < zeroPlatforms.length; ri++) {
       const [platform, data] = zeroPlatforms[ri];
+      const progressEl = [...document.querySelectorAll('[id^="pt-progress-"]')].find(el => el.textContent.includes(platform));
       try {
-        const progressEl = [...document.querySelectorAll('[id^="pt-progress-"]')].find(el => el.textContent.includes(platform));
         if (progressEl) {
           progressEl.className = 'progress-item generating';
           progressEl.textContent = `${data.icon} ${platform}：重试中...`;
@@ -5061,31 +5442,30 @@ async function generatePlatformTitles() {
             stream: false,
           }),
         });
-        if (response.ok) {
-          const resData = await response.json();
-          const text = resData.choices?.[0]?.message?.content || '';
-          let lines = text.split(/\r?\n/);
-          if (lines.length <= 2 && text.length > 100) {
-            lines = text.split(/(?=\d+[.、)）：:])/);
-          }
-          const retryTitles = lines
-            .map(l => l.replace(/^\s*\d+[.、)）：:]\s*/, '').replace(/^\s*[-*•·]\s*/, '').trim())
-            .filter(l => l.length >= 4 && l.length <= 80);
-          if (retryTitles.length > 0) {
-            article.platformTitles[platform] = retryTitles;
-            if (progressEl) {
-              progressEl.className = 'progress-item completed';
-              progressEl.textContent = `${data.icon} ${platform}：✓ 完成（${retryTitles.length}个标题）`;
-            }
-          } else {
-            if (progressEl) {
-              progressEl.className = 'progress-item failed';
-              progressEl.textContent = `${data.icon} ${platform}：✗ 未返回有效标题`;
-            }
-          }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const resData = await response.json();
+        const text = extractRequiredChatContent(resData, `${platform}标题重试`);
+        let lines = text.split(/\r?\n/);
+        if (lines.length <= 2 && text.length > 100) {
+          lines = text.split(/(?=\d+[.、)）：:])/);
         }
+        const retryTitles = lines
+          .map(l => l.replace(/^\s*\d+[.、)）：:]\s*/, '').replace(/^\s*[-*•·]\s*/, '').trim())
+          .filter(l => l.length >= 4 && l.length <= 80);
+        if (retryTitles.length === 0) {
+          throw new Error(`${platform}标题重试未返回有效标题`);
+        }
+        article.platformTitles[platform] = retryTitles;
+        if (progressEl) {
+          progressEl.className = 'progress-item completed';
+          progressEl.textContent = `${data.icon} ${platform}：✓ 完成（${retryTitles.length}个标题）`;
+          }
       } catch (e) {
         console.error(`Retry failed for ${platform}:`, e);
+        if (progressEl) {
+          progressEl.className = 'progress-item failed';
+          progressEl.textContent = `${data.icon} ${platform}：✗ ${e.message || '失败'}`;
+        }
       }
       // Delay between retries
       if (ri < zeroPlatforms.length - 1) {
@@ -5098,7 +5478,14 @@ async function generatePlatformTitles() {
   saveState();
   btn.disabled = false;
   renderPTResults(articleId);
-  showToast('✅ 8 平台标题生成完成', 'success');
+  const failedPlatforms = platforms
+    .map(([name]) => name)
+    .filter(name => !article.platformTitles[name] || article.platformTitles[name].length === 0);
+  if (failedPlatforms.length > 0) {
+    showToast(`部分平台标题生成失败：${failedPlatforms.join('、')}`, 'warning');
+  } else {
+    showToast('✅ 8 平台标题生成完成', 'success');
+  }
 }
 
 function copyPTTitles(platform, articleId) {
@@ -5111,10 +5498,7 @@ function copyPTTitles(platform, articleId) {
 }
 
 function copySinglePT(text) {
-  // Decode HTML entities
-  const ta = document.createElement('textarea');
-  ta.innerHTML = text;
-  navigator.clipboard.writeText(ta.value).then(() => {
+  navigator.clipboard.writeText(String(text || '')).then(() => {
     showToast('标题已复制', 'success');
   });
 }
