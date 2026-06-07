@@ -185,6 +185,17 @@ async function main() {
     assert(selected.total > 0 && selected.titles.length > 0, '/api/titles/selected returned no titles');
     assert(pool.total > 0 && pool.titles.length > 0, '/api/titles/pool returned no titles');
 
+    log('checking state-storage static asset');
+    const stateStorageRes = await fetch(`${baseUrl}/src/frontend/state-storage.js?v=smoke`);
+    const stateStorageText = await stateStorageRes.text();
+    const stateStorageContentType = stateStorageRes.headers.get('content-type') || '';
+    assert(stateStorageRes.status === 200, '/src/frontend/state-storage.js did not return 200');
+    assert(
+      /(?:application|text)\/javascript/i.test(stateStorageContentType),
+      '/src/frontend/state-storage.js did not return a JavaScript content-type'
+    );
+    assert(stateStorageText.includes('GeoStateStorage'), '/src/frontend/state-storage.js did not contain GeoStateStorage');
+
     const browserPath = findBrowserPath();
     if (!browserPath) {
       throw new Error('Chrome or Edge executable not found. Set CHROME_PATH to a Chrome/Edge executable and rerun npm run smoke.');
@@ -256,6 +267,10 @@ async function main() {
     assert(homeState.title.includes('GEO'), 'home page title did not load');
     assert(homeState.questionsVisible, 'keyword/title page is not visible');
     assert(homeState.selectedRows > 0, 'selected title table has no rows');
+    assert(
+      !browserErrors.some(error => error.includes('GeoStateStorage module is required')),
+      'GeoStateStorage module is required error appeared after homepage load'
+    );
 
     log('verifying dangerous title renders as text');
     const xssState = await evaluate(cdp, `(() => {
