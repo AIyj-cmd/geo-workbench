@@ -2,6 +2,12 @@
    GEO Workbench - Main Application
    ============================================ */
 
+const geoAIClient = (typeof window !== 'undefined' && window.GeoAIClient) ||
+  (typeof globalThis !== 'undefined' && globalThis.GeoAIClient);
+if (!geoAIClient) {
+  throw new Error('GeoAIClient module is required');
+}
+
 // ===== Theme Toggle =====
 function toggleTheme() {
   const html = document.documentElement;
@@ -1347,19 +1353,35 @@ function createSmallTag(className, text) {
 }
 
 function extractChatMessageContent(data) {
-  const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-  return typeof content === 'string' ? content : '';
+  return geoAIClient.extractChatMessageContent(data);
 }
 
 function requireGeneratedContent(content, label) {
-  if (typeof content !== 'string' || !content.trim()) {
-    throw new Error(`${label}返回空内容`);
-  }
-  return content.trim();
+  return geoAIClient.requireGeneratedContent(content, label);
 }
 
 function extractRequiredChatContent(data, contextLabel = 'AI response') {
-  return requireGeneratedContent(extractChatMessageContent(data), contextLabel);
+  return geoAIClient.extractRequiredChatContent(data, contextLabel);
+}
+
+function extractStreamDeltaContent(data) {
+  return geoAIClient.extractStreamDeltaContent(data);
+}
+
+function buildChatPayload(options) {
+  return geoAIClient.buildChatPayload(options);
+}
+
+function callChatCompletion(options) {
+  return geoAIClient.callChatCompletion(options);
+}
+
+function fetchChatCompletionJson(options) {
+  return geoAIClient.fetchChatCompletionJson(options);
+}
+
+function checkApiStatus(options) {
+  return geoAIClient.checkApiStatus(options);
 }
 
 function renderSelectedTitles() {
@@ -2528,22 +2550,15 @@ async function generateArticle() {
       { role: 'user', content: userPrompt },
     ];
 
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await callChatCompletion({
       signal: state.wsAbortController.signal,
-      body: JSON.stringify({
-        model: model,
-        messages: messages,
-        max_tokens: settings.maxTokens,
-        temperature: settings.temperature,
-        stream: true,
-      }),
+      httpErrorPrefix: 'API 错误:',
+      model: model,
+      messages: messages,
+      maxTokens: settings.maxTokens,
+      temperature: settings.temperature,
+      stream: true,
     });
-
-    if (!response.ok) {
-      throw new Error(`API 错误: ${response.status}`);
-    }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -2565,9 +2580,9 @@ async function generateArticle() {
         if (data === '[DONE]') continue;
         try {
           const parsed = JSON.parse(data);
-          const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
-          if (delta && delta.content) {
-            fullContent += delta.content;
+          const deltaContent = extractStreamDeltaContent(parsed);
+          if (deltaContent) {
+            fullContent += deltaContent;
             const textarea = document.getElementById('wsArticleText');
             if (textarea) textarea.value = fullContent;
           }
@@ -2917,20 +2932,13 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
         prompt = prompt.replace(/\{目标关键词\}/g, keywordText);
         const settings = getSettings();
 
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: settings.maxTokens,
-            temperature: settings.temperature,
-            stream: false,
-          }),
+        const data = await fetchChatCompletionJson({
+          model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
+          messages: [{ role: 'user', content: prompt }],
+          maxTokens: settings.maxTokens,
+          temperature: settings.temperature,
+          stream: false,
         });
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
         const content = extractRequiredChatContent(data, `${dm.platform}生成`);
 
         // Save to article.platforms immediately
@@ -3577,21 +3585,14 @@ async function startBatchGeneration() {
         { role: 'user', content: userPrompt },
       ];
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const data = await fetchChatCompletionJson({
         signal: state.batchAbortController.signal,
-        body: JSON.stringify({
-          model: model,
-          messages: messages,
-          max_tokens: settings.maxTokens,
-          temperature: settings.temperature,
-          stream: false,
-        }),
+        model: model,
+        messages: messages,
+        maxTokens: settings.maxTokens,
+        temperature: settings.temperature,
+        stream: false,
       });
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
       const content = extractRequiredChatContent(data, '批量生成');
 
       // Save article (match by questionId + angle)
@@ -4509,8 +4510,7 @@ async function testApiConnection() {
   statusEl.innerHTML = '<span class="api-status"><span class="dot" style="background:var(--orange)"></span> 检测中...</span>';
 
   try {
-    const response = await fetch('/api/status');
-    const data = await response.json();
+    const data = await checkApiStatus();
     if (data.configured) {
       statusEl.innerHTML = `<span class="api-status"><span class="dot" style="background:var(--green)"></span> 已连接</span>
         <span class="text-sm text-muted" style="margin-left:8px;">${data.endpoint}</span>`;
@@ -5555,23 +5555,13 @@ async function generatePlatformTitles() {
       console.log(`[${platform}] Prompt length: ${prompt.length}, Content length: ${(article.content || '').length}, Keyword: "${keyword}"`);
 
       const settings = getSettings();
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 1000,
-          temperature: 0.7,
-          stream: false,
-        }),
+      const resData = await fetchChatCompletionJson({
+        model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
+        messages: [{ role: 'user', content: prompt }],
+        maxTokens: 1000,
+        temperature: 0.7,
+        stream: false,
       });
-
-      if (!response.ok) {
-        console.error(`[${platform}] HTTP ${response.status}`);
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const resData = await response.json();
       const text = extractRequiredChatContent(resData, `${platform}标题生成`);
 
       // Parse titles: strip code blocks, markdown, numbering
@@ -5639,19 +5629,13 @@ async function generatePlatformTitles() {
         retryPrompt += '\n\n重要：请严格按以下格式输出，每行一个标题，不要加编号、不要用代码块：\n标题一\n标题二\n标题三\n标题四\n标题五';
 
         const settings = getSettings();
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
-            messages: [{ role: 'user', content: retryPrompt }],
-            max_tokens: 1000,
-            temperature: 0.7,
-            stream: false,
-          }),
+        const resData = await fetchChatCompletionJson({
+          model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
+          messages: [{ role: 'user', content: retryPrompt }],
+          maxTokens: 1000,
+          temperature: 0.7,
+          stream: false,
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const resData = await response.json();
         const text = extractRequiredChatContent(resData, `${platform}标题重试`);
         let lines = text.split(/\r?\n/);
         if (lines.length <= 2 && text.length > 100) {

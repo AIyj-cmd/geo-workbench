@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const aiClient = require('../src/frontend/ai-client');
 const stateStorage = require('../src/frontend/state-storage');
 
 function createFrontendContext(storage = {}) {
@@ -27,14 +28,37 @@ function createFrontendContext(storage = {}) {
 
 function loadApp(context, suffix = '') {
   const stateStorageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'state-storage.js'), 'utf-8');
+  const aiClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ai-client.js'), 'utf-8');
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
-  vm.runInNewContext(`${stateStorageSource}\n${source}\n${suffix}`, context);
+  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${source}\n${suffix}`, context);
   return source;
 }
 
-test('AI chat responses use the required content parser', () => {
+test('ai-client module parses required chat content', () => {
+  assert.equal(
+    aiClient.extractChatMessageContent({ choices: [{ message: { content: '  generated  ' } }] }),
+    '  generated  '
+  );
+  assert.equal(aiClient.extractChatMessageContent({}), '');
+  assert.equal(aiClient.extractChatMessageContent({ choices: [{}] }), '');
+  assert.throws(
+    () => aiClient.extractRequiredChatContent({ choices: [{ message: { content: '' } }] }, 'empty-unit'),
+    /empty-unit/
+  );
+  assert.throws(
+    () => aiClient.extractRequiredChatContent({ choices: [{ message: { content: '   ' } }] }, 'blank-unit'),
+    /blank-unit/
+  );
+  assert.equal(
+    aiClient.extractRequiredChatContent({ choices: [{ message: { content: '  generated  ' } }] }, 'trim-unit'),
+    'generated'
+  );
+});
+
+test('app delegates AI chat parsing to GeoAIClient', () => {
   const context = createFrontendContext();
   const source = loadApp(context);
+  const aiClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ai-client.js'), 'utf-8');
 
   assert.equal(
     context.extractRequiredChatContent({ choices: [{ message: { content: '  generated  ' } }] }, 'unit'),
@@ -50,8 +74,11 @@ test('AI chat responses use the required content parser', () => {
   );
 
   assert.ok((source.match(/extractRequiredChatContent/g) || []).length >= 5);
-  assert.equal(source.includes('data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ||'), false);
-  assert.equal(source.includes('resData.choices?.[0]?.message?.content'), false);
+  assert.equal(source.includes('choices[0].message.content'), false);
+  assert.equal(source.includes('choices?.[0]?.message?.content'), false);
+  assert.match(aiClientSource, /root\.GeoAIClient = api/);
+  assert.match(aiClientSource, /choices\[0\]\.message\.content/);
+  assert.equal(context.GeoAIClient.extractRequiredChatContent({ choices: [{ message: { content: ' ok ' } }] }, 'window-unit'), 'ok');
 });
 
 test('user-controlled frontend render paths avoid inline handler and textarea HTML insertion', () => {

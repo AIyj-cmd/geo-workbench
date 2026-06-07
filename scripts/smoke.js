@@ -20,6 +20,21 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function removeTempDirWithRetry(dir, attempts = 8) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+      return true;
+    } catch (error) {
+      lastError = error;
+      await delay(300);
+    }
+  }
+  console.warn(`[smoke] warning: failed to clean temporary directory: ${lastError ? lastError.message : dir}`);
+  return false;
+}
+
 function getFreePort() {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -196,6 +211,17 @@ async function main() {
     );
     assert(stateStorageText.includes('GeoStateStorage'), '/src/frontend/state-storage.js did not contain GeoStateStorage');
 
+    log('checking ai-client static asset');
+    const aiClientRes = await fetch(`${baseUrl}/src/frontend/ai-client.js?v=smoke`);
+    const aiClientText = await aiClientRes.text();
+    const aiClientContentType = aiClientRes.headers.get('content-type') || '';
+    assert(aiClientRes.status === 200, '/src/frontend/ai-client.js did not return 200');
+    assert(
+      /(?:application|text)\/javascript/i.test(aiClientContentType),
+      '/src/frontend/ai-client.js did not return a JavaScript content-type'
+    );
+    assert(aiClientText.includes('GeoAIClient'), '/src/frontend/ai-client.js did not contain GeoAIClient');
+
     const browserPath = findBrowserPath();
     if (!browserPath) {
       throw new Error('Chrome or Edge executable not found. Set CHROME_PATH to a Chrome/Edge executable and rerun npm run smoke.');
@@ -259,17 +285,23 @@ async function main() {
       navigateTo('questions');
       return {
         title: document.title,
+        aiClientLoaded: typeof window.GeoAIClient === 'object',
         questionsVisible: !!document.querySelector('#page-questions.active'),
         selectedRows: document.querySelectorAll('#selectedTableBody tr').length,
         poolCountText: document.getElementById('poolCount')?.textContent || ''
       };
     })()`);
     assert(homeState.title.includes('GEO'), 'home page title did not load');
+    assert(homeState.aiClientLoaded, 'GeoAIClient was not loaded on the home page');
     assert(homeState.questionsVisible, 'keyword/title page is not visible');
     assert(homeState.selectedRows > 0, 'selected title table has no rows');
     assert(
       !browserErrors.some(error => error.includes('GeoStateStorage module is required')),
       'GeoStateStorage module is required error appeared after homepage load'
+    );
+    assert(
+      !browserErrors.some(error => error.includes('GeoAIClient module is required')),
+      'GeoAIClient module is required error appeared after homepage load'
     );
 
     log('verifying dangerous title renders as text');
@@ -378,7 +410,7 @@ async function main() {
       await Promise.race([once(chrome, 'exit'), delay(3000)]).catch(() => {});
     }
     if (server) await closeServer(server);
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    await removeTempDirWithRetry(tempDir);
     log('cleaned up temporary server, browser, and profile');
   }
 }
