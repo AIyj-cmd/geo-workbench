@@ -258,6 +258,20 @@ async function main() {
       '/src/frontend/dashboard-renderer.js did not contain GeoDashboardRenderer'
     );
 
+    log('checking articles-renderer static asset');
+    const articlesRendererRes = await fetch(`${baseUrl}/src/frontend/articles-renderer.js?v=smoke`);
+    const articlesRendererText = await articlesRendererRes.text();
+    const articlesRendererContentType = articlesRendererRes.headers.get('content-type') || '';
+    assert(articlesRendererRes.status === 200, '/src/frontend/articles-renderer.js did not return 200');
+    assert(
+      /(?:application|text)\/javascript/i.test(articlesRendererContentType),
+      '/src/frontend/articles-renderer.js did not return a JavaScript content-type'
+    );
+    assert(
+      articlesRendererText.includes('GeoArticlesRenderer'),
+      '/src/frontend/articles-renderer.js did not contain GeoArticlesRenderer'
+    );
+
     const browserPath = findBrowserPath();
     if (!browserPath) {
       throw new Error('Chrome or Edge executable not found. Set CHROME_PATH to a Chrome/Edge executable and rerun npm run smoke.');
@@ -330,6 +344,7 @@ async function main() {
         uiUtilsLoaded: typeof window.GeoUIUtils === 'object',
         uiUtilsHasTextHelper: typeof window.GeoUIUtils?.setText === 'function',
         dashboardRendererLoaded: typeof window.GeoDashboardRenderer === 'object',
+        articlesRendererLoaded: typeof window.GeoArticlesRenderer === 'object',
         dashboardActiveBeforeNav,
         dashboardStatCount,
         dashboardCardCount,
@@ -345,6 +360,7 @@ async function main() {
     assert(homeState.uiUtilsLoaded, 'GeoUIUtils was not loaded on the home page');
     assert(homeState.uiUtilsHasTextHelper, 'GeoUIUtils text helper was not available');
     assert(homeState.dashboardRendererLoaded, 'GeoDashboardRenderer was not loaded on the home page');
+    assert(homeState.articlesRendererLoaded, 'GeoArticlesRenderer was not loaded on the home page');
     assert(homeState.dashboardActiveBeforeNav, 'dashboard page was not active on initial home load');
     assert(homeState.dashboardStatCount > 0, 'dashboard stat cards did not render');
     assert(homeState.dashboardCardCount > 0, 'dashboard chart cards did not render');
@@ -370,6 +386,40 @@ async function main() {
       !browserErrors.some(error => error.includes('GeoDashboardRenderer module is required')),
       'GeoDashboardRenderer module is required error appeared after homepage load'
     );
+    assert(
+      !browserErrors.some(error => error.includes('GeoArticlesRenderer module is required')),
+      'GeoArticlesRenderer module is required error appeared after homepage load'
+    );
+
+    log('opening articles page');
+    const articlesPageState = await evaluate(cdp, `(() => {
+      navigateTo('articles');
+      const table = document.getElementById('articlesTable');
+      return {
+        articlesVisible: !!document.querySelector('#page-articles.active'),
+        articleCountText: document.getElementById('articleCount')?.textContent || '',
+        hasTable: !!table?.querySelector('table'),
+        hasEmpty: (table?.textContent || '').includes('暂无文稿'),
+        hasContent: !!table && (table.textContent || '').trim().length > 0
+      };
+    })()`);
+    assert(articlesPageState.articlesVisible, 'articles page is not visible');
+    assert(articlesPageState.articleCountText.includes('共'), 'articles count did not render');
+    assert(
+      articlesPageState.hasTable || articlesPageState.hasEmpty || articlesPageState.hasContent,
+      'articles page rendered blank content'
+    );
+
+    log('navigating back to title page');
+    const titlePageState = await evaluate(cdp, `(() => {
+      navigateTo('questions');
+      return {
+        questionsVisible: !!document.querySelector('#page-questions.active'),
+        selectedRows: document.querySelectorAll('#selectedTableBody tr').length
+      };
+    })()`);
+    assert(titlePageState.questionsVisible, 'keyword/title page is not visible after articles page navigation');
+    assert(titlePageState.selectedRows > 0, 'selected title table has no rows after articles page navigation');
 
     log('verifying dangerous title renders as text');
     const xssState = await evaluate(cdp, `(() => {

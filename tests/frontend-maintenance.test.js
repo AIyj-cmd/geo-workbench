@@ -8,6 +8,7 @@ const exportClient = require('../src/frontend/export-client');
 const stateStorage = require('../src/frontend/state-storage');
 const uiUtils = require('../src/frontend/ui-utils');
 const dashboardRenderer = require('../src/frontend/dashboard-renderer');
+const articlesRenderer = require('../src/frontend/articles-renderer');
 
 function createFrontendContext(storage = {}) {
   return {
@@ -35,8 +36,9 @@ function loadApp(context, suffix = '') {
   const exportClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'export-client.js'), 'utf-8');
   const uiUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ui-utils.js'), 'utf-8');
   const dashboardRendererSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'dashboard-renderer.js'), 'utf-8');
+  const articlesRendererSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'articles-renderer.js'), 'utf-8');
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
-  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${exportClientSource}\n${uiUtilsSource}\n${dashboardRendererSource}\n${source}\n${suffix}`, context);
+  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${exportClientSource}\n${uiUtilsSource}\n${dashboardRendererSource}\n${articlesRendererSource}\n${source}\n${suffix}`, context);
   return source;
 }
 
@@ -283,9 +285,111 @@ test('dashboard-renderer module builds stable stats and renders dangerous text s
   }));
 });
 
+test('articles-renderer module filters, sorts, and renders article rows safely', () => {
+  const uiUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ui-utils.js'), 'utf-8');
+  const articlesRendererSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'articles-renderer.js'), 'utf-8');
+  const context = {};
+  vm.runInNewContext(`${uiUtilsSource}\n${articlesRendererSource}`, context);
+
+  assert.equal(typeof articlesRenderer.renderArticles, 'function');
+  assert.equal(typeof articlesRenderer.buildArticleRows, 'function');
+  assert.equal(typeof context.GeoArticlesRenderer, 'object');
+  assert.match(articlesRendererSource, /root\.GeoArticlesRenderer = api/);
+
+  const dangerousText = '<img src=x onerror=alert(1)>';
+  const state = {
+    questions: [
+      { id: 1, question: dangerousText },
+      { id: 2, question: 'safe question' },
+    ],
+    articles: [
+      {
+        id: 1,
+        questionId: 1,
+        content: 'older content',
+        model: 'mimo-v2.5',
+        angle: 'faq',
+        angleName: dangerousText,
+        platforms: { zhihu: '知乎内容', '网易': '网易内容' },
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        id: 2,
+        questionId: 2,
+        content: 'newer searchable content',
+        model: null,
+        platforms: {},
+        updatedAt: '2026-02-01T00:00:00.000Z',
+      },
+      {
+        id: 3,
+        content: null,
+        updatedAt: 'bad-date',
+      },
+    ],
+  };
+  const platforms = [
+    { key: 'zhihu', platform: '知乎' },
+    { key: 'netease', platform: '网易' },
+  ];
+
+  const allRows = articlesRenderer.buildArticleRows(state, { platforms });
+  assert.deepEqual(allRows.map(row => row.article.id), [2, 1, 3]);
+  assert.equal(allRows[1].platformCount, 2);
+  assert.deepEqual(allRows[1].platforms.map(platform => [platform.label, platform.hasContent]), [
+    ['知乎', true],
+    ['网易', true],
+  ]);
+
+  const searchRows = articlesRenderer.buildArticleRows(state, { platforms, search: 'searchable' });
+  assert.deepEqual(searchRows.map(row => row.article.id), [2]);
+  const hasPlatformRows = articlesRenderer.buildArticleRows(state, { platforms, filterStatus: 'has-platforms' });
+  assert.deepEqual(hasPlatformRows.map(row => row.article.id), [1]);
+  const angleRows = articlesRenderer.buildArticleRows(state, { platforms, filterAngle: '_default' });
+  assert.deepEqual(angleRows.map(row => row.article.id), [2, 3]);
+
+  const emptyDocument = mockArticlesDocument();
+  articlesRenderer.renderArticles({
+    documentRef: emptyDocument,
+    ui: uiUtils,
+    state: { questions: [], articles: [] },
+    platforms,
+    angles: [{ id: 'faq', icon: 'Q', name: 'FAQ' }],
+    actions: { navigateToWorkspace: () => {} },
+  });
+  assert.ok(collectDomText(emptyDocument.getElementById('articlesTable')).includes('暂无文稿'));
+  assert.equal(/\bundefined\b|\bnull\b/.test(collectDomText(emptyDocument.getElementById('articlesTable'))), false);
+
+  const documentRef = mockArticlesDocument();
+  assert.doesNotThrow(() => articlesRenderer.renderArticles({
+    documentRef,
+    ui: uiUtils,
+    state,
+    platforms,
+    angles: [{ id: 'faq', icon: 'Q', name: 'FAQ' }],
+    actions: {
+      navigateToWorkspace: () => {},
+      viewArticle: () => {},
+      exportArticleWord: () => {},
+      deleteArticle: () => {},
+      toggleAllArticleCheckboxes: () => {},
+    },
+  }));
+
+  const tableText = collectDomText(documentRef.getElementById('articlesTable'));
+  const tableHtml = collectDomInnerHtml(documentRef.getElementById('articlesTable'));
+  assert.ok(tableText.includes(dangerousText));
+  assert.ok(tableText.includes('知乎'));
+  assert.ok(tableText.includes('网易'));
+  assert.ok(tableText.includes('2/2'));
+  assert.equal(tableHtml.includes(dangerousText), false);
+  assert.equal(/\bundefined\b|\bnull\b/.test(tableText), false);
+});
+
 test('user-controlled frontend render paths avoid inline handler and textarea HTML insertion', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
   const dashboardRendererSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'dashboard-renderer.js'), 'utf-8');
+  const articlesRendererSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'articles-renderer.js'), 'utf-8');
 
   assert.equal(source.includes('onclick="generateArticleFromTitle(\'${t.title'), false);
   assert.equal(source.includes('onclick="addToSelected(\'${t.title'), false);
@@ -303,11 +407,16 @@ test('user-controlled frontend render paths avoid inline handler and textarea HT
   assert.match(source, /function debugLog\(\.\.\.args\)/);
   assert.match(source, /geoUIUtils\.createOption/);
   assert.match(source, /geoDashboardRenderer\.renderDashboard/);
+  assert.match(source, /geoArticlesRenderer\.renderArticles/);
   assert.equal(source.includes('dashboardCardOrder'), false);
   assert.equal(source.includes('dash-trend-chart'), false);
   assert.equal(source.includes('dash-matrix-wrapper'), false);
+  assert.equal(source.includes('let html = `<table class="table"><thead><tr>'), false);
+  assert.equal(source.includes('onclick="viewArticle(${a.id})'), false);
   assert.equal(dashboardRendererSource.includes('onclick='), false);
   assert.equal(dashboardRendererSource.includes('innerHTML = cardOrder.map'), false);
+  assert.equal(articlesRendererSource.includes('onclick='), false);
+  assert.equal(articlesRendererSource.includes('innerHTML'), false);
 });
 
 function mockDownloadEnv() {
@@ -338,24 +447,31 @@ function mockDomDocument() {
         dataset: {},
         style: {},
         attributes: {},
+        options: [],
+        listeners: {},
         textContent: '',
         value: '',
         selected: false,
         appendChild(child) {
           this.children.push(child);
+          if (child && child.tagName === 'OPTION') this.options.push(child);
           this.firstChild = this.children[0] || null;
           return child;
         },
         removeChild(child) {
           const index = this.children.indexOf(child);
           if (index >= 0) this.children.splice(index, 1);
+          const optionIndex = this.options.indexOf(child);
+          if (optionIndex >= 0) this.options.splice(optionIndex, 1);
           this.firstChild = this.children[0] || null;
           return child;
         },
         setAttribute(name, value) {
           this.attributes[name] = value;
         },
-        addEventListener() {},
+        addEventListener(name, handler) {
+          this.listeners[name] = handler;
+        },
       };
       return element;
     },
@@ -367,6 +483,24 @@ function mockDashboardDocument() {
   const elements = {
     dashboardStats: base.createElement('div'),
     dashboardCharts: base.createElement('div'),
+  };
+  return {
+    ...base,
+    getElementById: id => elements[id] || null,
+    querySelectorAll: () => [],
+  };
+}
+
+function mockArticlesDocument() {
+  const base = mockDomDocument();
+  const angleSelect = base.createElement('select');
+  angleSelect.options.push(base.createElement('option'));
+  const elements = {
+    articleSearch: base.createElement('input'),
+    articleFilterStatus: base.createElement('select'),
+    articleFilterAngle: angleSelect,
+    articleCount: base.createElement('span'),
+    articlesTable: base.createElement('div'),
   };
   return {
     ...base,

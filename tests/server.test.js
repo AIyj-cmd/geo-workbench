@@ -100,6 +100,11 @@ test('static file serving uses an allowlist and ignores query strings', async ()
     assert.match(dashboardRenderer.headers['content-type'], /application\/javascript/);
     assert.match(dashboardRenderer.body, /GeoDashboardRenderer/);
 
+    const articlesRenderer = await request(port, { path: '/src/frontend/articles-renderer.js?v=1' });
+    assert.equal(articlesRenderer.statusCode, 200);
+    assert.match(articlesRenderer.headers['content-type'], /application\/javascript/);
+    assert.match(articlesRenderer.body, /GeoArticlesRenderer/);
+
     const serverFile = await request(port, { path: '/server.js' });
     assert.equal(serverFile.statusCode, 404);
 
@@ -292,6 +297,7 @@ test('frontend helpers escape dangerous title text and save platform edits by da
   const exportClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'export-client.js'), 'utf-8');
   const uiUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ui-utils.js'), 'utf-8');
   const dashboardRendererSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'dashboard-renderer.js'), 'utf-8');
+  const articlesRendererSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'articles-renderer.js'), 'utf-8');
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
   const context = {
     console: { ...console, warn: () => {} },
@@ -310,7 +316,7 @@ test('frontend helpers escape dangerous title text and save platform edits by da
       removeItem: () => {},
     },
   };
-  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${exportClientSource}\n${uiUtilsSource}\n${dashboardRendererSource}\n${source}`, context);
+  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${exportClientSource}\n${uiUtilsSource}\n${dashboardRendererSource}\n${articlesRendererSource}\n${source}`, context);
 
   assert.equal(context.escapeHtml('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
   assert.equal(context.escapeHtml('hello "world" & `test`'), 'hello &quot;world&quot; &amp; &#96;test&#96;');

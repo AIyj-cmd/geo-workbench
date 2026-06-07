@@ -26,6 +26,12 @@ if (!geoDashboardRenderer) {
   throw new Error('GeoDashboardRenderer module is required');
 }
 
+const geoArticlesRenderer = (typeof window !== 'undefined' && window.GeoArticlesRenderer) ||
+  (typeof globalThis !== 'undefined' && globalThis.GeoArticlesRenderer);
+if (!geoArticlesRenderer) {
+  throw new Error('GeoArticlesRenderer module is required');
+}
+
 // ===== Theme Toggle =====
 function toggleTheme() {
   const html = document.documentElement;
@@ -3039,113 +3045,21 @@ function exportAllDistribution() {
 
 // ===== Article Management Page =====
 function renderArticles() {
-  const search = (document.getElementById('articleSearch').value || '').toLowerCase();
-  const filterStatus = document.getElementById('articleFilterStatus').value;
-  const filterAngle = document.getElementById('articleFilterAngle').value;
-
-  // Populate angle filter dropdown
-  const angleFilterEl = document.getElementById('articleFilterAngle');
-  if (angleFilterEl && angleFilterEl.options.length <= 1) {
-    ANGLES.forEach(a => {
-      const opt = document.createElement('option');
-      opt.value = a.id;
-      opt.textContent = `${a.icon} ${a.name}`;
-      angleFilterEl.appendChild(opt);
-    });
-    const defaultOpt = document.createElement('option');
-    defaultOpt.value = '_default';
-    defaultOpt.textContent = '📝 母稿';
-    angleFilterEl.appendChild(defaultOpt);
-  }
-
-  let articles = [...state.articles];
-
-  // Filter by search
-  if (search) {
-    articles = articles.filter(a => {
-      const q = state.questions.find(q => q.id === a.questionId);
-      const qText = q ? q.question : '';
-      return qText.toLowerCase().includes(search) || (a.content || '').toLowerCase().includes(search);
-    });
-  }
-
-  // Filter by platform status
-  if (filterStatus === 'has-platforms') {
-    articles = articles.filter(a => getArticlePlatformEntries(a).length > 0);
-  } else if (filterStatus === 'no-platforms') {
-    articles = articles.filter(a => getArticlePlatformEntries(a).length === 0);
-  }
-
-  // Filter by angle
-  if (filterAngle) {
-    if (filterAngle === '_default') {
-      articles = articles.filter(a => !a.angle);
-    } else {
-      articles = articles.filter(a => a.angle === filterAngle);
-    }
-  }
-
-  // Sort by most recent first
-  articles.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
-
-  document.getElementById('articleCount').textContent = `共 ${articles.length} 篇`;
-
-  if (articles.length === 0) {
-    document.getElementById('articlesTable').innerHTML = `
-      <div class="card" style="padding:48px;text-align:center;color:var(--text-muted);">
-        <p style="font-size:32px;margin-bottom:12px;opacity:0.3;">📄</p>
-        <p>暂无文稿，去<a href="#" onclick="event.preventDefault();navigateTo('workspace')" style="color:var(--blue)">内容工作台</a>生成第一篇</p>
-      </div>`;
-    return;
-  }
-
-  const platformNames = DISTRIBUTION_MATRIX;
-
-  let html = `<table class="table"><thead><tr>
-    <th><input type="checkbox" onchange="toggleAllArticleCheckboxes(this.checked)"></th>
-    <th>序号</th>
-    <th>客户提问</th>
-    <th>模型</th>
-    <th>角度</th>
-    <th>字数</th>
-    <th>多平台状态</th>
-    <th>更新时间</th>
-    <th>操作</th>
-  </tr></thead><tbody>`;
-
-  articles.forEach((a, idx) => {
-    const q = state.questions.find(q => q.id === a.questionId);
-    const qText = q ? q.question : `#${a.questionId}`;
-    const mainCount = (a.content || '').length;
-    const articlePlatformEntries = getArticlePlatformEntries(a);
-    const platformContentLen = articlePlatformEntries.reduce((sum, entry) => sum + (entry.content || '').length, 0);
-    const totalCount = mainCount + platformContentLen;
-    const platformCount = articlePlatformEntries.length;
-    const platformTags = platformNames.map(dm => {
-      const has = hasPlatformContent(a, dm);
-      return `<span class="tag ${has ? 'tag-complete' : 'tag-low'}" style="font-size:11px;padding:1px 5px;">${dm.platform}</span>`;
-    }).join(' ');
-    const updatedAt = a.updatedAt ? new Date(a.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
-
-    html += `<tr>
-      <td><input type="checkbox" class="article-checkbox" data-id="${a.id}"></td>
-      <td>${idx + 1}</td>
-      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(qText)}">${escapeHtml(qText)}</td>
-      <td><span class="tag tag-blue">${a.model || '-'}</span></td>
-      <td>${a.angleName ? `<span class="tag tag-purple">${a.angleName}</span>` : '<span class="tag tag-low">母稿</span>'}</td>
-      <td>${mainCount.toLocaleString()}<br><span class="text-sm text-muted">总计 ${totalCount.toLocaleString()}</span></td>
-      <td>${platformTags} <span class="text-sm text-muted">${platformCount}/${DISTRIBUTION_MATRIX.length}</span></td>
-      <td class="text-sm text-muted">${updatedAt}</td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="viewArticle(${a.id})" title="查看/编辑">👁️</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportArticleWord(${a.id})" title="导出Word">📥</button>
-        <button class="btn btn-ghost btn-sm" onclick="deleteArticle(${a.id})" title="删除">🗑️</button>
-      </td>
-    </tr>`;
+  return geoArticlesRenderer.renderArticles({
+    state,
+    angles: ANGLES,
+    platforms: DISTRIBUTION_MATRIX,
+    ui: geoUIUtils,
+    getArticlePlatformEntries,
+    hasPlatformContent,
+    actions: {
+      navigateToWorkspace: () => navigateTo('workspace'),
+      viewArticle,
+      exportArticleWord,
+      deleteArticle,
+      toggleAllArticleCheckboxes,
+    },
   });
-
-  html += '</tbody></table>';
-  document.getElementById('articlesTable').innerHTML = html;
 }
 
 function viewArticle(articleId) {
