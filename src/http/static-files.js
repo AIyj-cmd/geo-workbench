@@ -11,6 +11,7 @@ const PUBLIC_FILES = new Map([
   ['/src/frontend/ai-client.js', 'src/frontend/ai-client.js'],
   ['/src/frontend/export-client.js', 'src/frontend/export-client.js'],
   ['/src/frontend/ui-utils.js', 'src/frontend/ui-utils.js'],
+  ['/src/frontend/dashboard-renderer.js', 'src/frontend/dashboard-renderer.js'],
   ['/style.css', 'style.css'],
   ['/dist-card.css', 'dist-card.css'],
   ['/logo.jpg', 'logo.jpg'],

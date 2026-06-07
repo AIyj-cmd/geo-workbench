@@ -244,6 +244,20 @@ async function main() {
     );
     assert(uiUtilsText.includes('GeoUIUtils'), '/src/frontend/ui-utils.js did not contain GeoUIUtils');
 
+    log('checking dashboard-renderer static asset');
+    const dashboardRendererRes = await fetch(`${baseUrl}/src/frontend/dashboard-renderer.js?v=smoke`);
+    const dashboardRendererText = await dashboardRendererRes.text();
+    const dashboardRendererContentType = dashboardRendererRes.headers.get('content-type') || '';
+    assert(dashboardRendererRes.status === 200, '/src/frontend/dashboard-renderer.js did not return 200');
+    assert(
+      /(?:application|text)\/javascript/i.test(dashboardRendererContentType),
+      '/src/frontend/dashboard-renderer.js did not return a JavaScript content-type'
+    );
+    assert(
+      dashboardRendererText.includes('GeoDashboardRenderer'),
+      '/src/frontend/dashboard-renderer.js did not contain GeoDashboardRenderer'
+    );
+
     const browserPath = findBrowserPath();
     if (!browserPath) {
       throw new Error('Chrome or Edge executable not found. Set CHROME_PATH to a Chrome/Edge executable and rerun npm run smoke.');
@@ -304,6 +318,9 @@ async function main() {
     await waitFor(cdp, 'selected title data loaded', 'typeof titleTabState !== "undefined" && titleTabState.selectedTitles.length > 0');
 
     const homeState = await evaluate(cdp, `(() => {
+      const dashboardActiveBeforeNav = !!document.querySelector('#page-dashboard.active');
+      const dashboardStatCount = document.querySelectorAll('#dashboardStats .dash-stat').length;
+      const dashboardCardCount = document.querySelectorAll('#dashboardCharts .dash-chart-card').length;
       navigateTo('questions');
       return {
         title: document.title,
@@ -312,6 +329,10 @@ async function main() {
         exportClientHasWordBuilder: typeof window.GeoExportClient?.buildAllArticlesWordHtml === 'function',
         uiUtilsLoaded: typeof window.GeoUIUtils === 'object',
         uiUtilsHasTextHelper: typeof window.GeoUIUtils?.setText === 'function',
+        dashboardRendererLoaded: typeof window.GeoDashboardRenderer === 'object',
+        dashboardActiveBeforeNav,
+        dashboardStatCount,
+        dashboardCardCount,
         questionsVisible: !!document.querySelector('#page-questions.active'),
         selectedRows: document.querySelectorAll('#selectedTableBody tr').length,
         poolCountText: document.getElementById('poolCount')?.textContent || ''
@@ -323,6 +344,10 @@ async function main() {
     assert(homeState.exportClientHasWordBuilder, 'GeoExportClient Word export helpers were not available');
     assert(homeState.uiUtilsLoaded, 'GeoUIUtils was not loaded on the home page');
     assert(homeState.uiUtilsHasTextHelper, 'GeoUIUtils text helper was not available');
+    assert(homeState.dashboardRendererLoaded, 'GeoDashboardRenderer was not loaded on the home page');
+    assert(homeState.dashboardActiveBeforeNav, 'dashboard page was not active on initial home load');
+    assert(homeState.dashboardStatCount > 0, 'dashboard stat cards did not render');
+    assert(homeState.dashboardCardCount > 0, 'dashboard chart cards did not render');
     assert(homeState.questionsVisible, 'keyword/title page is not visible');
     assert(homeState.selectedRows > 0, 'selected title table has no rows');
     assert(
@@ -340,6 +365,10 @@ async function main() {
     assert(
       !browserErrors.some(error => error.includes('GeoUIUtils module is required')),
       'GeoUIUtils module is required error appeared after homepage load'
+    );
+    assert(
+      !browserErrors.some(error => error.includes('GeoDashboardRenderer module is required')),
+      'GeoDashboardRenderer module is required error appeared after homepage load'
     );
 
     log('verifying dangerous title renders as text');

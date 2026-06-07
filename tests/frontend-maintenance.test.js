@@ -7,6 +7,7 @@ const aiClient = require('../src/frontend/ai-client');
 const exportClient = require('../src/frontend/export-client');
 const stateStorage = require('../src/frontend/state-storage');
 const uiUtils = require('../src/frontend/ui-utils');
+const dashboardRenderer = require('../src/frontend/dashboard-renderer');
 
 function createFrontendContext(storage = {}) {
   return {
@@ -33,8 +34,9 @@ function loadApp(context, suffix = '') {
   const aiClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ai-client.js'), 'utf-8');
   const exportClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'export-client.js'), 'utf-8');
   const uiUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ui-utils.js'), 'utf-8');
+  const dashboardRendererSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'dashboard-renderer.js'), 'utf-8');
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
-  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${exportClientSource}\n${uiUtilsSource}\n${source}\n${suffix}`, context);
+  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${exportClientSource}\n${uiUtilsSource}\n${dashboardRendererSource}\n${source}\n${suffix}`, context);
   return source;
 }
 
@@ -190,8 +192,100 @@ test('ui-utils module creates safe DOM helpers and gated debug logging', async (
   }), true);
 });
 
+test('dashboard-renderer module builds stable stats and renders dangerous text safely', () => {
+  const uiUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ui-utils.js'), 'utf-8');
+  const dashboardRendererSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'dashboard-renderer.js'), 'utf-8');
+  const context = {};
+  vm.runInNewContext(`${uiUtilsSource}\n${dashboardRendererSource}`, context);
+
+  assert.equal(typeof dashboardRenderer.renderDashboard, 'function');
+  assert.equal(typeof dashboardRenderer.buildDashboardStats, 'function');
+  assert.equal(typeof context.GeoDashboardRenderer, 'object');
+  assert.match(dashboardRendererSource, /root\.GeoDashboardRenderer = api/);
+
+  const dangerousText = '<img src=x onerror=alert(1)>';
+  const state = {
+    questions: [{
+      id: 1,
+      question: dangerousText,
+      priority: '高',
+      intent: '决策选型',
+      status: '未开始',
+      industry: '通用',
+      cluster: dangerousText,
+      sellingPoint: dangerousText,
+      retestDate: '2099-01-01',
+      mentioned: '是',
+    }],
+    articles: [{
+      questionId: 1,
+      createdAt: new Date().toISOString(),
+      angle: 'angle-1',
+      angleName: dangerousText,
+      platforms: { zhihu: 'platform content' },
+    }],
+    testRecords: [{
+      questionId: 1,
+      testDate: '2099-01-01',
+      mentioned: '是',
+      competitors: dangerousText,
+    }],
+  };
+  const options = {
+    titleTabState: { selectedTitles: [{ title: 'selected' }], poolTotal: 9 },
+    platforms: [{ key: 'zhihu', platform: '知乎' }],
+    angles: [{ id: 'angle-1', name: dangerousText }],
+    getArticlePlatformEntries: article => Object.entries(article.platforms || {}).map(([key, content]) => ({ key, platform: key, content })),
+    hasPlatformContent: (article, platform) => !!(article.platforms && article.platforms[platform.key]),
+  };
+
+  const stats = dashboardRenderer.buildDashboardStats(state, options);
+  assert.equal(stats.selectedCount, 1);
+  assert.equal(stats.poolTotal, 9);
+  assert.equal(stats.generatedCount, 1);
+  assert.equal(stats.platformVersions, 1);
+  assert.equal(stats.mentionRate, 100);
+  assert.equal(stats.topCompetitors[0][0], dangerousText);
+
+  const emptyStats = dashboardRenderer.buildDashboardStats({}, {});
+  assert.equal(emptyStats.questionCount, 0);
+  assert.equal(emptyStats.generatedCount, 0);
+  assert.equal(emptyStats.mentionRate, 0);
+
+  const documentRef = mockDashboardDocument();
+  assert.doesNotThrow(() => dashboardRenderer.renderDashboard({
+    ...options,
+    documentRef,
+    ui: uiUtils,
+    state,
+    storage: { getItem: () => null, setItem: () => {} },
+  }));
+
+  const statsEl = documentRef.getElementById('dashboardStats');
+  const chartsEl = documentRef.getElementById('dashboardCharts');
+  assert.ok(statsEl.children.length > 0);
+  assert.ok(chartsEl.children.length > 0);
+  const renderedText = collectDomText(statsEl) + collectDomText(chartsEl);
+  const renderedHtml = collectDomInnerHtml(statsEl) + collectDomInnerHtml(chartsEl);
+  assert.ok(renderedText.includes(dangerousText));
+  assert.equal(renderedHtml.includes(dangerousText), false);
+  assert.equal(/\bundefined\b|\bnull\b/.test(renderedText), false);
+
+  const missingFieldDocument = mockDashboardDocument();
+  assert.doesNotThrow(() => dashboardRenderer.renderDashboard({
+    documentRef: missingFieldDocument,
+    ui: uiUtils,
+    state: { questions: 'bad', articles: null, testRecords: undefined },
+    titleTabState: {},
+    platforms: [],
+    angles: [],
+    storage: { getItem: () => '{bad json', setItem: () => {} },
+  }));
+});
+
 test('user-controlled frontend render paths avoid inline handler and textarea HTML insertion', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
+  const dashboardRendererSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'dashboard-renderer.js'), 'utf-8');
 
   assert.equal(source.includes('onclick="generateArticleFromTitle(\'${t.title'), false);
   assert.equal(source.includes('onclick="addToSelected(\'${t.title'), false);
@@ -208,6 +302,12 @@ test('user-controlled frontend render paths avoid inline handler and textarea HT
   assert.equal(source.includes('console.log(`[PlatformTitles] Retrying'), false);
   assert.match(source, /function debugLog\(\.\.\.args\)/);
   assert.match(source, /geoUIUtils\.createOption/);
+  assert.match(source, /geoDashboardRenderer\.renderDashboard/);
+  assert.equal(source.includes('dashboardCardOrder'), false);
+  assert.equal(source.includes('dash-trend-chart'), false);
+  assert.equal(source.includes('dash-matrix-wrapper'), false);
+  assert.equal(dashboardRendererSource.includes('onclick='), false);
+  assert.equal(dashboardRendererSource.includes('innerHTML = cardOrder.map'), false);
 });
 
 function mockDownloadEnv() {
@@ -260,6 +360,29 @@ function mockDomDocument() {
       return element;
     },
   };
+}
+
+function mockDashboardDocument() {
+  const base = mockDomDocument();
+  const elements = {
+    dashboardStats: base.createElement('div'),
+    dashboardCharts: base.createElement('div'),
+  };
+  return {
+    ...base,
+    getElementById: id => elements[id] || null,
+    querySelectorAll: () => [],
+  };
+}
+
+function collectDomText(element) {
+  if (!element) return '';
+  return `${element.textContent || ''}${(element.children || []).map(collectDomText).join('')}`;
+}
+
+function collectDomInnerHtml(element) {
+  if (!element) return '';
+  return `${element.innerHTML || ''}${(element.children || []).map(collectDomInnerHtml).join('')}`;
 }
 
 test('state migration preserves legacy data and localStorage saves version', () => {
