@@ -9,6 +9,7 @@ const PUBLIC_FILES = new Map([
   ['/app.js', 'app.js'],
   ['/src/frontend/state-storage.js', 'src/frontend/state-storage.js'],
   ['/src/frontend/ai-client.js', 'src/frontend/ai-client.js'],
+  ['/src/frontend/export-client.js', 'src/frontend/export-client.js'],
   ['/style.css', 'style.css'],
   ['/dist-card.css', 'dist-card.css'],
   ['/logo.jpg', 'logo.jpg'],

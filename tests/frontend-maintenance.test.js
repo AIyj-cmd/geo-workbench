@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const aiClient = require('../src/frontend/ai-client');
+const exportClient = require('../src/frontend/export-client');
 const stateStorage = require('../src/frontend/state-storage');
 
 function createFrontendContext(storage = {}) {
@@ -29,8 +30,9 @@ function createFrontendContext(storage = {}) {
 function loadApp(context, suffix = '') {
   const stateStorageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'state-storage.js'), 'utf-8');
   const aiClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ai-client.js'), 'utf-8');
+  const exportClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'export-client.js'), 'utf-8');
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
-  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${source}\n${suffix}`, context);
+  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${exportClientSource}\n${source}\n${suffix}`, context);
   return source;
 }
 
@@ -81,6 +83,61 @@ test('app delegates AI chat parsing to GeoAIClient', () => {
   assert.equal(context.GeoAIClient.extractRequiredChatContent({ choices: [{ message: { content: ' ok ' } }] }, 'window-unit'), 'ok');
 });
 
+test('export-client module builds Word exports safely', () => {
+  const exportClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'export-client.js'), 'utf-8');
+  const context = {};
+  vm.runInNewContext(exportClientSource, context);
+
+  assert.equal(typeof exportClient.exportToWord, 'function');
+  assert.equal(typeof context.GeoExportClient, 'object');
+  assert.equal(exportClient.sanitizeFilename('a/b\\c:d*e?f"g<h>i|j'), 'a_b_c_d_e_f_g_h_i_j');
+  assert.equal(exportClient.exportToWord('', 'draft', mockDownloadEnv()).filename, '.doc');
+
+  const masterHtml = exportClient.buildMasterDraftWordHtml({ title: '母稿', content: '# 标题\n母稿正文' });
+  assert.match(masterHtml, /母稿正文/);
+
+  const platformNames = ['知乎', '公众号', '百家号', 'B站', '搜狐', '网易', '今日头条', '腾讯新闻'];
+  const platforms = platformNames.map(name => ({
+    icon: '📄',
+    platform: name,
+    form: '文章',
+    length: '800字',
+    geoValue: 'GEO',
+    content: `${name}内容`,
+  }));
+  const distributionHtml = exportClient.buildDistributionWordHtml({
+    title: '一稿多发',
+    article: { content: '母稿正文' },
+    platforms,
+  });
+  for (const name of platformNames) {
+    assert.match(distributionHtml, new RegExp(name));
+  }
+
+  const emptyPlatformHtml = exportClient.buildDistributionWordHtml({
+    title: null,
+    article: { content: null },
+    platforms: [{ platform: '知乎', content: null }],
+  });
+  assert.doesNotThrow(() => exportClient.buildAllArticlesWordHtml({
+    articles: [{ title: null, article: { id: 1, content: null }, platformEntries: [{ platform: '知乎', content: null }] }],
+  }));
+  assert.equal(/\bundefined\b|\bnull\b/.test(emptyPlatformHtml), false);
+});
+
+test('app delegates Word export formatting to GeoExportClient', () => {
+  const context = createFrontendContext();
+  const source = loadApp(context);
+  const exportClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'export-client.js'), 'utf-8');
+
+  assert.match(exportClientSource, /root\.GeoExportClient = api/);
+  assert.equal(source.includes("application/msword"), false);
+  assert.equal(source.includes("new Blob([fullHtml]"), false);
+  assert.equal(source.includes("body { font-family: 'Microsoft YaHei'"), false);
+  assert.equal(/apiKey|MIMO_API_KEY|config\.json/.test(exportClientSource), false);
+  assert.equal(context.GeoExportClient.sanitizeFilename('x/y'), 'x_y');
+});
+
 test('user-controlled frontend render paths avoid inline handler and textarea HTML insertion', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
 
@@ -95,6 +152,24 @@ test('user-controlled frontend render paths avoid inline handler and textarea HT
   assert.equal(source.includes('qSelect.innerHTML = state.questions.map'), false);
   assert.equal(source.includes("select.innerHTML = '<option value=\"\">"), false);
 });
+
+function mockDownloadEnv() {
+  return {
+    BlobCtor: function MockBlob(parts, options) {
+      this.parts = parts;
+      this.options = options;
+    },
+    URLRef: {
+      createObjectURL: () => 'blob:mock',
+      revokeObjectURL: () => {},
+    },
+    documentRef: {
+      createElement: () => ({
+        click: () => {},
+      }),
+    },
+  };
+}
 
 test('state migration preserves legacy data and localStorage saves version', () => {
   const storage = { geo_workbench_data: '{bad json' };

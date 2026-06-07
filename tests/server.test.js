@@ -85,6 +85,11 @@ test('static file serving uses an allowlist and ignores query strings', async ()
     assert.match(aiClient.headers['content-type'], /application\/javascript/);
     assert.match(aiClient.body, /GeoAIClient/);
 
+    const exportClient = await request(port, { path: '/src/frontend/export-client.js?v=1' });
+    assert.equal(exportClient.statusCode, 200);
+    assert.match(exportClient.headers['content-type'], /application\/javascript/);
+    assert.match(exportClient.body, /GeoExportClient/);
+
     const serverFile = await request(port, { path: '/server.js' });
     assert.equal(serverFile.statusCode, 404);
 
@@ -274,6 +279,7 @@ test('rate limiter can clean expired buckets', () => {
 test('frontend helpers escape dangerous title text and save platform edits by data-platform', () => {
   const stateStorageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'state-storage.js'), 'utf-8');
   const aiClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ai-client.js'), 'utf-8');
+  const exportClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'export-client.js'), 'utf-8');
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
   const context = {
     console: { ...console, warn: () => {} },
@@ -292,7 +298,7 @@ test('frontend helpers escape dangerous title text and save platform edits by da
       removeItem: () => {},
     },
   };
-  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${source}`, context);
+  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${exportClientSource}\n${source}`, context);
 
   assert.equal(context.escapeHtml('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
   assert.equal(context.escapeHtml('hello "world" & `test`'), 'hello &quot;world&quot; &amp; &#96;test&#96;');

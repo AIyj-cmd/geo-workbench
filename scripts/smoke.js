@@ -222,6 +222,17 @@ async function main() {
     );
     assert(aiClientText.includes('GeoAIClient'), '/src/frontend/ai-client.js did not contain GeoAIClient');
 
+    log('checking export-client static asset');
+    const exportClientRes = await fetch(`${baseUrl}/src/frontend/export-client.js?v=smoke`);
+    const exportClientText = await exportClientRes.text();
+    const exportClientContentType = exportClientRes.headers.get('content-type') || '';
+    assert(exportClientRes.status === 200, '/src/frontend/export-client.js did not return 200');
+    assert(
+      /(?:application|text)\/javascript/i.test(exportClientContentType),
+      '/src/frontend/export-client.js did not return a JavaScript content-type'
+    );
+    assert(exportClientText.includes('GeoExportClient'), '/src/frontend/export-client.js did not contain GeoExportClient');
+
     const browserPath = findBrowserPath();
     if (!browserPath) {
       throw new Error('Chrome or Edge executable not found. Set CHROME_PATH to a Chrome/Edge executable and rerun npm run smoke.');
@@ -286,6 +297,8 @@ async function main() {
       return {
         title: document.title,
         aiClientLoaded: typeof window.GeoAIClient === 'object',
+        exportClientLoaded: typeof window.GeoExportClient === 'object',
+        exportClientHasWordBuilder: typeof window.GeoExportClient?.buildAllArticlesWordHtml === 'function',
         questionsVisible: !!document.querySelector('#page-questions.active'),
         selectedRows: document.querySelectorAll('#selectedTableBody tr').length,
         poolCountText: document.getElementById('poolCount')?.textContent || ''
@@ -293,6 +306,8 @@ async function main() {
     })()`);
     assert(homeState.title.includes('GEO'), 'home page title did not load');
     assert(homeState.aiClientLoaded, 'GeoAIClient was not loaded on the home page');
+    assert(homeState.exportClientLoaded, 'GeoExportClient was not loaded on the home page');
+    assert(homeState.exportClientHasWordBuilder, 'GeoExportClient Word export helpers were not available');
     assert(homeState.questionsVisible, 'keyword/title page is not visible');
     assert(homeState.selectedRows > 0, 'selected title table has no rows');
     assert(
@@ -302,6 +317,10 @@ async function main() {
     assert(
       !browserErrors.some(error => error.includes('GeoAIClient module is required')),
       'GeoAIClient module is required error appeared after homepage load'
+    );
+    assert(
+      !browserErrors.some(error => error.includes('GeoExportClient module is required')),
+      'GeoExportClient module is required error appeared after homepage load'
     );
 
     log('verifying dangerous title renders as text');
