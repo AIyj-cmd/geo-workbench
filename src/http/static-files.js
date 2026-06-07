@@ -7,6 +7,7 @@ const PUBLIC_FILES = new Map([
   ['/', 'index.html'],
   ['/index.html', 'index.html'],
   ['/app.js', 'app.js'],
+  ['/src/frontend/state-storage.js', 'src/frontend/state-storage.js'],
   ['/style.css', 'style.css'],
   ['/dist-card.css', 'dist-card.css'],
   ['/logo.jpg', 'logo.jpg'],

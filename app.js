@@ -980,102 +980,48 @@ const DEFAULT_SELLING_POINTS = [
 ];
 
 // ===== State =====
-const STATE_VERSION = 1;
+const StateStorage = typeof GeoStateStorage !== 'undefined'
+  ? GeoStateStorage
+  : (typeof window !== 'undefined' ? window.GeoStateStorage : null);
 
-function clonePlainData(value) {
-  return JSON.parse(JSON.stringify(value));
+if (!StateStorage) {
+  throw new Error('GeoStateStorage module is required');
+}
+
+const STATE_VERSION = StateStorage.STATE_VERSION;
+
+function getStateStorageDefaults() {
+  return {
+    defaultQuestions: DEFAULT_QUESTIONS,
+    defaultSellingPoints: DEFAULT_SELLING_POINTS,
+  };
 }
 
 function createDefaultState() {
-  return {
-    version: STATE_VERSION,
-    questions: clonePlainData(DEFAULT_QUESTIONS),
-    sellingPoints: clonePlainData(DEFAULT_SELLING_POINTS),
-    articles: [],
-    selectedQuestionIds: new Set(),
-    currentPage: 'questions',
-    questionPage: 1,
-    questionPageSize: 20,
-    wsSelectedQuestionId: null,
-    wsCurrentArticle: null,
-    wsIsGenerating: false,
-    wsAbortController: null,
-    batchRunning: false,
-    batchAbortController: null,
-    nextQuestionId: 50,
-    nextSpId: 15,
-    nextArticleId: 1,
-    testRecords: [],
-    nextRecordId: 1,
-    trPage: 1,
-    trPageSize: 15,
-  };
-}
-
-function safeNumber(value, fallback) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
+  return StateStorage.createDefaultState(getStateStorageDefaults());
 }
 
 function migrateState(rawState) {
-  if (!rawState || typeof rawState !== 'object') {
-    return createDefaultState();
-  }
+  return StateStorage.migrateState(rawState, getStateStorageDefaults());
+}
 
-  const defaults = createDefaultState();
-  const migrated = {
-    ...defaults,
-    ...rawState,
-    version: STATE_VERSION,
-    questions: Array.isArray(rawState.questions) ? rawState.questions : defaults.questions,
-    sellingPoints: Array.isArray(rawState.sellingPoints) ? rawState.sellingPoints : defaults.sellingPoints,
-    articles: Array.isArray(rawState.articles) ? rawState.articles : defaults.articles,
-    testRecords: Array.isArray(rawState.testRecords) ? rawState.testRecords : defaults.testRecords,
-    nextQuestionId: safeNumber(rawState.nextQuestionId, defaults.nextQuestionId),
-    nextSpId: safeNumber(rawState.nextSpId, defaults.nextSpId),
-    nextArticleId: safeNumber(rawState.nextArticleId, defaults.nextArticleId),
-    nextRecordId: safeNumber(rawState.nextRecordId, defaults.nextRecordId),
-    questionPage: safeNumber(rawState.questionPage, defaults.questionPage),
-    questionPageSize: safeNumber(rawState.questionPageSize, defaults.questionPageSize),
-    trPage: safeNumber(rawState.trPage, defaults.trPage),
-    trPageSize: safeNumber(rawState.trPageSize, defaults.trPageSize),
-    wsIsGenerating: false,
-    wsAbortController: null,
-    batchRunning: false,
-    batchAbortController: null,
-  };
-
-  if (rawState.selectedQuestionIds instanceof Set) {
-    migrated.selectedQuestionIds = new Set(rawState.selectedQuestionIds);
-  } else if (Array.isArray(rawState.selectedQuestionIds)) {
-    migrated.selectedQuestionIds = new Set(rawState.selectedQuestionIds);
-  } else {
-    migrated.selectedQuestionIds = defaults.selectedQuestionIds;
-  }
-
-  return migrated;
+function safeParseState(serializedState) {
+  return StateStorage.safeParseState(serializedState);
 }
 
 let state = createDefaultState();
 
 // ===== Persistence =====
 function loadState() {
-  let parsed = null;
-  try {
-    const saved = localStorage.getItem('geo_workbench_data');
-    if (saved) {
-      parsed = JSON.parse(saved);
-      state = migrateState(parsed);
-      // Load saved selected titles (user-added titles)
-      if (parsed.selectedTitles && Array.isArray(parsed.selectedTitles)) {
-        titleTabState.savedSelectedTitles = parsed.selectedTitles;
-      }
-    } else {
-      state = createDefaultState();
-    }
-  } catch (e) {
-    console.error('Load state error:', e);
-    state = createDefaultState();
+  const loaded = StateStorage.loadState(localStorage, getStateStorageDefaults());
+  if (loaded.error) {
+    console.error('Load state error:', loaded.error);
+  }
+  state = loaded.state;
+
+  const parsed = loaded.parsedState;
+  if (parsed && Array.isArray(parsed.selectedTitles)) {
+    titleTabState.savedSelectedTitles = parsed.selectedTitles;
   }
 
   // Load settings (non-sensitive only)
@@ -1093,20 +1039,9 @@ function loadState() {
 }
 
 function saveState() {
-  state.version = STATE_VERSION;
-  const data = {
-    version: STATE_VERSION,
-    questions: state.questions,
-    sellingPoints: state.sellingPoints,
-    articles: state.articles,
-    nextQuestionId: state.nextQuestionId,
-    nextSpId: state.nextSpId,
-    nextArticleId: state.nextArticleId,
-    testRecords: state.testRecords,
-    nextRecordId: state.nextRecordId,
+  StateStorage.saveState(localStorage, state, {
     selectedTitles: titleTabState.selectedTitles,
-  };
-  localStorage.setItem('geo_workbench_data', JSON.stringify(data));
+  });
 }
 
 function getSettings() {

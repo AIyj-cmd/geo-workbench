@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const stateStorage = require('../src/frontend/state-storage');
 
 function createFrontendContext(storage = {}) {
   return {
@@ -25,8 +26,9 @@ function createFrontendContext(storage = {}) {
 }
 
 function loadApp(context, suffix = '') {
+  const stateStorageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'state-storage.js'), 'utf-8');
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
-  vm.runInNewContext(`${source}\n${suffix}`, context);
+  vm.runInNewContext(`${stateStorageSource}\n${source}\n${suffix}`, context);
   return source;
 }
 
@@ -97,4 +99,56 @@ test('state migration preserves legacy data and localStorage saves version', () 
   const saveStorage = {};
   loadApp(createFrontendContext(saveStorage), 'saveState();');
   assert.equal(JSON.parse(saveStorage.geo_workbench_data).version, 1);
+});
+
+test('state-storage module migrates, loads, and saves state safely', () => {
+  assert.equal(stateStorage.STATE_VERSION, 1);
+
+  const defaults = {
+    defaultQuestions: [{ id: 1, question: 'default question' }],
+    defaultSellingPoints: [{ id: 1, point: 'default selling point' }],
+  };
+  const defaultState = stateStorage.createDefaultState(defaults);
+  assert.equal(defaultState.version, 1);
+  assert.deepEqual(defaultState.questions, defaults.defaultQuestions);
+  assert.deepEqual(defaultState.sellingPoints, defaults.defaultSellingPoints);
+  assert.equal(defaultState.selectedQuestionIds instanceof Set, true);
+
+  const legacy = stateStorage.migrateState({
+    questions: [{ id: 2, question: 'legacy question' }],
+    selectedQuestionIds: [2],
+    nextArticleId: '9',
+  }, defaults);
+  assert.equal(legacy.version, 1);
+  assert.deepEqual(legacy.questions, [{ id: 2, question: 'legacy question' }]);
+  assert.equal(legacy.selectedQuestionIds.has(2), true);
+  assert.equal(legacy.nextArticleId, 9);
+  assert.deepEqual(legacy.sellingPoints, defaults.defaultSellingPoints);
+
+  const broken = stateStorage.safeParseState('{bad json');
+  assert.equal(broken.value, null);
+  assert.ok(broken.error instanceof Error);
+
+  const damagedStorage = { geo_workbench_data: '{bad json' };
+  const damagedLoaded = stateStorage.loadState({
+    getItem: key => damagedStorage[key] || null,
+    setItem: (key, value) => { damagedStorage[key] = value; },
+  }, defaults);
+  assert.equal(damagedLoaded.error instanceof Error, true);
+  assert.deepEqual(damagedLoaded.state.questions, defaults.defaultQuestions);
+
+  const throwingLoaded = stateStorage.loadState({
+    getItem: () => { throw new Error('storage unavailable'); },
+  }, defaults);
+  assert.equal(throwingLoaded.error instanceof Error, true);
+  assert.deepEqual(throwingLoaded.state.questions, defaults.defaultQuestions);
+
+  const saveStorage = {};
+  const savedData = stateStorage.saveState({
+    getItem: key => saveStorage[key] || null,
+    setItem: (key, value) => { saveStorage[key] = value; },
+  }, legacy, { selectedTitles: [{ title: 'saved title' }] });
+  assert.equal(savedData.version, 1);
+  assert.equal(JSON.parse(saveStorage.geo_workbench_data).version, 1);
+  assert.deepEqual(JSON.parse(saveStorage.geo_workbench_data).selectedTitles, [{ title: 'saved title' }]);
 });

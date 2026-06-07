@@ -75,6 +75,11 @@ test('static file serving uses an allowlist and ignores query strings', async ()
     assert.equal(app.statusCode, 200);
     assert.match(app.headers['content-type'], /application\/javascript/);
 
+    const stateStorage = await request(port, { path: '/src/frontend/state-storage.js?v=1' });
+    assert.equal(stateStorage.statusCode, 200);
+    assert.match(stateStorage.headers['content-type'], /application\/javascript/);
+    assert.match(stateStorage.body, /GeoStateStorage/);
+
     const serverFile = await request(port, { path: '/server.js' });
     assert.equal(serverFile.statusCode, 404);
 
@@ -262,6 +267,7 @@ test('rate limiter can clean expired buckets', () => {
 });
 
 test('frontend helpers escape dangerous title text and save platform edits by data-platform', () => {
+  const stateStorageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'state-storage.js'), 'utf-8');
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
   const context = {
     console: { ...console, warn: () => {} },
@@ -280,7 +286,7 @@ test('frontend helpers escape dangerous title text and save platform edits by da
       removeItem: () => {},
     },
   };
-  vm.runInNewContext(source, context);
+  vm.runInNewContext(`${stateStorageSource}\n${source}`, context);
 
   assert.equal(context.escapeHtml('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
   assert.equal(context.escapeHtml('hello "world" & `test`'), 'hello &quot;world&quot; &amp; &#96;test&#96;');
