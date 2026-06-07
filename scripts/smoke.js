@@ -233,6 +233,17 @@ async function main() {
     );
     assert(exportClientText.includes('GeoExportClient'), '/src/frontend/export-client.js did not contain GeoExportClient');
 
+    log('checking ui-utils static asset');
+    const uiUtilsRes = await fetch(`${baseUrl}/src/frontend/ui-utils.js?v=smoke`);
+    const uiUtilsText = await uiUtilsRes.text();
+    const uiUtilsContentType = uiUtilsRes.headers.get('content-type') || '';
+    assert(uiUtilsRes.status === 200, '/src/frontend/ui-utils.js did not return 200');
+    assert(
+      /(?:application|text)\/javascript/i.test(uiUtilsContentType),
+      '/src/frontend/ui-utils.js did not return a JavaScript content-type'
+    );
+    assert(uiUtilsText.includes('GeoUIUtils'), '/src/frontend/ui-utils.js did not contain GeoUIUtils');
+
     const browserPath = findBrowserPath();
     if (!browserPath) {
       throw new Error('Chrome or Edge executable not found. Set CHROME_PATH to a Chrome/Edge executable and rerun npm run smoke.');
@@ -299,6 +310,8 @@ async function main() {
         aiClientLoaded: typeof window.GeoAIClient === 'object',
         exportClientLoaded: typeof window.GeoExportClient === 'object',
         exportClientHasWordBuilder: typeof window.GeoExportClient?.buildAllArticlesWordHtml === 'function',
+        uiUtilsLoaded: typeof window.GeoUIUtils === 'object',
+        uiUtilsHasTextHelper: typeof window.GeoUIUtils?.setText === 'function',
         questionsVisible: !!document.querySelector('#page-questions.active'),
         selectedRows: document.querySelectorAll('#selectedTableBody tr').length,
         poolCountText: document.getElementById('poolCount')?.textContent || ''
@@ -308,6 +321,8 @@ async function main() {
     assert(homeState.aiClientLoaded, 'GeoAIClient was not loaded on the home page');
     assert(homeState.exportClientLoaded, 'GeoExportClient was not loaded on the home page');
     assert(homeState.exportClientHasWordBuilder, 'GeoExportClient Word export helpers were not available');
+    assert(homeState.uiUtilsLoaded, 'GeoUIUtils was not loaded on the home page');
+    assert(homeState.uiUtilsHasTextHelper, 'GeoUIUtils text helper was not available');
     assert(homeState.questionsVisible, 'keyword/title page is not visible');
     assert(homeState.selectedRows > 0, 'selected title table has no rows');
     assert(
@@ -321,6 +336,10 @@ async function main() {
     assert(
       !browserErrors.some(error => error.includes('GeoExportClient module is required')),
       'GeoExportClient module is required error appeared after homepage load'
+    );
+    assert(
+      !browserErrors.some(error => error.includes('GeoUIUtils module is required')),
+      'GeoUIUtils module is required error appeared after homepage load'
     );
 
     log('verifying dangerous title renders as text');

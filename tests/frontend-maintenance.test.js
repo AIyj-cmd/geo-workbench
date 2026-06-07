@@ -6,6 +6,7 @@ const vm = require('node:vm');
 const aiClient = require('../src/frontend/ai-client');
 const exportClient = require('../src/frontend/export-client');
 const stateStorage = require('../src/frontend/state-storage');
+const uiUtils = require('../src/frontend/ui-utils');
 
 function createFrontendContext(storage = {}) {
   return {
@@ -31,8 +32,9 @@ function loadApp(context, suffix = '') {
   const stateStorageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'state-storage.js'), 'utf-8');
   const aiClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ai-client.js'), 'utf-8');
   const exportClientSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'export-client.js'), 'utf-8');
+  const uiUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ui-utils.js'), 'utf-8');
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
-  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${exportClientSource}\n${source}\n${suffix}`, context);
+  vm.runInNewContext(`${stateStorageSource}\n${aiClientSource}\n${exportClientSource}\n${uiUtilsSource}\n${source}\n${suffix}`, context);
   return source;
 }
 
@@ -138,6 +140,56 @@ test('app delegates Word export formatting to GeoExportClient', () => {
   assert.equal(context.GeoExportClient.sanitizeFilename('x/y'), 'x_y');
 });
 
+test('ui-utils module creates safe DOM helpers and gated debug logging', async () => {
+  const uiUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'frontend', 'ui-utils.js'), 'utf-8');
+  const context = {};
+  vm.runInNewContext(uiUtilsSource, context);
+
+  assert.equal(typeof uiUtils.createOption, 'function');
+  assert.equal(typeof context.GeoUIUtils, 'object');
+
+  const documentRef = mockDomDocument();
+  const dangerousText = '<img src=x onerror=alert(1)>';
+  const element = uiUtils.createElement('span', { documentRef, text: dangerousText });
+  assert.equal(element.textContent, dangerousText);
+  assert.equal(element.innerHTML, undefined);
+
+  const option = uiUtils.createOption('value', 'hello "world"', true, { documentRef });
+  assert.equal(option.value, 'value');
+  assert.equal(option.textContent, 'hello "world"');
+  assert.equal(option.selected, true);
+
+  const parent = documentRef.createElement('div');
+  uiUtils.appendChildren(parent, [element, option]);
+  assert.equal(parent.children.length, 2);
+  uiUtils.clearElement(parent);
+  assert.equal(parent.children.length, 0);
+
+  assert.equal(uiUtils.isDebugEnabled({ storage: { getItem: () => null } }), false);
+  assert.equal(uiUtils.isDebugEnabled({ storage: { getItem: () => '1' } }), true);
+  const disabledLogs = [];
+  vm.runInNewContext(`${uiUtilsSource}\nGeoUIUtils.debugLog('hidden');`, {
+    localStorage: { getItem: () => null },
+    console: { debug: (...args) => disabledLogs.push(args) },
+  });
+  assert.deepEqual(disabledLogs, []);
+  const enabledLogs = [];
+  vm.runInNewContext(`${uiUtilsSource}\nGeoUIUtils.debugLog('visible', 1);`, {
+    localStorage: { getItem: () => '1' },
+    console: { debug: (...args) => enabledLogs.push(args) },
+  });
+  assert.deepEqual(enabledLogs, [['visible', 1]]);
+
+  assert.equal(await uiUtils.copyToClipboard('copy text', { navigatorRef: {}, documentRef: null }), false);
+  const fallbackDocument = mockDomDocument();
+  fallbackDocument.body = fallbackDocument.createElement('body');
+  fallbackDocument.execCommand = command => command === 'copy';
+  assert.equal(await uiUtils.copyToClipboard('copy text', {
+    navigatorRef: { clipboard: { writeText: async () => { throw new Error('denied'); } } },
+    documentRef: fallbackDocument,
+  }), true);
+});
+
 test('user-controlled frontend render paths avoid inline handler and textarea HTML insertion', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf-8');
 
@@ -151,6 +203,11 @@ test('user-controlled frontend render paths avoid inline handler and textarea HT
   assert.equal(source.includes('ta.innerHTML ='), false);
   assert.equal(source.includes('qSelect.innerHTML = state.questions.map'), false);
   assert.equal(source.includes("select.innerHTML = '<option value=\"\">"), false);
+  assert.equal(source.includes('console.log(`[${platform}] Prompt length'), false);
+  assert.equal(source.includes('console.log(`[${platform}] Raw lines'), false);
+  assert.equal(source.includes('console.log(`[PlatformTitles] Retrying'), false);
+  assert.match(source, /function debugLog\(\.\.\.args\)/);
+  assert.match(source, /geoUIUtils\.createOption/);
 });
 
 function mockDownloadEnv() {
@@ -167,6 +224,40 @@ function mockDownloadEnv() {
       createElement: () => ({
         click: () => {},
       }),
+    },
+  };
+}
+
+function mockDomDocument() {
+  return {
+    createElement: tagName => {
+      const element = {
+        tagName: String(tagName).toUpperCase(),
+        children: [],
+        firstChild: null,
+        dataset: {},
+        style: {},
+        attributes: {},
+        textContent: '',
+        value: '',
+        selected: false,
+        appendChild(child) {
+          this.children.push(child);
+          this.firstChild = this.children[0] || null;
+          return child;
+        },
+        removeChild(child) {
+          const index = this.children.indexOf(child);
+          if (index >= 0) this.children.splice(index, 1);
+          this.firstChild = this.children[0] || null;
+          return child;
+        },
+        setAttribute(name, value) {
+          this.attributes[name] = value;
+        },
+        addEventListener() {},
+      };
+      return element;
     },
   };
 }

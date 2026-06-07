@@ -14,6 +14,12 @@ if (!geoExportClient) {
   throw new Error('GeoExportClient module is required');
 }
 
+const geoUIUtils = (typeof window !== 'undefined' && window.GeoUIUtils) ||
+  (typeof globalThis !== 'undefined' && globalThis.GeoUIUtils);
+if (!geoUIUtils) {
+  throw new Error('GeoUIUtils module is required');
+}
+
 // ===== Theme Toggle =====
 function toggleTheme() {
   const html = document.documentElement;
@@ -1304,58 +1310,52 @@ function getFilteredSelectedTitles() {
 }
 
 function appendTextCell(row, text, maxWidth) {
-  const cell = document.createElement('td');
+  const cell = geoUIUtils.createElement('td', { text });
   if (maxWidth) cell.style.maxWidth = maxWidth;
-  cell.textContent = text == null ? '' : String(text);
   row.appendChild(cell);
   return cell;
 }
 
 function createCategoryTag(label, color) {
-  const tag = document.createElement('span');
-  tag.className = 'tag';
-  tag.style.background = `${color}1a`;
-  tag.style.color = color;
-  tag.style.border = `1px solid ${color}33`;
-  tag.textContent = label == null ? '' : String(label);
-  return tag;
+  return geoUIUtils.createElement('span', {
+    className: 'tag',
+    text: label,
+    styles: {
+      background: `${color}1a`,
+      color,
+      border: `1px solid ${color}33`,
+    },
+  });
 }
 
 function createTitleActionButton(className, label, title, tooltip, handler) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = className;
-  button.dataset.title = title == null ? '' : String(title);
-  button.title = tooltip;
-  button.textContent = label;
-  button.addEventListener('click', handler);
-  return button;
+  return geoUIUtils.createButton(label, {
+    className,
+    title: tooltip,
+    dataset: { title },
+    onClick: handler,
+  });
 }
 
 function clearChildren(element) {
-  while (element.firstChild) {
-    element.removeChild(element.firstChild);
-  }
+  geoUIUtils.clearElement(element);
 }
 
 function replaceSelectOptions(select, options) {
   if (!select) return;
   clearChildren(select);
   options.forEach(item => {
-    const option = document.createElement('option');
-    option.value = item.value == null ? '' : String(item.value);
-    option.textContent = item.label == null ? '' : String(item.label);
-    if (item.selected) option.selected = true;
+    const option = geoUIUtils.createOption(item.value, item.label, item.selected);
     select.appendChild(option);
   });
 }
 
 function createSmallTag(className, text) {
-  const tag = document.createElement('span');
-  tag.className = className;
-  tag.style.fontSize = '10px';
-  tag.textContent = text == null ? '' : String(text);
-  return tag;
+  return geoUIUtils.createElement('span', {
+    className,
+    text,
+    styles: { fontSize: '10px' },
+  });
 }
 
 function extractChatMessageContent(data) {
@@ -1372,6 +1372,10 @@ function extractRequiredChatContent(data, contextLabel = 'AI response') {
 
 function extractStreamDeltaContent(data) {
   return geoAIClient.extractStreamDeltaContent(data);
+}
+
+function debugLog(...args) {
+  geoUIUtils.debugLog(...args);
 }
 
 function buildChatPayload(options) {
@@ -2857,18 +2861,11 @@ function copyPlatformText(articleId, platform) {
     return;
   }
   const platformName = getPlatformDisplayName(platform);
-  navigator.clipboard.writeText(text).then(() => {
-    showToast(`${platformName} 文案已复制`, 'success');
-  }).catch(() => {
-    // Fallback
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    showToast(`${platformName} 文案已复制`, 'success');
-  });
+  geoUIUtils.copyToClipboard(text)
+    .then(copied => {
+      showToast(copied ? `${platformName} 文案已复制` : '复制失败，请手动复制', copied ? 'success' : 'error');
+    })
+    .catch(() => showToast('复制失败，请手动复制', 'error'));
 }
 
 // Continue generating missing platform versions
@@ -4651,17 +4648,17 @@ function closeModal(id) {
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
+  const toast = geoUIUtils.createElement('div', { className: `toast toast-${type}` });
   const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-  const icon = document.createElement('span');
-  icon.className = 'toast-icon';
-  icon.textContent = icons[type] || 'ℹ️';
-  const text = document.createElement('span');
-  text.className = 'toast-message';
-  text.textContent = message == null ? '' : String(message);
-  toast.appendChild(icon);
-  toast.appendChild(text);
+  const icon = geoUIUtils.createElement('span', {
+    className: 'toast-icon',
+    text: icons[type] || 'ℹ️',
+  });
+  const text = geoUIUtils.createElement('span', {
+    className: 'toast-message',
+    text: message,
+  });
+  geoUIUtils.appendChildren(toast, [icon, text]);
   container.appendChild(toast);
   // Auto remove
   setTimeout(() => {
@@ -5125,7 +5122,7 @@ async function generatePlatformTitles() {
       let prompt = data.prompt.replace('{{母稿}}', contentForPrompt);
       prompt = prompt.replace(/\{关键词\}/g, keyword || '');
 
-      console.log(`[${platform}] Prompt length: ${prompt.length}, Content length: ${(article.content || '').length}, Keyword: "${keyword}"`);
+      debugLog(`[${platform}] Prompt length: ${prompt.length}, Content length: ${(article.content || '').length}`);
 
       const settings = getSettings();
       const resData = await fetchChatCompletionJson({
@@ -5157,7 +5154,7 @@ async function generatePlatformTitles() {
           .trim())
         .filter(line => line.length >= 4 && line.length <= 80);
 
-      console.log(`[${platform}] Raw lines: ${lines.length}, Parsed: ${titles.length}`);
+      debugLog(`[${platform}] Raw lines: ${lines.length}, Parsed: ${titles.length}`);
       if (titles.length === 0) {
         throw new Error(`${platform}标题解析为空`);
       }
@@ -5185,7 +5182,7 @@ async function generatePlatformTitles() {
   // Retry platforms that got 0 titles (one more attempt with delay)
   const zeroPlatforms = platforms.filter(([platformKey]) => !hasPlatformTitles(article, platformKey));
   if (zeroPlatforms.length > 0) {
-    console.log(`[PlatformTitles] Retrying ${zeroPlatforms.length} platforms with 0 titles`);
+    debugLog(`[PlatformTitles] Retrying ${zeroPlatforms.length} platforms with 0 titles`);
     await new Promise(r => setTimeout(r, 2000));
     for (let ri = 0; ri < zeroPlatforms.length; ri++) {
       const [platformKey, data] = zeroPlatforms[ri];
@@ -5260,15 +5257,19 @@ function copyPTTitles(platform, articleId) {
   if (!titles.length) return;
   const platformName = getPlatformDisplayName(platform);
   const text = titles.join('\n');
-  navigator.clipboard.writeText(text).then(() => {
-    showToast(`${platformName} 标题已复制`, 'success');
-  });
+  geoUIUtils.copyToClipboard(text)
+    .then(copied => {
+      showToast(copied ? `${platformName} 标题已复制` : '复制失败，请手动复制', copied ? 'success' : 'error');
+    })
+    .catch(() => showToast('复制失败，请手动复制', 'error'));
 }
 
 function copySinglePT(text) {
-  navigator.clipboard.writeText(String(text || '')).then(() => {
-    showToast('标题已复制', 'success');
-  });
+  geoUIUtils.copyToClipboard(String(text || ''))
+    .then(copied => {
+      showToast(copied ? '标题已复制' : '复制失败，请手动复制', copied ? 'success' : 'error');
+    })
+    .catch(() => showToast('复制失败，请手动复制', 'error'));
 }
 
 // Wire up article select change
