@@ -2768,8 +2768,10 @@ async function generateArticle() {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let fullContent = '';
+    let reasoningText = '';
 
     document.getElementById('wsArticleContent').innerHTML = `
+      <div id="wsReasoningIndicator" style="display:none;padding:8px 12px;margin-bottom:8px;background:var(--blue-light, #e8f0fe);border-radius:8px;font-size:13px;color:var(--text-secondary,#666)"></div>
       <textarea class="article-textarea" id="wsArticleText" oninput="updateWordCount()"></textarea>`;
 
     while (true) {
@@ -2785,12 +2787,15 @@ async function generateArticle() {
         if (data === '[DONE]') continue;
         try {
           const parsed = JSON.parse(data);
-          // Handle DeepSeek Reasoner thinking tokens (reasoning_content field)
+          // DeepSeek Reasoner: accumulate thinking separately, don't mix into article
           const reasoningContent = parsed && parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.reasoning_content;
           if (typeof reasoningContent === 'string' && reasoningContent) {
-            fullContent += reasoningContent;
-            const textarea = document.getElementById('wsArticleText');
-            if (textarea) textarea.value = fullContent;
+            reasoningText += reasoningContent;
+            const indicator = document.getElementById('wsReasoningIndicator');
+            if (indicator) {
+              indicator.style.display = 'block';
+              indicator.textContent = '🧠 思考中... (' + reasoningText.length + '字)';
+            }
           }
           const deltaContent = extractStreamDeltaContent(parsed);
           if (deltaContent) {
