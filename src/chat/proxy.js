@@ -1,6 +1,6 @@
 const http = require('http');
 const https = require('https');
-const { DEFAULT_API_URL } = require('../config');
+const { DEFAULT_API_URL, getProviderForModel } = require('../config');
 const { sendError } = require('../http/responses');
 
 function buildChatCompletionUrl(apiUrl) {
@@ -9,7 +9,10 @@ function buildChatCompletionUrl(apiUrl) {
 }
 
 function proxyToUpstream(payload, config, res) {
-  const apiUrl = buildChatCompletionUrl(config.apiUrl);
+  // Resolve provider based on model name (routes DeepSeek models to DeepSeek API, etc.)
+  const provider = getProviderForModel(payload.model, config.providers);
+  const apiUrl = buildChatCompletionUrl(provider.apiUrl);
+  const apiKey = provider.apiKey || config.apiKey;
   const postData = JSON.stringify(payload);
   const transport = apiUrl.protocol === 'http:' ? http : https;
 
@@ -22,7 +25,7 @@ function proxyToUpstream(payload, config, res) {
     timeout: config.upstreamTimeoutMs,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.apiKey}`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Length': Buffer.byteLength(postData),
     },
   }, proxyRes => {

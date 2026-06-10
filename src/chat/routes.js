@@ -8,7 +8,6 @@ function readRequestBody(req, limitBytes) {
     let body = '';
     let size = 0;
     let rejected = false;
-
     req.on('data', chunk => {
       if (rejected) return;
       size += chunk.length;

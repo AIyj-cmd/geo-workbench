@@ -11,7 +11,7 @@ const DEFAULT_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
 const DEFAULT_UPSTREAM_TIMEOUT_MS = 300000; // 5 minutes for parallel generation
 const DEFAULT_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const DEFAULT_RATE_LIMIT_MAX = 120;
-const DEFAULT_ALLOWED_CHAT_MODELS = ['mimo-v2.5-pro', 'mimo-v2.5'];
+const DEFAULT_ALLOWED_CHAT_MODELS = ['mimo-v2.5-pro', 'mimo-v2.5', 'deepseek-chat', 'deepseek-reasoner'];
 
 const MODEL_CATALOG = [
   { id: 'mimo-v2.5-pro', type: 'text', desc: 'Advanced reasoning text generation' },
@@ -19,6 +19,8 @@ const MODEL_CATALOG = [
   { id: 'mimo-v2.5-tts-voiceclone', type: 'tts', desc: 'Voice clone' },
   { id: 'mimo-v2.5-tts-voicedesign', type: 'tts', desc: 'Voice design' },
   { id: 'mimo-v2.5-tts', type: 'tts', desc: 'Text to speech' },
+  { id: 'deepseek-chat', type: 'text', desc: 'DeepSeek V4 Pro' },
+  { id: 'deepseek-reasoner', type: 'text', desc: 'DeepSeek V4 思考模式' },
 ];
 
 function splitList(value) {
@@ -58,9 +60,25 @@ function normalizeConfig(options = {}) {
     fileConfig.allowedOrigins
   );
 
-  return {
-    apiKey: options.apiKey || process.env.MIMO_API_KEY || fileConfig.apiKey || fileConfig.api_key || '',
+  // Provider-based routing: models matching a prefix use that provider's endpoint/key.
+  // Unmatched models fall back to the default (MiMo) provider.
+  const providerDefs = fileConfig.providers || {};
+  const defaultProvider = {
     apiUrl: options.apiUrl || process.env.MIMO_API_URL || fileConfig.apiUrl || fileConfig.endpoint || DEFAULT_API_URL,
+    apiKey: options.apiKey || process.env.MIMO_API_KEY || fileConfig.apiKey || fileConfig.api_key || '',
+  };
+  const providers = { __default: defaultProvider };
+  for (const [name, pDef] of Object.entries(providerDefs)) {
+    const prefixes = Array.isArray(pDef.modelPrefix) ? pDef.modelPrefix : [pDef.modelPrefix];
+    const provider = { apiUrl: pDef.endpoint, apiKey: pDef.apiKey };
+    for (const p of prefixes) {
+      if (p) providers[p] = provider;
+    }
+  }
+
+  return {
+    ...defaultProvider,
+    providers,
     port: Number(options.port || process.env.PORT || fileConfig.port || DEFAULT_PORT),
     host: options.host || process.env.HOST || fileConfig.host || DEFAULT_HOST,
     bodyLimitBytes: Number(options.bodyLimitBytes || process.env.BODY_LIMIT_BYTES || fileConfig.bodyLimitBytes || DEFAULT_BODY_LIMIT_BYTES),
@@ -73,10 +91,21 @@ function normalizeConfig(options = {}) {
   };
 }
 
+function getProviderForModel(model, providers) {
+  if (providers) {
+    for (const [prefix, provider] of Object.entries(providers)) {
+      if (prefix !== '__default' && model.startsWith(prefix)) return provider;
+    }
+    if (providers.__default) return providers.__default;
+  }
+  return { apiUrl: DEFAULT_API_URL, apiKey: '' };
+}
+
 module.exports = {
   ROOT_DIR,
   DEFAULT_API_URL,
   MODEL_CATALOG,
   normalizeConfig,
   parseBoolean,
+  getProviderForModel,
 };

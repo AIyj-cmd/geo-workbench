@@ -174,6 +174,8 @@
                 <select class="filter-select" id="wsModel" style="min-width:140px">
                   <option value="mimo-v2.5-pro">mimo-v2.5-pro ⭐</option>
                   <option value="mimo-v2.5">mimo-v2.5</option>
+                  <option value="deepseek-chat">DeepSeek V4 Pro</option>
+                  <option value="deepseek-reasoner">DeepSeek V4 思考</option>
                 </select>
               </div>
               <div class="control-group">
@@ -223,11 +225,25 @@
             <button class="modal-close" onclick="closeModal('titleLibraryModal')">✕</button>
           </div>
           <div class="modal-body" style="padding:0">
-            <div class="title-lib-search">
-              <input type="text" class="form-input" id="titleLibSearch" placeholder="搜索标题..." oninput="debounceTitleLibSearch()">
+            <div class="title-lib-tabs" id="titleLibTabs">
+              <button class="title-lib-tab active" data-tab="selected" onclick="switchTitleLibTab('selected')">精选题库</button>
+              <button class="title-lib-tab" data-tab="pool" onclick="switchTitleLibTab('pool')">总题库</button>
             </div>
-            <div class="title-lib-filters" id="titleLibFilters"></div>
-            <div class="title-lib-list" id="titleLibList"></div>
+            <div id="titleLibTabSelected">
+              <div class="title-lib-search">
+                <input type="text" class="form-input" id="titleLibSearch" placeholder="搜索标题..." oninput="debounceTitleLibSearch()">
+              </div>
+              <div class="title-lib-filters" id="titleLibFilters"></div>
+              <div class="title-lib-list" id="titleLibList"></div>
+            </div>
+            <div id="titleLibTabPool" style="display:none">
+              <div class="title-lib-search">
+                <input type="text" class="form-input" id="titleLibPoolSearch" placeholder="搜索总题库..." oninput="debounceTitleLibPoolSearch()">
+              </div>
+              <div class="title-lib-filters" id="titleLibPoolFilters"></div>
+              <div class="title-lib-list" id="titleLibPoolList"></div>
+              <div class="title-lib-pagination" id="titleLibPoolPagination"></div>
+            </div>
           </div>
         </div>
       </div>

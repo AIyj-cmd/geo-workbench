@@ -61,6 +61,8 @@ function updateThemeUI(theme) {
 const MODELS = [
   { id: 'mimo-v2.5-pro', name: 'MiMo v2.5 Pro', type: 'text', desc: '最强推理，适合复杂内容' },
   { id: 'mimo-v2.5', name: 'MiMo v2.5', type: 'text', desc: '通用文本生成' },
+  { id: 'deepseek-chat', name: 'DeepSeek V4 Pro', type: 'text', desc: 'DeepSeek V4 Pro，强大内容生成' },
+  { id: 'deepseek-reasoner', name: 'DeepSeek V4 思考', type: 'text', desc: 'DeepSeek V4 思考模式，深度推理' },
   { id: 'mimo-v2.5-tts-voiceclone', name: 'MiMo v2.5 TTS VoiceClone', type: 'tts', desc: '语音克隆' },
   { id: 'mimo-v2.5-tts-voicedesign', name: 'MiMo v2.5 TTS VoiceDesign', type: 'tts', desc: '语音设计' },
   { id: 'mimo-v2.5-tts', name: 'MiMo v2.5 TTS', type: 'tts', desc: '文字转语音' },
@@ -1974,6 +1976,187 @@ function debounceTitleLibSearch() {
   titleLibSearchTimer = setTimeout(() => renderTitleLibrary(), 300);
 }
 
+// Title Library Modal - Pool Tab
+let titleLibPoolState = {
+  page: 1,
+  pageSize: 50,
+  total: 0,
+  totalPages: 0,
+  titles: [],
+  searchQuery: '',
+  category: 'all',
+  categories: {},
+  loaded: false,
+};
+let titleLibPoolSearchTimer;
+
+function switchTitleLibTab(tab) {
+  const tabs = document.querySelectorAll('#titleLibTabs .title-lib-tab');
+  tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('titleLibTabSelected').style.display = tab === 'selected' ? '' : 'none';
+  document.getElementById('titleLibTabPool').style.display = tab === 'pool' ? '' : 'none';
+  if (tab === 'pool' && !titleLibPoolState.loaded) {
+    loadTitleLibPool();
+  }
+}
+
+async function loadTitleLibPool() {
+  const list = document.getElementById('titleLibPoolList');
+  if (!list) return;
+  list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted)">加载中...</div>';
+
+  try {
+    // Reuse already-loaded pool data from titleTabState if available and no custom search/filter
+    if (titleTabState.poolTotal > 0 && titleLibPoolState.searchQuery === '' && titleLibPoolState.category === 'all' && titleLibPoolState.page === 1) {
+      titleLibPoolState.titles = titleTabState.poolTitles;
+      titleLibPoolState.total = titleTabState.poolTotal;
+      titleLibPoolState.totalPages = titleTabState.poolTotalPages;
+      titleLibPoolState.categories = titleTabState.poolCategories;
+      titleLibPoolState.loaded = true;
+      renderTitleLibPoolFilters();
+      renderTitleLibPoolItems();
+      renderTitleLibPoolPagination();
+      return;
+    }
+
+    const params = new URLSearchParams({
+      page: titleLibPoolState.page,
+      size: titleLibPoolState.pageSize,
+      search: titleLibPoolState.searchQuery,
+      category: titleLibPoolState.category === 'all' ? '' : titleLibPoolState.category,
+    });
+    const res = await fetch(`/api/titles/pool?${params}`);
+    const data = await res.json();
+    titleLibPoolState.titles = data.titles || [];
+    titleLibPoolState.total = data.total || 0;
+    titleLibPoolState.totalPages = data.totalPages || 0;
+    titleLibPoolState.categories = data.categories || {};
+    titleLibPoolState.loaded = true;
+    renderTitleLibPoolFilters();
+    renderTitleLibPoolItems();
+    renderTitleLibPoolPagination();
+  } catch (e) {
+    console.error('Failed to load pool titles:', e);
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted)">加载失败，请检查后端服务</div>';
+  }
+}
+
+function renderTitleLibPoolFilters() {
+  const container = document.getElementById('titleLibPoolFilters');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const cats = titleLibPoolState.categories;
+  const totalCount = Object.values(cats).reduce((sum, c) => sum + (c.count || 0), 0);
+
+  const allTag = document.createElement('span');
+  allTag.className = `filter-tag${titleLibPoolState.category === 'all' ? ' active' : ''}`;
+  allTag.textContent = `全部 (${totalCount})`;
+  allTag.addEventListener('click', () => filterTitleLibPool('all'));
+  container.appendChild(allTag);
+
+  for (const [key, cat] of Object.entries(cats)) {
+    const tag = document.createElement('span');
+    tag.className = `filter-tag${titleLibPoolState.category === key ? ' active' : ''}`;
+    tag.textContent = `${cat.label || key} (${cat.count || 0})`;
+    tag.addEventListener('click', () => filterTitleLibPool(key));
+    container.appendChild(tag);
+  }
+}
+
+function filterTitleLibPool(key) {
+  titleLibPoolState.category = key;
+  titleLibPoolState.page = 1;
+  loadTitleLibPool();
+}
+
+function renderTitleLibPoolItems() {
+  const list = document.getElementById('titleLibPoolList');
+  if (!list) return;
+  clearChildren(list);
+
+  titleLibPoolState.titles.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'title-lib-item';
+    item.addEventListener('click', () => {
+      selectFromPoolTitle(t);
+    });
+
+    const text = document.createElement('div');
+    text.className = 'title-lib-text';
+    text.textContent = t.title || '';
+    item.appendChild(text);
+
+    const meta = document.createElement('div');
+    meta.className = 'title-lib-meta';
+    const catLabel = t.categoryLabel || t.category || '通用';
+    meta.appendChild(createSmallTag('tag tag-blue', catLabel));
+
+    // Check if already in workspace
+    const exists = getWorkspaceQuestions().some(q => q.question === t.title);
+    if (exists) {
+      meta.appendChild(createSmallTag('tag tag-green', '✓ 已加入'));
+    }
+
+    item.appendChild(meta);
+    list.appendChild(item);
+  });
+}
+
+function selectFromPoolTitle(t) {
+  // Ensure title exists in workspace questions
+  let existingQ = getWorkspaceQuestions().find(q => q.question === t.title);
+
+  if (!existingQ) {
+    // Add to selectedTitles first
+    titleTabState.selectedTitles.push({
+      title: t.title,
+      category: t.category || 'general',
+      categoryLabel: t.categoryLabel || '通用',
+    });
+    saveState();
+    // Re-resolve after adding
+    existingQ = getWorkspaceQuestions().find(q => q.question === t.title);
+  }
+
+  if (!existingQ) return;
+
+  // Close modal and select question
+  closeModal('titleLibraryModal');
+  setTimeout(() => {
+    selectWorkspaceQuestion(existingQ.id);
+  }, 200);
+}
+
+function renderTitleLibPoolPagination() {
+  const container = document.getElementById('titleLibPoolPagination');
+  if (!container) return;
+  const total = titleLibPoolState.total;
+  const page = titleLibPoolState.page;
+  const totalPages = titleLibPoolState.totalPages || 1;
+  container.innerHTML = `
+    <span>共 ${total} 条，第 ${page}/${totalPages} 页</span>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="changeTitleLibPoolPage(-1)">← 上一页</button>
+      <button class="btn btn-sm" ${page >= totalPages ? 'disabled' : ''} onclick="changeTitleLibPoolPage(1)">下一页 →</button>
+    </div>
+  `;
+}
+
+function changeTitleLibPoolPage(delta) {
+  titleLibPoolState.page = Math.max(1, titleLibPoolState.page + delta);
+  loadTitleLibPool();
+}
+
+function debounceTitleLibPoolSearch() {
+  clearTimeout(titleLibPoolSearchTimer);
+  titleLibPoolSearchTimer = setTimeout(() => {
+    titleLibPoolState.searchQuery = document.getElementById('titleLibPoolSearch').value;
+    titleLibPoolState.page = 1;
+    loadTitleLibPool();
+  }, 300);
+}
+
 function generateArticleFromTitle(title) {
   // Check if title already exists in state.questions
   let existingQ = state.questions.find(q => q.question === title);
@@ -2602,6 +2785,13 @@ async function generateArticle() {
         if (data === '[DONE]') continue;
         try {
           const parsed = JSON.parse(data);
+          // Handle DeepSeek Reasoner thinking tokens (reasoning_content field)
+          const reasoningContent = parsed && parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.reasoning_content;
+          if (typeof reasoningContent === 'string' && reasoningContent) {
+            fullContent += reasoningContent;
+            const textarea = document.getElementById('wsArticleText');
+            if (textarea) textarea.value = fullContent;
+          }
           const deltaContent = extractStreamDeltaContent(parsed);
           if (deltaContent) {
             fullContent += deltaContent;
@@ -4752,6 +4942,15 @@ function debounceFilter(key, fn, delay = 300) {
 
 // ===== Changelog =====
 const CHANGELOG = [
+  {
+    version: 'v2.6.2',
+    date: '2026-06-10',
+    title: '新增 DeepSeek 模型支持',
+    icon: '🤖',
+    changes: [
+      { type: 'feature', text: '母稿工作台新增 DeepSeek V4 Pro 和 V4 思考模式两个模型' },
+    ]
+  },
   {
     version: 'v2.5.0',
     date: '2026-06-06',
