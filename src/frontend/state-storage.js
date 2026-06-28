@@ -45,6 +45,8 @@
       wsAbortController: null,
       batchRunning: false,
       batchAbortController: null,
+      batchPage: 1,
+      batchSelectedTitles: new Set(),
       nextQuestionId: defaults.nextQuestionId,
       nextSpId: defaults.nextSpId,
       nextArticleId: defaults.nextArticleId,
@@ -81,6 +83,8 @@
       wsAbortController: null,
       batchRunning: false,
       batchAbortController: null,
+      batchPage: 1,
+      batchSelectedTitles: new Set(),
     };
 
     if (rawState.selectedQuestionIds instanceof Set) {

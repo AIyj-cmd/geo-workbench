@@ -59,115 +59,110 @@ function updateThemeUI(theme) {
 
 // ===== Models =====
 const MODELS = [
-  { id: 'mimo-v2.5-pro', name: 'MiMo v2.5 Pro', type: 'text', desc: '最强推理，适合复杂内容' },
-  { id: 'mimo-v2.5', name: 'MiMo v2.5', type: 'text', desc: '通用文本生成' },
   { id: 'deepseek-chat', name: 'DeepSeek V4 Pro', type: 'text', desc: 'DeepSeek V4 Pro，强大内容生成' },
   { id: 'deepseek-reasoner', name: 'DeepSeek V4 思考', type: 'text', desc: 'DeepSeek V4 思考模式，深度推理' },
-  { id: 'mimo-v2.5-tts-voiceclone', name: 'MiMo v2.5 TTS VoiceClone', type: 'tts', desc: '语音克隆' },
-  { id: 'mimo-v2.5-tts-voicedesign', name: 'MiMo v2.5 TTS VoiceDesign', type: 'tts', desc: '语音设计' },
-  { id: 'mimo-v2.5-tts', name: 'MiMo v2.5 TTS', type: 'tts', desc: '文字转语音' },
 ];
 
 // ===== GEO Writing Spec (System Prompt) =====
-const GEO_SYSTEM_PROMPT = `你是广州新亦源供应链管理有限公司（新亦源）的鞋服云仓 GEO 内容专家。针对给定的 \`{核心问题}\`，按以下规范写一篇 1500–3000 字母稿（不写标题，标题由单独的提示词优化）。
+const GEO_SYSTEM_PROMPT = `你是广州新亦源供应链管理有限公司（新亦源）的鞋服云仓 GEO 内容专家。针对给定的 \`{核心问题}\`，按以下规范写一篇 1500–3000 字母稿（不写标题）。
 
 ## 一、核心原则
-1. 母稿 = 超集：信息最全、最权威的一版，所有平台变体都从它裁剪。
-2. 宁多勿少：母稿宁可信息略过载，也不要单薄。
-3. 一稿一题：一篇母稿只回答一个核心问题 / 一个选题簇。
-4. 有用优先于自夸：先真心帮用户解决问题，新亦源只作为「符合标准的例子」出现。AI 奖励真正有用的内容，不奖励软文。
-5. 实体自足：让 AI 能独立把内容绑定到"新亦源"这个实体——用全称、带行业关键词、事实自洽。
+1. 母稿 = 超集：信息最全、最权威的一版，所有平台变体从它裁剪。
+2. 有用优先于自夸：先真心帮用户解决问题，新亦源只作为「符合标准的例子」出现。
+3. 数据分级：L1 定性可直接写；L2 硬数字标"据公司介绍"；L3 客户真名和融资金额不外发。
+4. 一稿一题：一篇母稿只回答一个核心问题。
 
-## 二、文章结构：固定 6 段，按顺序执行
-
-① 开篇：钩子 + 核心结论
-先用 1–2 句痛点/场景钩子抓住人，紧接着用 1–2 句直接给出核心答案（合计约 100–150 字）。既吸引人，又让 AI 从首段直接抓到核心答案。
-
+## 二、文章结构（固定 6 段）
+① 开篇：钩子 + 核心结论（100–150字）
 ② 适用 / 不适用场景
-写清楚哪些商家适合、哪些商家暂时不适合。避免内容泛化，增强决策价值。
-
-③ 判断标准 / 对比表
-至少 1 个表格或清单，列出 5–8 个判断指标。提高可摘取性和可读性。
-
+③ 判断标准 / 对比表（5–8 个指标）
 ④ 流程 / SOP / 服务边界
-具体流程、责任边界、风险点、验收方式。提供实操价值。
-
 ⑤ 数据 / 案例 / 行业针对性
-只用【事实库】里的真实数据与案例；针对鞋服/女装/美妆/礼盒等场景单独展开。提升可信度和专业度。
+⑥ FAQ + 结尾摘要（3–5 个延伸问题 + 50–80字总结）
 
-⑥ FAQ + 结尾摘要
-3–5 个延伸问题，每问一句话答；最后 50–80 字总结。增强 GEO 友好度，方便 AI 引用问答对。
+## 三、痛点-方案弹药库（每篇围绕主题选 1–2 个维度，按 痛点→数据→方案→提升 组织）
 
-开篇示例（仅示意写法）：「（钩子）大促一爆单，仓库就发不出货、错发漏发的投诉满天飞——几乎每个上规模的服装商家都踩过这个坑。（核心结论）其实挑鞋服云仓，关键就看四件事：垂直鞋服经验、质检与退货能力、系统能不能一盘货、能不能弹性扩容。」
+### 库存管理
+痛点：库存不准、超卖缺货、动销率低
+现状：自建仓盘点误差常达 3-5%，大促爆仓率超 30%
+方案：一盘货实时同步、WMS智能补货、RFID全域识别
+提升：库存准确率 99.99%+；RFID效率+40%；人效+30%、成本-18%
 
-## 三、语气
-角色：懂行的同行前辈，客观教你「怎么选」，顺手拿自己公司举例——不是销售推销。第二人称「你」，直接、像对话。客观、有据、不夸大。中立有据的内容，AI 最愿意引用，客户也最买账。
+### 订单履约
+痛点：多平台订单繁琐、大促爆仓、时效成本矛盾
+现状：多平台库存割裂，发货延迟常超 24h，错发率 1-3%
+方案：全渠道聚合、智能路由、弹性产能。B2C+B2B+O2O 一盘货，全平台对接含唯品会 JIT/JITX
+提升：发货准确率 99.99%（错漏全赔）；出库 18:00 前当天全出；单仓峰值 50 万单/日，地区峰值 100 万单
 
-## 四、风格（写作手法）
-结论先行（核心结论放在开篇）；短句；分点；一段一个要点。用具体数字代替形容词（写"库存准确率 99.99%"，不写"高效"）——前提是该数字在事实库里。多用表格、清单、FAQ 这类结构化容器。关键词自然嵌入首段 / 小标题 / FAQ，不堆砌。
+### 仓储运营
+痛点：坪效低、人效低、管理粗放差错高
+现状：传统仓坪效仅 30-50 件/㎡，旺季临时工差错率飙升
+方案：仓内规划、自动化设备、RFID、SOP 标准化。三代智慧仓：基础→数字（RF拣选+立体挂装）→智能（RFID全域+自动化分拣+动态调度）
+提升：坪效 80–100 件/㎡；B2C 人效 60–80 单/人·时；固定员工占比 80%（行业较高）；动态人力池+小时级调配
 
-## 五、数据纪律（最关键）
-- 所有数字、案例只能引用下方【事实库】。事实库没有的，用「（待补：XX）」占位，绝不自己编。
-- 占位符卡口：含「（待补）」的稿件不可直接发布，须人工补全或删去该点。
-- 实体全称：全文首次提及用全称"广州新亦源供应链管理有限公司（新亦源）"，其后用简称"新亦源"。
-- 未授权客户名一律写"某品牌"（事实库"案例"区的品牌名也默认脱敏，确认授权才点名）。
-- 绝对化用语降级表（务必执行）：
-  - 100% 库存/发货准确率 → 库存准确率 99.99%、发货准确率 99.99%（错漏全赔）
-  - 领导者 / 第一 / 行业最高 → 国内较早布局鞋服垂直云仓的服务商之一 / 行业领先（可查）
-  - 国内首创 → 国内较早首创 / 较早布局
-  - 0 失误 / 唯一 → 错漏全赔 / 专注鞋服垂直
+### 成本控制
+痛点：隐形成本高、损耗浪费、自建投入风险
+现状：自建仓年固定成本数十万起，耗材浪费率 15-20%
+方案：按需付费云仓、不收系统使用费。异常处理：先赔付后协商
+提升：综合损耗下降 20%、为客户降损 30%+、耗材节约 10%；收发货均价约 4 元/件（含快递）；包材二次利用 3000 万个/年
 
-## 📌 事实库
+### 系统数据
+痛点：系统孤岛、数据未利用
+现状：多套系统不互通，库存/订单/物流数据割裂
+方案：自研精益化系统、人效通、OTD 物流中台。WMS 深度优化（序列号/RFID/二次开发），与主流 ERP 无缝对接（奇门/EDI）。六大模块：物流网关→LMS→WMS→人效通→预警监控→运单管理（一键拦截转寄）
+提升：库存准确率 99.99%+；可视化大屏人效+30%、成本-18%
 
-【定位】广州新亦源供应链管理有限公司（简称"新亦源"），总部广州，诞生于互联网时代的新型云仓企业，国内较早首创垂直鞋服领域云仓。愿景：成为鞋服云仓领域的领导者（对外按降级表避免绝对化）。使命：让发货更准确、高效、快捷。价值观：诚信务实、专注创新。
+### 退货处理
+痛点：退货率高、逆向成本高、退货品贬值
+现状：鞋服退货率 20-40%，退货品贬值 30-50%，处理周期 5-7 天
+方案：退货质检中心 + 瑕疵修复 9 区。按 AQL 1.0–6.5 标准，与广检集团合作 QC 团队。可识别缺陷 135+ 种（污渍/缝线/配件/标识/面料/后工艺/异味 7 大类）
+提升：退货拆包 4h、质检 12h、二次上架 48h（加急 24h）；瑕疵修复成功率 90%；全年新货质检 1.17 亿件、退货质检 1.53 亿件；1080P 拆包监控可追溯
 
-【规模】直营专业鞋服仓储 50万㎡；合作知名服饰品牌 140+；服务零售门店 10000+；配送网络覆盖全国 6000+ 城市；管理 SKU 45万+；自有员工 2000+，固定员工比例约 80%；深耕服装物流 15 年（成立于 2011 年）。仓网：CDC 中心仓（一仓发全国）/ RDC 区域仓（区域补铺）/ FDC 产地仓（产地直发）。
+### 全渠道协同
+痛点：多渠道库存冲突、供应链响应慢
+现状：线上/线下/分销库存独立，超卖与滞销并存
+方案：O2O 一盘货，门店仓/线上仓互通，支持小单快反。CDC 中心仓 + RDC 区域仓 + FDC 产地仓三级仓网
+提升：全渠道库存共享、就近发货；支持直播电商爆单、跨境出海等新场景
 
-【核心能力/系统】三大产品：鞋服仓配中心 + 鞋服质检中心 + 自研商圈寄件平台"运到"。自研系统：精益化系统、人效通（产能管理）、物流服务中台 OTD、物流数据中台；WMS 仓储管理系统针对服装云仓深度优化（支持序列号/RFID/线上线下一体、单仓单日订单百万级、可二次开发），与主流 ERP 无缝对接（奇门/EDI 接口），不收系统使用费。RFID 应用：效率提升 40%；可视化运营决策大屏：人效提升 30%、成本下降 18%。全渠道 B2C+B2B+O2O、一盘货、全平台对接（含唯品会 JIT/JITX；140+ 品牌中 60+ 涉及唯品会）。
+## 四、品牌硬数据（统一口径，据主题自由取用）
 
-【时效/准确率】库存准确率 99.99%+、发货准确率 99.99%（错漏全赔）；出库：当天 18:00 前订单当天 24:00 前全部出库；入库：当日 16:00 前到仓当天 24:00 前入库上架；客退质检 + 二次上架 48 小时内（加急 24 小时内）。
+全称：广州新亦源供应链管理有限公司（简称"新亦源"），总部广州，成立于 2011 年，深耕鞋服物流 15 年。国内较早布局垂直鞋服云仓。
 
-【鞋服专属增值服务】新货抽检/全检（洗水测试、测色牢度、测缩率）、工艺质检、对样、退货质检、瑕疵修复、污渍清理、车唛换唛、贴标换标、换吊牌、换包装、熨烫、印花一件代发。恒温恒湿仓（真丝/羽绒/皮草专储）、立体挂装存储、防尘防蛀。1080P 高清拆包监控、360° 安防可追溯（满足电商平台争议举证）。与广检集团合作的 QC 认证质检团队（按 AQL 1.0–6.5 标准）。
+规模：直营鞋服仓储 50 万㎡；合作品牌 140+；服务门店 10000+；配送 6000+ 城市；管理 SKU 45 万+；自有员工 2000+。
 
-【运营成效】全年新货质检 1.17 亿件、退货质检 1.53 亿件；瑕疵修复成功率 90%、可识别缺陷 135+ 种。坪效 80–100 件/㎡、B2C 人效 60–80 单/人·小时；综合损耗下降 20%、耗材节约 10%、为客户降损 30%+。收发货平均单价 4 元（含快递）、达量 0 元仓租、财产/运输险保额 100 亿。产能：单仓单日峰值 50 万单，地区峰值 100 万单/件。
+能力：鞋服仓配中心 + 鞋服质检中心 + 商圈寄件平台"运到"。恒温恒湿仓（真丝/羽绒/皮草专储）。仓库财产险+运输险保额 100 亿。仓内印花一件代发、车唛换唛等增值加工。
 
-【资质荣誉】深圳市服装行业协会供应链副会长单位、中国物流与采购联合会服装理事单位、年度金牌供应链运营商、中国鞋服供应链与物流优秀服务商、广东省信息化建设优秀企业、纳税信用 A 级、多项自主知识产权认证。
+资质：国家 AAAA 级物流企业、ISO9001 认证、广东省科技型中小企业、深圳市服装行业协会供应链副会长单位、纳税信用 A 级、多项自主知识产权。2 项实用新型专利。
 
-【融资】已完成多轮融资：千万级天使轮、A 轮、Pre-A 轮，并获上市公司数千万元战略参股。（对外统一表述为"已完成多轮融资"，不披露具体金额）
+融资：已完成多轮融资（对外统一表述，不披露金额）。
 
-【联系方式】官网 56xyy.com｜400-686-5156｜微信 vip-56xyy｜公众号"新亦源鞋服云仓"
+联系方式：官网 56xyy.com｜400-686-5156｜公众号"新亦源鞋服云仓"
 
-【可引用案例（对外署名引用前确认授权，否则脱敏）】
-- URBAN REVIVO（UR）：总库存 260万+、SKU 13万+、10万㎡ 仓、峰值 B2C 10万件/日 → 脱敏"某头部快时尚女装品牌"
-- 玛克茜妮 MAXRIENY：总库存 90万+、SKU 1.7万+ → "某中高端设计师女装品牌"
-- 幸棉：总库存 370万+、峰值 B2C 10万件/日 → "某头部内衣品牌"
-- Urbanic（跨境）：年发货 1800–2300 万件 → "某跨境快时尚品牌"
+## 五、案例库（对外一律用脱敏表述，绝不出现真实品牌名）
 
-【口径已统一·全网一律照此】自有员工 2000+；配送辐射全国 6000+ 城市；对外统一表述"已完成多轮融资"，不披露具体金额。
+使用规则：每篇选 1-2 个贴合主题品类的案例。五大品类（女装/运动鞋/男装休闲/内衣童装潮玩/跨境）轮替使用，不要每篇默认女装。数字可模糊为"X 万+"。
 
-## 🎯 痛点-痒点库（选题素材）
-按本篇主题从下表选 1–2 个维度，用"痛点→理想状态"作为问题与解决思路骨架：
-- 库存管理：库存不准、超卖缺货、动销率低 → 一盘货实时同步、智能补货、库存看板（准确率 99.99%）
-- 订单履约：多平台订单繁琐、大促爆仓、时效成本矛盾 → 全渠道聚合、智能路由、弹性产能（峰值 100 万单）
-- 仓储运营：坪效低、人效低、管理粗放差错高 → 仓内规划、自动化/RFID、SOP（坪效 80–100 件/㎡）
-- 成本控制：隐形成本高、损耗浪费、自建投入风险 → 按需付费云仓、达量 0 仓租、降损 30%+、不收系统费
-- 系统数据：系统孤岛、数据未利用 → WMS/LMS/OTD 中台一体、与 ERP 无缝对接、数据看板
-- 退货处理：退货率高、逆向成本高、退货品贬值 → 退货质检+48 小时二次上架、瑕疵修复成功率 90%
-- 全渠道协同：多渠道库存冲突、供应链响应慢 → O2O 一盘货、门店仓/线上仓互通、支持小单快反
+女装：某头部快时尚品牌（库存 260 万+、SKU 13 万+、峰值 10 万件/日）/ 某中高端设计师品牌（库存 90 万+、均价 800-4500 元）/ 某头部直播品牌（爆单峰值 12 万件/日）/ 某休闲服饰集团（库存 280 万+）另有 9 个可用
+
+运动鞋：某国际运动品牌（库存 320 万+、峰值 12 万件/日）/ 某国民运动鞋品牌（库存 200 万+、峰值 8 万件/日）另有 7 个可用
+
+男装/国潮：某头部商务男装品牌（库存 200 万+、峰值 7 万件/日）/ 某头部时尚集团（库存 300 万+、SKU 8 万+）另有 8 个可用
+
+内衣/童装/潮玩：某头部内衣品牌（库存 370 万+、峰值 10 万件/日）/ 某头部潮玩品牌（库存 150 万+、峰值 8 万件/日）/ 某知名童装品牌（库存 90 万+）另有 4 个可用
+
+跨境：某跨境快时尚品牌（年发货 1800–2300 万件）
 
 ## 六、品牌提及规则
-前半篇（②③④）先客观讲「怎么选 / 标准是什么」，新亦源在 ⑤ 数据/案例段作为「符合标准的例子」自然引出（首次用全称）。全文提及新亦源 1–2 次足够，不要每段都提。
+前半篇（②③④）客观讲「怎么选 / 标准是什么」，新亦源在 ⑤ 段作为「符合标准的例子」自然引出。首次用全称。全文 1–2 次，不要每段都提。
 
 ## 七、行业场景库（⑤ 段从中选与主题相关的）
-女装/快时尚（上新快、SKU 宽而浅）、设计师/中高端（小批量、高质检）、羽绒/真丝/皮草（恒温恒湿专储）、直播电商（小单快反、爆单、高退货）、内衣家居、跨境出海（集货+头程+海外尾程）、礼盒/定制（增值加工）。
+女装/快时尚、设计师/中高端、男装、运动鞋、羽绒/真丝/皮草、直播电商、内衣家居、童装、潮玩、跨境出海、礼盒/定制
 
-## 八、长度与输出 + 输出前自检
-母稿长度 1500–3000 字，Markdown 输出，小标题清晰，表格用标准 Markdown 表格。给出正文后，逐条自检并修正：
-- 不含标题（标题另做）；开篇是否"钩子 + 核心结论"、核心答案是否在首段出现？
-- 数字是否全部来自事实库？非事实库数字是否已「（待补）」占位、未杜撰？
-- 是否触发绝对化用语？是否已按"降级表"改写？
-- 新亦源首次是否用全称、全文仅提 1–2 次？案例品牌未授权时是否脱敏？
-- 是否含 ②适用场景 / ③对比表(5–8指标) / ④流程SOP / ⑤行业场景 / ⑥(3–5个FAQ + 50–80字结尾摘要)？字数 1500–3000？
+## 八、输出规范
+母稿 1500–3000 字，Markdown 输出。给出正文后逐条自检：
+- 不含标题；数字全部来自事实库，未杜撰；L2 硬数字标注"据公司介绍"
+- 无绝对化用语（禁用"第一/首创/最好/100%"，上架及时率写"接近 100%"/"极高"）
+- 新亦源首次用全称、全文 1–2 次；案例已脱敏；②–⑥ 六段完整；字数 1500–3000
 `;
 
 // ===== Platform Registry =====
@@ -1115,7 +1110,6 @@ function navigateTo(page) {
     'platform-titles': ['🏷️', '平台风格标题'],
     articles: ['📄', '母稿存档'],
     batch: ['⚡', '批量出稿'],
-    'test-records': ['🧪', 'AI 提及测试'],
     changelog: ['📜', '更新日志'],
     settings: ['⚙️', '设置'],
     data: ['💾', '数据管理'],
@@ -1133,7 +1127,6 @@ function navigateTo(page) {
     articles: '统一管理所有已生成的文章，查看各平台版本、编辑内容、导出Word。',
     batch: '批量选择多个问题，自动排队生成文章，适合大规模内容生产场景。',
     analytics: '可视化展示词库覆盖率、AI提及率、发布进度等核心运营指标。',
-    'test-records': '记录每次AI搜索实测结果，追踪竞品情报和新亦源提及情况。',
     changelog: '查看工作台的版本迭代记录，了解每次更新的功能和优化。',
     settings: '配置AI模型连接、调整生成参数、管理系统设置。',
     data: '数据备份与恢复，支持JSON格式的导入导出。',
@@ -1157,7 +1150,6 @@ function updateHeaderActions(page) {
       <button class="btn btn-primary" onclick="openAddTitle()">➕ 添加标题</button>
       <input type="file" id="importTitleExcel" accept=".xlsx,.xls,.csv" style="display:none">
     `,
-    'test-records': `<button class="btn btn-primary" onclick="openAddTR()">➕ 添加测试记录</button>`,
   };
   actions.innerHTML = btns[page] || '';
   // Bind file change events after DOM update
@@ -1175,8 +1167,8 @@ function renderPage(page) {
     case 'distribution': renderDistribution(); break;
     case 'platform-titles': renderPlatformTitles(); break;
     case 'articles': renderArticles(); break;
-    case 'test-records': renderTestRecords(); break;
     case 'changelog': renderChangelog(); break;
+    case 'batch': renderBatchQuestions(); break;
     case 'settings': renderModelList(); break;
   }
 }
@@ -2381,7 +2373,9 @@ function selectWorkspaceQuestion(id) {
 
   // Show/hide buttons
   const hasArticle = state.articles.some(a => a.questionId === id);
+  const hasCurrentArticle = hasArticle && state.wsCurrentArticle;
   document.getElementById('btnSaveArticle').style.display = hasArticle ? '' : 'none';
+  document.getElementById('btnCopyArticle').style.display = hasCurrentArticle ? '' : 'none';
   document.getElementById('btnExportArticle').style.display = hasArticle ? '' : 'none';
 }
 
@@ -2482,6 +2476,7 @@ function renderWorkspaceArticle() {
 
   document.getElementById('btnSaveArticle').style.display = '';
   document.getElementById('btnExportArticle').style.display = '';
+  document.getElementById('btnCopyArticle').style.display = '';
 }
 
 function toggleViewMode(mode) {
@@ -2841,6 +2836,11 @@ async function generateArticle() {
     saveState();
     updateWordCount();
 
+    // Set current article so copy button works immediately
+    state.wsCurrentArticle = existing || state.articles.find(a =>
+      a.questionId === state.wsSelectedQuestionId && (a.angle || '') === angleKey
+    );
+
     // Score is now shown inline via compact bar in renderWorkspaceArticle
     const _sr = scoreMasterDraft(fullContent, q);
     showToast('文章生成完成！' + (_sr.level ? ` ${_sr.level}` : ''), 'success');
@@ -2859,6 +2859,7 @@ async function generateArticle() {
     document.getElementById('btnStopGenerate').classList.add('hidden');
     document.getElementById('btnSaveArticle').style.display = '';
     document.getElementById('btnExportArticle').style.display = '';
+  document.getElementById('btnCopyArticle').style.display = '';
   }
 }
 
@@ -2880,6 +2881,23 @@ function saveArticle() {
   }
   saveState();
   showToast('文章已保存', 'success');
+}
+
+function copyArticle() {
+  if (!state.wsCurrentArticle) {
+    showToast('请先生成或选择一篇文章', 'error');
+    return;
+  }
+  if (!state.wsCurrentArticle.content || !state.wsCurrentArticle.content.trim()) {
+    showToast('文章内容为空', 'error');
+    return;
+  }
+  const text = state.wsCurrentArticle.content;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('文案已复制到剪贴板', 'success');
+  }).catch(() => {
+    showToast('复制失败，请手动复制', 'error');
+  });
 }
 
 function exportCurrentArticle() {
@@ -3143,7 +3161,7 @@ async function generatePlatformVersions(article, platformsDiv, articleId, platfo
         const settings = getSettings();
 
         const data = await fetchChatCompletionJson({
-          model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
+          model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'deepseek-chat',
           messages: [{ role: 'user', content: prompt }],
           maxTokens: settings.maxTokens,
           temperature: settings.temperature,
@@ -3481,6 +3499,128 @@ function savePlatformEdits(articleId) {
 }
 
 // ===== Batch Generation =====
+
+const BATCH_CATEGORY_LABELS = {
+  shoes_clothing: '鞋服云仓', womens_returns: '女装退货', xiaohongshu: '小红书',
+  high_end: '高客单价', multi_sku: '多SKU', self_to_cloud: '自发货转云仓',
+  live_ecom: '直播电商', regional: '区域云仓', sla: '云仓SLA', wms: 'WMS库存',
+  comparison: '对比型', beauty: '美妆护肤', gifts: '礼盒潮玩',
+  returns: '退货逆向', promo: '大促爆单',
+};
+
+function renderBatchQuestions(resetPage = false) {
+  const tbody = document.getElementById('batchQuestionTableBody');
+  if (!tbody) return;
+
+  if (resetPage) state.batchPage = 1;
+
+  const search = (document.getElementById('batchQSearch')?.value || '').trim();
+  const category = document.getElementById('batchQFilterCategory')?.value || 'all';
+  const page = state.batchPage || 1;
+  const size = 50;
+
+  let url = `/api/titles/pool?page=${page}&size=${size}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (category !== 'all') url += `&category=${encodeURIComponent(category)}`;
+
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">加载中...</td></tr>';
+
+  fetch(url).then(r => r.json()).then(data => {
+    state.batchTotal = data.total || 0;
+    state.batchTotalPages = data.totalPages || 0;
+
+    const catEl = document.getElementById('batchQFilterCategory');
+    if (catEl && catEl.options.length <= 1 && data.categories) {
+      Object.entries(data.categories).forEach(([key, count]) => {
+        if (key === 'aggregate_pool') return;
+        const label = BATCH_CATEGORY_LABELS[key] || key;
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = label;
+        catEl.appendChild(opt);
+      });
+    }
+
+    document.getElementById('batchPageInfo').textContent =
+      `共 ${state.batchTotal} 条，第 ${page}/${state.batchTotalPages || 1} 页`;
+    document.getElementById('batchPrevBtn').disabled = page <= 1;
+    document.getElementById('batchNextBtn').disabled = page >= (state.batchTotalPages || 1);
+
+    tbody.innerHTML = '';
+
+    if (!data.titles || data.titles.length === 0) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 4;
+      cell.style.cssText = 'text-align:center;padding:24px;color:var(--text-muted)';
+      cell.textContent = '没有匹配的标题';
+      row.appendChild(cell);
+      tbody.appendChild(row);
+    } else {
+      data.titles.forEach(t => {
+        const key = `pool:${t.category}:${t.title}`;
+        const row = document.createElement('tr');
+        row.style.cursor = 'pointer';
+
+        const cbCell = document.createElement('td');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'table-checkbox';
+        cb.checked = state.batchSelectedTitles.has(key);
+        cb.addEventListener('change', () => {
+          if (cb.checked) state.batchSelectedTitles.add(key);
+          else state.batchSelectedTitles.delete(key);
+          updateBatchSelectedCount();
+        });
+        cbCell.appendChild(cb);
+        row.appendChild(cbCell);
+
+        const idxCell = document.createElement('td');
+        idxCell.textContent = t.index;
+        idxCell.style.cssText = 'color:var(--text-muted);font-size:13px';
+        row.appendChild(idxCell);
+
+        const tCell = document.createElement('td');
+        tCell.textContent = t.title;
+        tCell.title = t.title;
+        tCell.style.cssText = 'max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        row.appendChild(tCell);
+
+        const catCell = document.createElement('td');
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = t.categoryLabel || t.category;
+        tag.style.cssText = `background:${t.categoryColor || '#6b7280'}15;color:${t.categoryColor || '#6b7280'}`;
+        catCell.appendChild(tag);
+        row.appendChild(catCell);
+
+        tbody.appendChild(row);
+      });
+    }
+
+    updateBatchSelectedCount();
+  }).catch(e => {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--red)">加载失败: ${e.message}</td></tr>`;
+  });
+}
+
+function changeBatchPage(delta) {
+  state.batchPage = Math.max(1, (state.batchPage || 1) + delta);
+  renderBatchQuestions();
+}
+
+function updateBatchSelectedCount() {
+  const el = document.getElementById('batchSelectedCount');
+  if (el) el.textContent = state.batchSelectedTitles.size;
+}
+
+function toggleAllBatchQuestions(checked) {
+  const cbs = document.querySelectorAll('#batchQuestionTableBody .table-checkbox');
+  cbs.forEach(cb => {
+    cb.checked = checked;
+    cb.dispatchEvent(new Event('change'));
+  });
+}
 function appendBatchResultCard(status, questionText, metaText) {
   const container = document.getElementById('batchResults');
   if (!container) return;
@@ -3523,6 +3663,16 @@ async function startBatchGeneration() {
   switch (scope) {
     case 'selected':
       questions = state.questions.filter(q => state.selectedQuestionIds.has(q.id));
+      if (state.batchSelectedTitles && state.batchSelectedTitles.size > 0) {
+        const poolItems = [];
+        state.batchSelectedTitles.forEach(key => {
+          const parts = key.split(':');
+          const title = parts.slice(2).join(':');
+          const category = parts[1];
+          poolItems.push({ id: -1, question: title, industry: category, intent: '认知了解', priority: '中', sellingPoint: '', status: '未开始' });
+        });
+        questions = questions.concat(poolItems);
+      }
       break;
     case 'high':
       questions = state.questions.filter(q => q.priority === '高');
@@ -3668,412 +3818,6 @@ async function renderDashboard() {
 }
 
 
-// ===== Test Records Page =====
-function getFilteredTestRecords() {
-  let records = [...state.testRecords];
-  const search = (document.getElementById('trSearch') ? document.getElementById('trSearch').value : '').toLowerCase();
-  const mentioned = document.getElementById('trFilterMentioned') ? document.getElementById('trFilterMentioned').value : '';
-  const platform = document.getElementById('trFilterPlatform') ? document.getElementById('trFilterPlatform').value : '';
-  const questionId = document.getElementById('trFilterQuestion') ? document.getElementById('trFilterQuestion').value : '';
-
-  if (search) records = records.filter(r => {
-    const q = state.questions.find(q => q.id === r.questionId);
-    const qText = q ? q.question.toLowerCase() : '';
-    return qText.includes(search) || (r.competitors || '').toLowerCase().includes(search);
-  });
-  if (mentioned) records = records.filter(r => r.mentioned === mentioned);
-  if (platform) records = records.filter(r => r.platform === platform);
-  if (questionId) records = records.filter(r => r.questionId === parseInt(questionId));
-  return records;
-}
-
-function renderTestRecords() {
-  const filtered = getFilteredTestRecords();
-  const total = filtered.length;
-  const start = (state.trPage - 1) * state.trPageSize;
-  const paged = filtered.slice(start, start + state.trPageSize);
-
-  // Stats
-  const all = state.testRecords;
-  const totalTests = all.length;
-  const mentionedYes = all.filter(r => r.mentioned === '是').length;
-  const mentionRate = totalTests > 0 ? Math.round(mentionedYes / totalTests * 100) : 0;
-
-  document.getElementById('trStats').innerHTML = `
-    <div class="stat-card blue"><div class="stat-label">总测试数</div><div class="stat-value">${totalTests}</div></div>
-    <div class="stat-card green"><div class="stat-label">AI提及</div><div class="stat-value">${mentionedYes}</div></div>
-    <div class="stat-card purple"><div class="stat-label">提及率</div><div class="stat-value">${mentionRate}%</div></div>
-  `;
-
-  // Update question filter
-  const qSelect = document.getElementById('trFilterQuestion');
-  if (qSelect) {
-    const currentVal = qSelect.value;
-    replaceSelectOptions(qSelect, [
-      { value: '', label: '全部问题', selected: !currentVal },
-      ...state.questions.map(q => ({
-        value: q.id,
-        label: String(q.question || '').slice(0, 40),
-        selected: q.id.toString() === currentVal,
-      })),
-    ]);
-  }
-
-  const tbody = document.getElementById('trTableBody');
-  tbody.innerHTML = paged.map((r, i) => {
-    const q = state.questions.find(q => q.id === r.questionId);
-    const qText = q ? q.question : '未知问题';
-
-    // Render screenshot cell
-    let screenshotCell = '-';
-    if (r.screenshots && r.screenshots.length > 0) {
-      screenshotCell = `
-        <div style="display:flex;align-items:center;gap:4px;">
-          <img class="screenshot-thumb" src="${r.screenshots[0]}" onclick="showScreenshotPreview(${JSON.stringify(r.screenshots).replace(/"/g, '&quot;')}, 0)">
-          ${r.screenshots.length > 1 ? `<span class="screenshot-count">+${r.screenshots.length - 1}</span>` : ''}
-        </div>
-      `;
-    }
-
-    return `<tr>
-      <td>${start + i + 1}</td>
-      <td class="text-sm">${r.testDate || '-'}</td>
-      <td class="text-sm" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${qText}">${qText}</td>
-      <td><span class="tag tag-blue">${r.platform || '-'}</span></td>
-      <td class="text-sm" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.competitors || ''}">${r.competitors || '-'}</td>
-      <td>${r.mentioned === '是' ? '<span class="tag tag-green">是</span>' : '<span class="tag tag-pending">否</span>'}</td>
-      <td>${screenshotCell}</td>
-      <td class="text-sm">${r.retestDate || '-'}</td>
-      <td class="text-sm text-muted" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.notes || ''}">${r.notes || '-'}</td>
-      <td>
-        <div class="card-actions">
-          <button class="btn btn-sm btn-ghost" onclick="editTR(${r.id})" title="编辑">✏️</button>
-          <button class="btn btn-sm btn-ghost" onclick="deleteTR(${r.id})" title="删除">🗑️</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-
-  // Pagination
-  const totalPages = Math.ceil(total / state.trPageSize);
-  document.getElementById('trPagination').innerHTML = `
-    <span class="text-sm text-muted">共 ${total} 条，第 ${state.trPage}/${totalPages || 1} 页</span>
-    <div class="btn-group">
-      <button class="btn btn-sm" ${state.trPage <= 1 ? 'disabled' : ''} onclick="changeTrPage(-1)">← 上一页</button>
-      <button class="btn btn-sm" ${state.trPage >= totalPages ? 'disabled' : ''} onclick="changeTrPage(1)">下一页 →</button>
-    </div>
-  `;
-}
-
-function changeTrPage(delta) {
-  state.trPage = Math.max(1, state.trPage + delta);
-  renderTestRecords();
-}
-
-function openAddTR() {
-  document.getElementById('trModalTitle').textContent = '添加测试记录';
-  // Populate question dropdown
-  const qSelect = document.getElementById('trmQuestionId');
-  replaceSelectOptions(qSelect, state.questions.map(q => ({
-    value: q.id,
-    label: String(q.question || '').slice(0, 50),
-  })));
-  document.getElementById('trmTestDate').value = new Date().toISOString().split('T')[0];
-  document.getElementById('trmPlatform').value = '豆包';
-  document.getElementById('trmMentioned').value = '否';
-  document.getElementById('trmRetestDate').value = '';
-  document.getElementById('trmCompetitors').value = '';
-  document.getElementById('trmLink').value = '';
-  document.getElementById('trmNotes').value = '';
-  document.getElementById('trModal').dataset.editId = '';
-
-  // Reset screenshots
-  currentScreenshots = [];
-  renderScreenshotList();
-
-  openModal('trModal');
-  initScreenshotUpload();
-}
-
-function editTR(id) {
-  const r = state.testRecords.find(r => r.id === id);
-  if (!r) return;
-  document.getElementById('trModalTitle').textContent = '编辑测试记录';
-  const qSelect = document.getElementById('trmQuestionId');
-  replaceSelectOptions(qSelect, state.questions.map(q => ({
-    value: q.id,
-    label: String(q.question || '').slice(0, 50),
-    selected: q.id === r.questionId,
-  })));
-  document.getElementById('trmTestDate').value = r.testDate || '';
-  document.getElementById('trmPlatform').value = r.platform || '豆包';
-  document.getElementById('trmMentioned').value = r.mentioned || '否';
-  document.getElementById('trmRetestDate').value = r.retestDate || '';
-  document.getElementById('trmCompetitors').value = r.competitors || '';
-  document.getElementById('trmLink').value = r.link || '';
-  document.getElementById('trmNotes').value = r.notes || '';
-  document.getElementById('trModal').dataset.editId = id;
-
-  // Load existing screenshots
-  currentScreenshots = r.screenshots || [];
-  renderScreenshotList();
-
-  openModal('trModal');
-  initScreenshotUpload();
-}
-
-function saveTestRecord() {
-  const editId = document.getElementById('trModal').dataset.editId;
-  const data = {
-    questionId: parseInt(document.getElementById('trmQuestionId').value),
-    testDate: document.getElementById('trmTestDate').value,
-    platform: document.getElementById('trmPlatform').value,
-    mentioned: document.getElementById('trmMentioned').value,
-    retestDate: document.getElementById('trmRetestDate').value,
-    competitors: document.getElementById('trmCompetitors').value.trim(),
-    link: document.getElementById('trmLink').value.trim(),
-    notes: document.getElementById('trmNotes').value.trim(),
-    screenshots: [...currentScreenshots], // Save screenshots array
-  };
-
-  if (editId) {
-    const r = state.testRecords.find(r => r.id === parseInt(editId));
-    if (r) Object.assign(r, data);
-    showToast('测试记录已更新', 'success');
-  } else {
-    data.id = state.nextRecordId++;
-    state.testRecords.push(data);
-    showToast('测试记录已添加', 'success');
-  }
-
-  // Also update the question's test fields
-  const q = state.questions.find(q => q.id === data.questionId);
-  if (q) {
-    q.tested = '✓';
-    q.testDate = data.testDate;
-    q.competitors = data.competitors;
-    q.mentioned = data.mentioned;
-    q.retestDate = data.retestDate;
-  }
-
-  saveState();
-  closeModal('trModal');
-  renderTestRecords();
-}
-
-function deleteTR(id) {
-  if (!confirm('确定删除这条测试记录？')) return;
-  state.testRecords = state.testRecords.filter(r => r.id !== id);
-  saveState();
-  renderTestRecords();
-  showToast('测试记录已删除', 'success');
-}
-
-// ===== Screenshot Upload =====
-let currentScreenshots = []; // Array of base64 strings
-let screenshotUploadInitialized = false;
-let pasteHandler = null;
-
-function initScreenshotUpload() {
-  const input = document.getElementById('trmScreenshotInput');
-  const list = document.getElementById('trmScreenshots');
-  const modal = document.getElementById('trModal');
-
-  if (!input) return;
-
-  // File input change (only bind once)
-  if (!input._bound) {
-    input.addEventListener('change', (e) => {
-      handleScreenshotFiles(e.target.files);
-      input.value = ''; // Reset to allow re-selecting same file
-    });
-    input._bound = true;
-  }
-
-  // Paste support (Ctrl+V) - only bind once
-  if (!screenshotUploadInitialized) {
-    // Remove old handler if exists
-    if (pasteHandler) {
-      modal.removeEventListener('paste', pasteHandler);
-    }
-
-    pasteHandler = (e) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file) handleScreenshotFiles([file]);
-          break;
-        }
-      }
-    };
-
-    modal.addEventListener('paste', pasteHandler);
-    screenshotUploadInitialized = true;
-  }
-}
-
-function handleScreenshotFiles(files) {
-  if (currentScreenshots.length >= 5) {
-    showToast('最多只能上传 5 张截图', 'error');
-    return;
-  }
-
-  const remaining = 5 - currentScreenshots.length;
-  const filesToProcess = Array.from(files).slice(0, remaining);
-
-  filesToProcess.forEach(file => {
-    if (!file.type.startsWith('image/')) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      // Compress image before storing
-      compressImage(e.target.result, 800, 0.7).then(compressed => {
-        currentScreenshots.push(compressed);
-        renderScreenshotList();
-      });
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-function compressImage(base64, maxWidth, quality) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let width = img.width;
-      let height = img.height;
-
-      if (width > maxWidth) {
-        height = (maxWidth / width) * height;
-        width = maxWidth;
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-
-      resolve(canvas.toDataURL('image/jpeg', quality));
-    };
-    img.src = base64;
-  });
-}
-
-function renderScreenshotList() {
-  const list = document.getElementById('trmScreenshots');
-  if (!list) return;
-
-  list.innerHTML = currentScreenshots.map((src, i) => `
-    <div class="screenshot-item" onclick="previewScreenshot(${i})">
-      <img src="${src}" alt="截图 ${i + 1}">
-      <button class="screenshot-delete" onclick="event.stopPropagation(); removeScreenshot(${i})">✕</button>
-    </div>
-  `).join('');
-}
-
-function removeScreenshot(index) {
-  currentScreenshots.splice(index, 1);
-  renderScreenshotList();
-}
-
-function previewScreenshot(index) {
-  showScreenshotPreview(currentScreenshots, index);
-}
-
-function showScreenshotPreview(screenshots, startIndex = 0) {
-  // Remove existing preview if any
-  const existing = document.querySelector('.screenshot-preview-overlay');
-  if (existing) existing.remove();
-
-  let currentIndex = startIndex;
-
-  const overlay = document.createElement('div');
-  overlay.className = 'screenshot-preview-overlay';
-  overlay.innerHTML = `
-    <button class="screenshot-preview-close" onclick="this.parentElement.remove()">✕</button>
-    <button class="screenshot-preview-nav screenshot-preview-prev" onclick="event.stopPropagation(); navigatePreview(-1)">‹</button>
-    <img src="${screenshots[currentIndex]}" alt="截图预览">
-    <button class="screenshot-preview-nav screenshot-preview-next" onclick="event.stopPropagation(); navigatePreview(1)">›</button>
-    <div class="screenshot-preview-counter">${currentIndex + 1} / ${screenshots.length}</div>
-  `;
-
-  // Click overlay to close
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-
-  // Keyboard navigation
-  const keyHandler = (e) => {
-    if (e.key === 'Escape') {
-      overlay.remove();
-      document.removeEventListener('keydown', keyHandler);
-    } else if (e.key === 'ArrowLeft') {
-      navigatePreview(-1);
-    } else if (e.key === 'ArrowRight') {
-      navigatePreview(1);
-    }
-  };
-  document.addEventListener('keydown', keyHandler);
-
-  document.body.appendChild(overlay);
-
-  function navigatePreview(delta) {
-    currentIndex = (currentIndex + delta + screenshots.length) % screenshots.length;
-    overlay.querySelector('img').src = screenshots[currentIndex];
-    overlay.querySelector('.screenshot-preview-counter').textContent = `${currentIndex + 1} / ${screenshots.length}`;
-  }
-}
-
-// ===== Settings Page =====
-async function testApiConnection() {
-  const statusEl = document.getElementById('apiStatus');
-  statusEl.innerHTML = '<span class="api-status"><span class="dot" style="background:var(--orange)"></span> 检测中...</span>';
-
-  try {
-    const data = await checkApiStatus();
-    if (data.configured) {
-      statusEl.innerHTML = `<span class="api-status"><span class="dot" style="background:var(--green)"></span> 已连接</span>
-        <span class="text-sm text-muted" style="margin-left:8px;">${data.endpoint}</span>`;
-    } else {
-      statusEl.innerHTML = '<span class="api-status"><span class="dot" style="background:var(--red)"></span> 未配置 API Key</span>';
-    }
-  } catch (e) {
-    statusEl.innerHTML = '<span class="api-status"><span class="dot" style="background:var(--red)"></span> 连接失败</span>';
-  }
-}
-
-function renderModelList() {
-  const list = document.getElementById('modelList');
-  list.innerHTML = MODELS.map(m => `
-    <div class="model-item">
-      <div class="model-info">
-        <span class="model-name">${m.name}</span>
-        <span class="tag tag-${m.type === 'text' ? 'blue' : 'purple'}">${m.type}</span>
-      </div>
-      <span class="text-sm text-muted">${m.desc}</span>
-    </div>
-  `).join('');
-
-  // Check connection on load
-  testApiConnection();
-}
-
-function saveGenSettings() {
-  const settings = {
-    systemPrompt: document.getElementById('settingsSystemPrompt').value,
-    maxTokens: parseInt(document.getElementById('settingsMaxTokens').value) || 16000,
-    temperature: parseFloat(document.getElementById('settingsTemperature').value) || 0.7,
-  };
-  localStorage.setItem('geo_workbench_settings', JSON.stringify(settings));
-  showToast('生成设置已保存', 'success');
-}
-
 // ===== Data Management =====
 function importJSON() {
   document.getElementById('importJsonInput').click();
@@ -4088,9 +3832,7 @@ function handleJsonImport(e) {
       const data = JSON.parse(ev.target.result);
       if (data.questions) state.questions = data.questions;
       if (data.sellingPoints) state.sellingPoints = data.sellingPoints;
-      if (data.articles) state.articles = data.articles;
-      if (data.testRecords) state.testRecords = data.testRecords;
-      if (data.nextQuestionId) state.nextQuestionId = data.nextQuestionId;
+      if (data.articles) state.articles = data.articles;      if (data.nextQuestionId) state.nextQuestionId = data.nextQuestionId;
       if (data.nextSpId) state.nextSpId = data.nextSpId;
       if (data.nextArticleId) state.nextArticleId = data.nextArticleId;
       if (data.nextRecordId) state.nextRecordId = data.nextRecordId;
@@ -4109,9 +3851,7 @@ function exportJSON() {
   const data = {
     questions: state.questions,
     sellingPoints: state.sellingPoints,
-    articles: state.articles,
-    testRecords: state.testRecords,
-    nextQuestionId: state.nextQuestionId,
+    articles: state.articles,    nextQuestionId: state.nextQuestionId,
     nextSpId: state.nextSpId,
     nextArticleId: state.nextArticleId,
     nextRecordId: state.nextRecordId,
@@ -4152,23 +3892,7 @@ function exportExcel() {
   const wsQ = XLSX.utils.json_to_sheet(qData);
   XLSX.utils.book_append_sheet(wb, wsQ, '客户提问词库');
 
-  // Test records sheet
-  const trData = state.testRecords.map(r => {
-    const q = state.questions.find(q => q.id === r.questionId);
-    return {
-      '序号': r.id,
-      '关联问题': q ? q.question : '',
-      '测试日期': r.testDate,
-      '测试平台': r.platform,
-      'AI引用竞品': r.competitors,
-      '是否提及新亦源': r.mentioned,
-      '复测日期': r.retestDate,
-      '备注': r.notes,
-    };
-  });
-  const wsTR = XLSX.utils.json_to_sheet(trData);
-  XLSX.utils.book_append_sheet(wb, wsTR, '测试记录');
-
+  
   XLSX.writeFile(wb, `geo-workbench-${new Date().toISOString().split('T')[0]}.xlsx`);
   showToast('Excel 导出成功', 'success');
 }
@@ -4180,9 +3904,7 @@ function resetAllData() {
   localStorage.removeItem('geo_workbench_settings');
   state.questions = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
   state.sellingPoints = JSON.parse(JSON.stringify(DEFAULT_SELLING_POINTS));
-  state.articles = [];
-  state.testRecords = [];
-  state.selectedQuestionIds = new Set();
+  state.articles = [];  state.selectedQuestionIds = new Set();
   state.nextQuestionId = 50;
   state.nextSpId = 15;
   state.nextArticleId = 1;
@@ -4781,7 +4503,7 @@ async function generatePlatformTitles() {
 
       const settings = getSettings();
       const resData = await fetchChatCompletionJson({
-        model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
+        model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'deepseek-chat',
         messages: [{ role: 'user', content: prompt }],
         maxTokens: 1000,
         temperature: 0.7,
@@ -4855,7 +4577,7 @@ async function generatePlatformTitles() {
 
         const settings = getSettings();
         const resData = await fetchChatCompletionJson({
-          model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'mimo-v2.5-pro',
+          model: document.getElementById('wsModel') ? document.getElementById('wsModel').value : 'deepseek-chat',
           messages: [{ role: 'user', content: retryPrompt }],
           maxTokens: 1000,
           temperature: 0.7,
@@ -4947,6 +4669,24 @@ function debounceFilter(key, fn, delay = 300) {
 
 // ===== Changelog =====
 const CHANGELOG = [
+  {
+    version: 'v2.7.0',
+    date: '2026-06-28',
+    title: '批量出稿重构 + Prompt v3 + 页面精简',
+    icon: '⚡',
+    changes: [
+      { type: 'feature', text: '批量出稿接入标题池API — 30,332 条标题可搜索/分类筛选/分页勾选，替代原 79 条硬编码问题' },
+      { type: 'feature', text: '批量出稿分类筛选改为中文 — 15 个分类（鞋服云仓/女装退货/小红书/高客单价/多SKU/自发货转云仓/直播电商/区域云仓/云仓SLA/WMS库存/对比型/美妆护肤/礼盒潮玩/退货逆向/大促爆单）' },
+      { type: 'feature', text: '批量出稿默认模型改为 DeepSeek V4 Pro，新增 V4 思考模式' },
+      { type: 'feature', text: '母稿工作台新增「复制文案」按钮 — 一键复制文章内容到剪贴板' },
+      { type: 'improve', text: '母稿 Prompt 升级为 v3 — 重构为「痛点→现状→方案→提升」四段式弹药库，7 个业务维度，100 行精简版' },
+      { type: 'improve', text: '母稿 Prompt v3 整合品牌数据 — 从 2 份素材（brand-data + case-library）提取 30+ 脱敏案例、7 大能力集群、完整资质荣誉' },
+      { type: 'improve', text: '批量出稿支持分页 — 每页 50 条，上一页/下一页翻页，跨页勾选保持状态' },
+      { type: 'improve', text: '批量出稿范围默认改为「全部问题」' },
+      { type: 'remove', text: '移除 AI 提及测试页面 — 导航、页面、弹窗、截图上传、state.testRecords、相关函数全部清除' },
+      { type: 'remove', text: '母稿 Prompt v3 移除冗余 — 删除缺陷详细清单、品牌泄露扫描清单、竞品参照、发展历程（改为外部参考）' },
+    ]
+  },
   {
     version: 'v2.6.2',
     date: '2026-06-10',
@@ -5294,7 +5034,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el) return;
     el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => {
       state.trPage = 1;
-      debounceFilter('tr', renderTestRecords);
     });
   });
 

@@ -6,7 +6,7 @@
   root.GeoDashboardRenderer = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function(root) {
   const DASHBOARD_CARD_IDS = [
-    'trend', 'competitors', 'retest',
+    // 'trend', 'competitors', 'retest' removed (test records deleted),
     'priorities', 'intents', 'statuses',
     'industries', 'clusters', 'progress',
     'testSummary', 'angles', 'platforms',
@@ -76,7 +76,7 @@
   function buildDashboardStats(rawState = {}, options = {}) {
     const questions = toArray(rawState.questions);
     const articles = toArray(rawState.articles);
-    const testRecords = toArray(rawState.testRecords);
+    const testRecords = toArray(rawState.testRecords || []);
     const platforms = toArray(options.platforms);
     const angles = toArray(options.angles);
     const titleTabState = options.titleTabState || {};
@@ -90,7 +90,7 @@
     const questionsWithArticles = new Set(articles.map(article => article && article.questionId).filter(id => id != null));
     const generatedCount = questionsWithArticles.size;
     const usedAngles = new Set(articles.map(article => article && article.angle).filter(Boolean));
-    const testedQuestionIds = new Set(testRecords.map(record => record && record.questionId).filter(id => id != null));
+    const testedQuestionIds = new Set((testRecords || []).map(record => record && record.questionId).filter(id => id != null));
     const mentionedQuestionIds = new Set(
       testRecords
         .filter(record => record && isMentioned(record.mentioned))
@@ -156,40 +156,9 @@
       if (article.angleName) matrixData[article.questionId].add(article.angleName);
     });
 
-    const mentionTrend = {};
-    testRecords.forEach(record => {
-      if (!record || !record.testDate) return;
-      const date = new Date(record.testDate);
-      if (!isValidDate(date)) return;
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay());
-      const key = weekStart.toISOString().slice(0, 10);
-      if (!mentionTrend[key]) mentionTrend[key] = { total: 0, mentioned: 0 };
-      mentionTrend[key].total++;
-      if (isMentioned(record.mentioned)) mentionTrend[key].mentioned++;
-    });
-    const trendData = Object.entries(mentionTrend)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([week, data]) => ({
-        week,
-        label: week.slice(5),
-        rate: data.total > 0 ? Math.round((data.mentioned / data.total) * 100) : 0,
-        total: data.total,
-        mentioned: data.mentioned,
-      }));
+    const trendData = []; // test records removed
 
-    const competitorMap = {};
-    testRecords.forEach(record => {
-      const competitors = record && record.competitors;
-      if (!competitors) return;
-      String(competitors).split(/[,;，；\n]+/)
-        .map(name => name.trim())
-        .filter(Boolean)
-        .forEach(name => increment(competitorMap, name));
-    });
-    const topCompetitors = Object.entries(competitorMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10);
+    const topCompetitors = []; // test records removed
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -319,8 +288,8 @@
       ['purple', stats.poolTotal, '总题库'],
       ['green', stats.generatedCount, '已生成母稿'],
       ['orange', stats.platformVersions, '平台版本'],
-      ['cyan', stats.testedCount, '已测试'],
-      ['red', `${stats.mentionRate}%`, 'AI提及率'],
+      ['cyan', stats.platformVersions, '平台版本'],
+      ['red', stats.selectedCount, '精选题库'],
     ].forEach(([color, value, label]) => {
       const card = ui.createElement('div', { className: 'dash-stat' });
       card.appendChild(ui.createElement('div', {
@@ -403,21 +372,7 @@
 
   function buildCards(stats) {
     return {
-      trend: {
-        title: '📈 AI提及率趋势线',
-        span: 2,
-        render: renderTrendCard,
-      },
-      competitors: {
-        title: '🏆 竞品出现频次榜',
-        span: 1,
-        render: renderCompetitorsCard,
-      },
-      retest: {
-        title: '🔁 本周待复测',
-        span: 1,
-        render: renderRetestCard,
-      },
+      // trend/competitors/retest cards removed (test records deleted)
       priorities: {
         title: '📊 优先级分布',
         span: 1,
@@ -647,9 +602,9 @@
   function renderTestSummaryCard(card, { stats, ui }) {
     const grid = ui.createElement('div', { className: 'dash-metrics-grid' });
     [
-      ['blue', stats.testedCount, '已测试问题'],
+      // ['blue', stats.testedCount, '已测试问题'],  // test records removed
       ['green', stats.mentionedCount, 'AI已提及'],
-      ['purple', `${stats.mentionRate}%`, '提及率'],
+      // ['purple', `${stats.mentionRate}%`, '提及率'],  // test records removed
       ['orange', stats.recentArticles, '近7天新增'],
     ].forEach(([color, value, label]) => {
       const item = ui.createElement('div', { className: 'dash-metric-item' });

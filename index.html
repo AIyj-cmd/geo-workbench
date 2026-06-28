@@ -45,9 +45,6 @@
         <button class="nav-item" data-page="batch">
           <span class="nav-icon">⚡</span> 批量出稿
         </button>
-        <button class="nav-item" data-page="test-records">
-          <span class="nav-icon">🧪</span> AI 提及测试
-        </button>
         <button class="nav-item" data-page="changelog">
           <span class="nav-icon">📜</span> 更新日志
         </button>
@@ -172,9 +169,7 @@
               <div class="control-group">
                 <label>模型</label>
                 <select class="filter-select" id="wsModel" style="min-width:140px">
-                  <option value="mimo-v2.5-pro">mimo-v2.5-pro ⭐</option>
-                  <option value="mimo-v2.5">mimo-v2.5</option>
-                  <option value="deepseek-chat">DeepSeek V4 Pro</option>
+                  <option value="deepseek-chat">DeepSeek V4 Pro ⭐</option>
                   <option value="deepseek-reasoner">DeepSeek V4 思考</option>
                 </select>
               </div>
@@ -196,6 +191,9 @@
               </button>
               <button class="btn" id="btnExportArticle" onclick="exportCurrentArticle()" style="display:none">
                 📄 导出Word
+              </button>
+              <button class="btn" id="btnCopyArticle" onclick="copyArticle()" style="display:none">
+                📋 复制文案
               </button>
             </div>
 
@@ -323,13 +321,51 @@
       <!-- ====== Page: Batch Generation ====== -->
       <div class="page" id="page-batch">
         <div class="settings-section mb-16">
+      <!-- 问题选择列表 -->
+      <div class="settings-section mb-16">
+        <h3>📋 选择问题</h3>
+        <div class="filter-bar" style="margin-bottom:12px">
+          <div class="search-input" style="flex:1">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="batchQSearch" placeholder="搜索问题..." oninput="renderBatchQuestions()">
+          </div>
+          <select class="form-select" id="batchQFilterCategory" onchange="renderBatchQuestions()" style="width:160px">
+            <option value="all">全部分类</option>
+          </select>
+          <span id="batchPageInfo" style="font-size:12px;color:var(--text-muted);white-space:nowrap"></span>
+        </div>
+        <div class="table-container" style="max-height:360px">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:36px"><input type="checkbox" class="table-checkbox" id="batchSelectAll" onchange="toggleAllBatchQuestions(this.checked)"></th>
+                  <th style="width:50px">序号</th>
+                  <th>客户提问</th>
+                  <th style="width:100px">分类</th>
+                  <th style="width:60px">序号</th>
+                </tr>
+              </thead>
+              <tbody id="batchQuestionTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:var(--text-muted)">
+          已选择 <strong id="batchSelectedCount">0</strong> 个问题
+          <span style="margin-left:12px">
+            <button class="btn btn-sm" id="batchPrevBtn" onclick="changeBatchPage(-1)" disabled>← 上一页</button>
+            <button class="btn btn-sm" id="batchNextBtn" onclick="changeBatchPage(1)" disabled>下一页 →</button>
+          </span>
+        </div>
+      </div>
           <h3>⚡ 批量生成配置</h3>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">生成模型</label>
               <select class="form-select" id="batchModel">
-                <option value="mimo-v2.5-pro">mimo-v2.5-pro ⭐</option>
-                <option value="mimo-v2.5">mimo-v2.5</option>
+                <option value="deepseek-chat">DeepSeek V4 Pro ⭐</option>
+                <option value="deepseek-reasoner">DeepSeek V4 思考</option>
+
               </select>
             </div>
             <div class="form-group">
@@ -343,10 +379,10 @@
             <div class="form-group">
               <label class="form-label">批量范围</label>
               <select class="form-select" id="batchScope">
-                <option value="selected">已勾选的问题</option>
-                <option value="high">所有高优先级</option>
                 <option value="all">全部问题</option>
+                <option value="high">所有高优先级</option>
                 <option value="unstarted">未开始的问题</option>
+                <option value="selected">已勾选的问题</option>
               </select>
             </div>
             <div class="form-group">
@@ -375,127 +411,6 @@
       </div>
 
       <!-- ====== Page: Test Records ====== -->
-      <div class="page" id="page-test-records">
-        <div class="stats-row" id="trStats"></div>
-        <div class="filter-bar">
-          <div class="search-input">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="trSearch" placeholder="搜索问题、竞品名称...">
-          </div>
-          <select class="filter-select" id="trFilterMentioned">
-            <option value="">全部提及状态</option>
-            <option value="是">AI已提及</option>
-            <option value="否">AI未提及</option>
-          </select>
-          <select class="filter-select" id="trFilterPlatform">
-            <option value="">全部平台</option>
-            <option value="豆包">豆包</option>
-            <option value="DeepSeek">DeepSeek</option>
-            <option value="百度AI">百度AI</option>
-            <option value="小红书点点">小红书点点</option>
-            <option value="其他">其他</option>
-          </select>
-          <select class="filter-select" id="trFilterQuestion">
-            <option value="">全部问题</option>
-          </select>
-        </div>
-        <div class="table-container">
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th style="width:50px">序号</th>
-                  <th>测试日期</th>
-                  <th>客户提问</th>
-                  <th>测试平台</th>
-                  <th>AI引用了谁(竞品)</th>
-                  <th>AI是否提及新亦源</th>
-                  <th>截图</th>
-                  <th>复测日期</th>
-                  <th>备注</th>
-                  <th style="width:80px">操作</th>
-                </tr>
-              </thead>
-              <tbody id="trTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-        <div id="trPagination" class="flex items-center justify-between mt-16"></div>
-      </div>
-
-      <!-- Test Record Modal -->
-      <div class="modal-overlay" id="trModal">
-        <div class="modal modal-lg">
-          <div class="modal-header">
-            <h3 id="trModalTitle">添加测试记录</h3>
-            <button class="modal-close" onclick="closeModal('trModal')">✕</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label class="form-label">关联问题</label>
-              <select class="form-select" id="trmQuestionId"></select>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">测试日期</label>
-                <input type="date" class="form-input" id="trmTestDate">
-              </div>
-              <div class="form-group">
-                <label class="form-label">测试平台</label>
-                <select class="form-select" id="trmPlatform">
-                  <option value="豆包">豆包</option>
-                  <option value="DeepSeek">DeepSeek</option>
-                  <option value="百度AI">百度AI</option>
-                  <option value="小红书点点">小红书点点</option>
-                  <option value="其他">其他</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">AI是否提及新亦源</label>
-                <select class="form-select" id="trmMentioned">
-                  <option value="否">否</option>
-                  <option value="是">是</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">复测日期</label>
-                <input type="date" class="form-input" id="trmRetestDate">
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">AI当前引用了谁（竞品情报）</label>
-              <textarea class="form-textarea" id="trmCompetitors" rows="3" placeholder="记录 AI 回答中引用/推荐了哪些竞品公司或来源"></textarea>
-            </div>
-            <div class="form-group">
-              <label class="form-label">链接/截图</label>
-              <div class="screenshot-upload-area">
-                <div class="screenshot-list" id="trmScreenshots"></div>
-                <label class="screenshot-add-btn" id="trmScreenshotBtn">
-                  <input type="file" id="trmScreenshotInput" accept="image/*" multiple style="display:none">
-                  <span>📷 添加截图</span>
-                </label>
-              </div>
-              <div class="form-hint">支持粘贴截图（Ctrl+V）或点击上传，最多 5 张</div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">链接地址</label>
-              <input type="text" class="form-input" id="trmLink" placeholder="可选，填测试链接或截图URL">
-            </div>
-            <div class="form-group">
-              <label class="form-label">备注</label>
-              <textarea class="form-textarea" id="trmNotes" rows="2" placeholder="其他观察"></textarea>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn" onclick="closeModal('trModal')">取消</button>
-            <button class="btn btn-primary" onclick="saveTestRecord()">保存</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ====== Page: Changelog ====== -->
       <div class="page" id="page-changelog">
         <div id="changelogContent"></div>
       </div>
